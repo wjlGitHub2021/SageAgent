@@ -642,25 +642,28 @@ export default function Home() {
             </div>
           </div>
 
-          <Panel title={t.settings}>
-            <div className="settings-body">
+          <section className="settings-strip" aria-label={t.settings}>
+            <div className="settings-copy">
+              <span>{t.settings}</span>
               <p>{t.language}</p>
-              <div className="segmented language-switch" aria-label={t.language}>
-                <button
-                  className={locale === "zh" ? "selected" : ""}
-                  onClick={() => setLocale("zh")}
-                >
-                  中文
-                </button>
-                <button
-                  className={locale === "en" ? "selected" : ""}
-                  onClick={() => setLocale("en")}
-                >
-                  English
-                </button>
-              </div>
             </div>
-          </Panel>
+            <div className="segmented language-switch" aria-label={t.language}>
+              <button
+                aria-pressed={locale === "zh"}
+                className={locale === "zh" ? "selected" : ""}
+                onClick={() => setLocale("zh")}
+              >
+                中文
+              </button>
+              <button
+                aria-pressed={locale === "en"}
+                className={locale === "en" ? "selected" : ""}
+                onClick={() => setLocale("en")}
+              >
+                English
+              </button>
+            </div>
+          </section>
 
           <Panel
             title={t.threads}

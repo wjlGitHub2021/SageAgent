@@ -99,6 +99,24 @@ Stage 1 seed data 至少覆盖：
 - Settings 面板在 mobile 下必须保持紧凑、对齐和工具化气质；`界面语言` / `Interface language` 不应表现得像页面标题，语言切换控件要与 label 形成稳定设置行。
 - Mobile 设置区域不得出现突兀的大字号、松散留白或按钮宽度抖动。
 
+## Task 1.x：Settings 视觉 polish
+
+目标：根据浏览器视觉反馈，优化侧栏 Settings / language selector 的外观，使它更接近 Codex desktop-like 工具型工作台，而不是显得像临时拼接的小卡片。
+
+范围：
+
+- 将 Settings 从完整 panel 调整为紧凑设置条，降低重复边框、标题和留白带来的视觉噪音。
+- 保留中文/English 切换能力，并继续使用 copy 字典驱动主要界面文案。
+- 保证 desktop 侧栏中控件不拥挤，mobile 下不横向溢出。
+- 不引入新的 UI 依赖，不改动 provider、runtime 或 agent 行为。
+
+验收标准：
+
+- Settings 区域在首屏中更轻、更稳定，与 brand、threads、runs 的层级关系清楚。
+- 中文和 English 切换按钮都有明确 selected state，并且点击后继续切换主要界面文案。
+- 语言按钮文本不溢出，不造成侧栏宽度抖动。
+- `rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+
 文档验收：
 
 - `docs/TASKS.md` 状态与实际完成情况一致。

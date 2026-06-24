@@ -112,6 +112,7 @@ code {
 .brand-name,
 .brand-subtitle,
 .section-label,
+.settings-copy p,
 .message-role,
 .run-row p,
 .timeline-row p,
@@ -120,6 +121,7 @@ code {
 }
 
 .brand-row > div:last-child,
+.settings-copy,
 .workspace-header > div:first-child,
 .message > div:last-child,
 .composer > div,
@@ -132,6 +134,7 @@ code {
 .workspace-header p,
 .message-body,
 .composer span,
+.settings-copy p,
 .thread-item span,
 .thread-item small,
 .run-row p,
@@ -218,20 +221,36 @@ code {
   padding: 10px;
 }
 
-.settings-body {
+.settings-strip {
   display: flex;
-  min-height: 44px;
   align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
-  padding: 8px 10px;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 7px 8px 7px 10px;
 }
 
-.settings-body p {
-  min-width: 0;
-  margin: 0;
+.settings-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.settings-copy span {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 760;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.settings-copy p {
+  min-width: 0;
+  color: var(--text-main);
+  font-size: 12px;
   font-weight: 650;
   line-height: 1.2;
   overflow: hidden;
@@ -592,9 +611,10 @@ code {
   }
 }
 
-.settings-body .language-switch button {
+.settings-strip .language-switch button {
   min-height: 28px;
   min-width: 58px;
   padding: 0 10px;
   font-size: 11px;
+  white-space: nowrap;
 }
