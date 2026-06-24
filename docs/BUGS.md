@@ -33,3 +33,12 @@
 - 自动化门禁：本阶段已运行 `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`，均通过。
 - 结论：未发现未登记的 P0/P1 问题；当前 `docs/BUGS.md` 无 open / blocked bug。
 - 备注：搜索结果中的 `failed`、`blocked` 多为 Run/Event 状态、测试分支和 QA checklist 状态定义，不构成待修复 bug。
+
+### 2026-06-24 Stage 5 最终 P0/P1 复核
+
+- 审计时间：2026-06-24 21:04:01 CST
+- 审计 commit：`f546d89`
+- 复核原因：Task 5.7 补齐最小本地 telemetry/logging 后，重新确认 Stage 5 退出状态。
+- 搜索线索：`FIXME`、`TODO`、`P0`、`P1`。
+- 自动化门禁：Task 5.7 后已重新运行 `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`，均通过。
+- 结论：未发现未登记的 P0/P1 / TODO / FIXME 缺陷线索；当前 `docs/BUGS.md` 仍无 open / blocked bug。
