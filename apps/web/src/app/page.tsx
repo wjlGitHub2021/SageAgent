@@ -39,6 +39,13 @@ const copy = {
     toolCalls: "工具调用",
     approval: "审批",
     artifacts: "产物",
+    auditTrail: "审计轨迹",
+    events: "事件",
+    tools: "工具",
+    approvals: "审批",
+    lastEvent: "最后事件",
+    lastUpdated: "最后更新",
+    counts: "计数",
     providerError: "Provider Error",
     noProviderError: "当前任务暂无 provider error",
     noProviderErrorDetail:
@@ -91,6 +98,7 @@ const copy = {
     localDraft: "本地草稿",
     stage1Spec: "Stage 1 实施规格",
     screenshotCheck: "Product Shell 截图检查",
+    noAuditEvents: "当前任务暂无审计事件",
   },
   en: {
     localWorkbench: "Local workbench",
@@ -110,6 +118,13 @@ const copy = {
     toolCalls: "Tool Calls",
     approval: "Approval",
     artifacts: "Artifacts",
+    auditTrail: "Audit Trail",
+    events: "Events",
+    tools: "Tools",
+    approvals: "Approvals",
+    lastEvent: "Last event",
+    lastUpdated: "Last updated",
+    counts: "Counts",
     providerError: "Provider Error",
     noProviderError: "No provider error for this run",
     noProviderErrorDetail:
@@ -168,6 +183,7 @@ const copy = {
     localDraft: "Local draft",
     stage1Spec: "Stage 1 Implementation Spec",
     screenshotCheck: "Product Shell Screenshot Check",
+    noAuditEvents: "No audit events for this run",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
@@ -548,6 +564,15 @@ type ProviderErrorState = {
   readonly status: string;
 };
 
+type AuditSummary = {
+  readonly eventCount: number;
+  readonly lastEventType: string | null;
+  readonly lastEventAt: string | null;
+  readonly toolCallCount: number;
+  readonly approvalCount: number;
+  readonly artifactCount: number;
+};
+
 function StatusDot({ status }: { status: string }) {
   const color =
     status === "completed" || status === "approved"
@@ -624,6 +649,7 @@ export default function Home() {
   const activeApproval = getActiveApproval(runEvents, activeRunId);
   const activeArtifacts = getArtifactRows(runEvents, activeRunId);
   const activeProviderError = getProviderError(runEvents, activeRunId);
+  const activeAuditSummary = getAuditSummary(runEvents, activeRunId);
 
   function handleNewThread() {
     const nextIndex = threadItems.length + 1;
@@ -982,6 +1008,47 @@ export default function Home() {
         </section>
 
         <aside className="inspector">
+          <Panel title={t.auditTrail}>
+            <div className="audit-summary">
+              <dl className="audit-primary">
+                <div>
+                  <dt>{t.lastEvent}</dt>
+                  <dd title={activeAuditSummary.lastEventType ?? t.noAuditEvents}>
+                    {activeAuditSummary.lastEventType ?? t.noAuditEvents}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{t.lastUpdated}</dt>
+                  <dd>
+                    <time dateTime={activeAuditSummary.lastEventAt ?? undefined}>
+                      {activeAuditSummary.lastEventAt
+                        ? formatAuditTime(activeAuditSummary.lastEventAt)
+                        : "-"}
+                    </time>
+                  </dd>
+                </div>
+              </dl>
+              <dl className="audit-counts" aria-label={t.counts}>
+                <div>
+                  <dt>{t.events}</dt>
+                  <dd>{activeAuditSummary.eventCount}</dd>
+                </div>
+                <div>
+                  <dt>{t.tools}</dt>
+                  <dd>{activeAuditSummary.toolCallCount}</dd>
+                </div>
+                <div>
+                  <dt>{t.approvals}</dt>
+                  <dd>{activeAuditSummary.approvalCount}</dd>
+                </div>
+                <div>
+                  <dt>{t.artifacts}</dt>
+                  <dd>{activeAuditSummary.artifactCount}</dd>
+                </div>
+              </dl>
+            </div>
+          </Panel>
+
           <Panel title={t.agentTimeline}>
             <div className="timeline">
               {timelineRows.map((row) => (
@@ -1313,6 +1380,55 @@ function getProviderError(
       : "System",
     status: failedEvent.payload.run.status,
   };
+}
+
+function getAuditSummary(
+  events: readonly RunEvent[],
+  activeRunId: string,
+): AuditSummary {
+  const runEventsForAudit = getEventsForRun(events, activeRunId);
+  const lastEvent = runEventsForAudit.at(-1) ?? null;
+
+  return {
+    eventCount: runEventsForAudit.length,
+    lastEventType: lastEvent?.type ?? null,
+    lastEventAt: lastEvent?.createdAt ?? null,
+    toolCallCount: getToolCallRows(events, activeRunId).length,
+    approvalCount: countUniquePayloads(
+      runEventsForAudit,
+      (event) =>
+        isApprovalEvent(event) ? event.payload.approval.id : null,
+    ),
+    artifactCount: getArtifactRows(events, activeRunId).length,
+  };
+}
+
+function countUniquePayloads(
+  events: readonly RunEvent[],
+  getId: (event: RunEvent) => string | null,
+): number {
+  const ids = new Set<string>();
+
+  for (const event of events) {
+    const id = getId(event);
+    if (id) {
+      ids.add(id);
+    }
+  }
+
+  return ids.size;
+}
+
+function formatAuditTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function toArtifactRow(artifact: Artifact): ArtifactRow {

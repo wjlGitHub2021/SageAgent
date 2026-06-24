@@ -59,3 +59,30 @@ Stage 5 必须继续遵守：
 - 不重试真实 provider。
 - 不实现队列级 cancel。
 - 不写持久化 run history。
+
+## Task 5.3：Run History / Audit Trail Polish
+
+范围：
+
+- 在 inspector 中添加当前 run 的 audit summary。
+- audit summary 从现有 run events 派生，不新增持久化层。
+- 展示事件总数、最后事件类型、最后事件时间、tool calls / approvals / artifacts 计数。
+- 左侧 runs 列表继续作为 lightweight run history，不改变数据来源。
+- 所有新增 UI 文案必须进入 copy 字典，保持中文/English 切换。
+- 根据浏览器视觉反馈 polish audit summary，避免中文标签和值挤在一起，让 inspector 信息层级与其他面板一致。
+
+验收：
+
+- 当前 run 的 audit summary 在 inspector 中可见。
+- 切换 run 后 audit summary 根据 activeRunId 更新。
+- audit summary 不直接依赖手写静态数字，必须从 events 派生。
+- audit summary 在中文和 English 下都要清楚区分最后事件、更新时间和统计计数，不能出现标签和值粘连。
+- desktop / mobile 下不溢出。
+- `rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+
+暂不做：
+
+- 不做数据库持久化。
+- 不做跨 session run history。
+- 不接真实 telemetry。
+- 不新增图表库。
