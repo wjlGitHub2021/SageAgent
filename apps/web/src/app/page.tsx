@@ -1,10 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import type { AgentRole, RunEvent } from "@sage/shared";
+import type {
+  AgentRole,
+  Approval,
+  ApprovalStatus,
+  Artifact,
+  RunEvent,
+  ToolCall,
+} from "@sage/shared";
 
 type Locale = "zh" | "en";
-type ApprovalStatus = "pending" | "approved" | "rejected";
 
 type Message = {
   role: string;
@@ -46,6 +52,9 @@ const copy = {
     artifactCreated: "生成产物",
     runCompleted: "完成 run",
     runFailed: "run 失败",
+    noToolCalls: "当前任务暂无工具调用",
+    noApproval: "当前任务暂无待处理审批",
+    noArtifacts: "当前任务暂无产物",
     writeFileRequest: "Builder 请求写入文件",
     composerHint: "点击运行会追加一条本地模拟消息，不触发真实 provider。",
     headerFallback: "初始化 Sage Agent Product Shell",
@@ -92,6 +101,9 @@ const copy = {
     artifactCreated: "Created artifact",
     runCompleted: "Completed run",
     runFailed: "Run failed",
+    noToolCalls: "No tool calls for this run",
+    noApproval: "No pending approval for this run",
+    noArtifacts: "No artifacts for this run",
     writeFileRequest: "Builder requests file write",
     composerHint:
       "Click Run to append a local simulated message without calling a real provider.",
@@ -189,6 +201,21 @@ const stepTitleCopy: Record<string, Record<Locale, string>> = {
   },
 };
 
+const artifactTitleCopy: Record<string, Record<Locale, string>> = {
+  "artifact-1842-stage1-spec": {
+    zh: "Stage 1 实施规格",
+    en: "Stage 1 Implementation Spec",
+  },
+  "artifact-1842-screenshot": {
+    zh: "Product Shell 截图检查",
+    en: "Product Shell Screenshot Check",
+  },
+  "artifact-1839-stage1-spec": {
+    zh: "Stage 1 实施规格",
+    en: "Stage 1 Implementation Spec",
+  },
+};
+
 const seedRunEvents: RunEvent[] = [
   {
     id: "event-1842-1",
@@ -251,6 +278,106 @@ const seedRunEvents: RunEvent[] = [
     },
   },
   {
+    id: "event-1842-4",
+    runId: "run-1842",
+    type: "tool.completed",
+    sequence: 4,
+    createdAt: "2026-06-24T01:45:00.000Z",
+    payload: {
+      toolCall: {
+        id: "tool-1842-read-docs",
+        runId: "run-1842",
+        stepId: "step-1842-researcher",
+        agent: "researcher",
+        toolName: "read_project_docs",
+        args: {},
+        status: "completed",
+        result: { summary: "Stage docs loaded" },
+        error: null,
+        startedAt: "2026-06-24T01:43:10.000Z",
+        completedAt: "2026-06-24T01:45:00.000Z",
+      },
+    },
+  },
+  {
+    id: "event-1842-5",
+    runId: "run-1842",
+    type: "tool.started",
+    sequence: 5,
+    createdAt: "2026-06-24T01:46:00.000Z",
+    payload: {
+      toolCall: {
+        id: "tool-1842-draft-ui",
+        runId: "run-1842",
+        stepId: "step-1842-builder",
+        agent: "builder",
+        toolName: "draft_ui_shell",
+        args: {},
+        status: "running",
+        result: null,
+        error: null,
+        startedAt: "2026-06-24T01:46:00.000Z",
+        completedAt: null,
+      },
+    },
+  },
+  {
+    id: "event-1842-6",
+    runId: "run-1842",
+    type: "approval.requested",
+    sequence: 6,
+    createdAt: "2026-06-24T01:47:00.000Z",
+    payload: {
+      approval: {
+        id: "approval-1842-write-file",
+        runId: "run-1842",
+        requestedBy: "builder",
+        reason: "Draft UI changes need write approval.",
+        payloadSummary: "write_file: apps/web/src/app/page.tsx",
+        action: "write_file",
+        status: "pending",
+        createdAt: "2026-06-24T01:47:00.000Z",
+        resolvedAt: null,
+      },
+    },
+  },
+  {
+    id: "event-1842-7",
+    runId: "run-1842",
+    type: "artifact.created",
+    sequence: 7,
+    createdAt: "2026-06-24T01:48:00.000Z",
+    payload: {
+      artifact: {
+        id: "artifact-1842-stage1-spec",
+        runId: "run-1842",
+        kind: "document",
+        title: "Stage 1 Implementation Spec",
+        content: null,
+        path: "docs/STAGE1_SPEC.md",
+        createdAt: "2026-06-24T01:48:00.000Z",
+      },
+    },
+  },
+  {
+    id: "event-1842-8",
+    runId: "run-1842",
+    type: "artifact.created",
+    sequence: 8,
+    createdAt: "2026-06-24T01:49:00.000Z",
+    payload: {
+      artifact: {
+        id: "artifact-1842-screenshot",
+        runId: "run-1842",
+        kind: "summary",
+        title: "Product Shell Screenshot Check",
+        content: null,
+        path: null,
+        createdAt: "2026-06-24T01:49:00.000Z",
+      },
+    },
+  },
+  {
     id: "event-1839-1",
     runId: "run-1839",
     type: "step.completed",
@@ -290,11 +417,46 @@ const seedRunEvents: RunEvent[] = [
       },
     },
   },
-];
-
-const toolCalls = [
-  { tool: "read_project_docs", agent: "Researcher", status: "completed" },
-  { tool: "draft_ui_shell", agent: "Builder", status: "running" },
+  {
+    id: "event-1839-3",
+    runId: "run-1839",
+    type: "tool.completed",
+    sequence: 3,
+    createdAt: "2026-06-24T00:22:00.000Z",
+    payload: {
+      toolCall: {
+        id: "tool-1839-read-docs",
+        runId: "run-1839",
+        stepId: "step-1839-supervisor",
+        agent: "researcher",
+        toolName: "read_project_docs",
+        args: {},
+        status: "completed",
+        result: { summary: "Stage 1 docs reviewed" },
+        error: null,
+        startedAt: "2026-06-24T00:18:30.000Z",
+        completedAt: "2026-06-24T00:22:00.000Z",
+      },
+    },
+  },
+  {
+    id: "event-1839-4",
+    runId: "run-1839",
+    type: "artifact.created",
+    sequence: 4,
+    createdAt: "2026-06-24T00:23:00.000Z",
+    payload: {
+      artifact: {
+        id: "artifact-1839-stage1-spec",
+        runId: "run-1839",
+        kind: "document",
+        title: "Stage 1 Implementation Spec",
+        content: null,
+        path: "docs/STAGE1_SPEC.md",
+        createdAt: "2026-06-24T00:23:00.000Z",
+      },
+    },
+  },
 ];
 
 const agentLabels = {
@@ -311,12 +473,32 @@ type TimelineRow = {
   status: string;
 };
 
+type ToolCallRow = {
+  id: string;
+  tool: string;
+  agent: string;
+  status: string;
+};
+
+type ApprovalPanelState = {
+  approval: Approval;
+  title: Record<Locale, string>;
+};
+
+type ArtifactRow = {
+  id: string;
+  title: Record<Locale, string>;
+  kind: string;
+};
+
 function StatusDot({ status }: { status: string }) {
   const color =
     status === "completed" || status === "approved"
       ? "bg-emerald-500"
       : status === "running"
         ? "bg-sky-500"
+        : status === "rejected" || status === "failed"
+          ? "bg-red-500"
         : status === "pending"
           ? "bg-zinc-400"
           : "bg-amber-500";
@@ -353,18 +535,15 @@ export default function Home() {
   const [model, setModel] = useState("deepseek-v4-flash");
   const [thinkingEnabled, setThinkingEnabled] = useState(true);
   const [reasoningEffort, setReasoningEffort] = useState<"high" | "max">("high");
-  const [approvalStatus, setApprovalStatus] =
-    useState<ApprovalStatus>("pending");
   const [messages, setMessages] = useState<Message[]>(baseMessages);
   const [runEvents, setRunEvents] = useState<RunEvent[]>(seedRunEvents);
 
   const activeThread = threadItems.find((thread) => thread.id === activeThreadId);
   const activeRun = runs.find((run) => run.id === activeRunId);
   const timelineRows = getTimelineRows(runEvents, activeRunId);
-  const artifacts = [
-    { title: t.stage1Spec, kind: "document" },
-    { title: t.screenshotCheck, kind: "summary" },
-  ];
+  const activeToolCalls = getToolCallRows(runEvents, activeRunId);
+  const activeApproval = getActiveApproval(runEvents, activeRunId);
+  const activeArtifacts = getArtifactRows(runEvents, activeRunId);
 
   function handleNewThread() {
     const nextIndex = threadItems.length + 1;
@@ -420,6 +599,35 @@ export default function Home() {
         },
       },
     ]);
+  }
+
+  function handleApprovalResolution(status: ApprovalStatus) {
+    const resolvedAt = new Date().toISOString();
+
+    setRunEvents((current) => {
+      const currentApproval = getActiveApproval(current, activeRunId);
+      if (!currentApproval || currentApproval.approval.status !== "pending") {
+        return current;
+      }
+
+      return [
+        ...current,
+        {
+          id: `event-approval-${Date.now()}`,
+          runId: activeRunId,
+          type: "approval.resolved",
+          sequence: nextEventSequence(current, activeRunId),
+          createdAt: resolvedAt,
+          payload: {
+            approval: {
+              ...currentApproval.approval,
+              status,
+              resolvedAt,
+            },
+          },
+        },
+      ];
+    });
   }
 
   return (
@@ -587,47 +795,64 @@ export default function Home() {
 
           <Panel title={t.toolCalls}>
             <div className="stack">
-              {toolCalls.map((call) => (
-                <div className="tool-row" key={call.tool}>
-                  <code>{call.tool}</code>
-                  <span>{call.agent}</span>
-                </div>
-              ))}
+              {activeToolCalls.length === 0 ? (
+                <div className="empty-row">{t.noToolCalls}</div>
+              ) : (
+                activeToolCalls.map((call) => (
+                  <div className="tool-row" key={call.id}>
+                    <code>{call.tool}</code>
+                    <span>
+                      {call.agent} · {call.status}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </Panel>
 
           <Panel title={t.approval}>
-            <div className={`approval-box ${approvalStatus}`}>
-              <p>{t.writeFileRequest}</p>
-              <small>
-                {t.action}: <code>write_file</code> · {t.status}:{" "}
-                {approvalStatus}
-              </small>
-              <div className="approval-actions">
-                <button
-                  disabled={approvalStatus !== "pending"}
-                  onClick={() => setApprovalStatus("approved")}
-                >
-                  {t.approve}
-                </button>
-                <button
-                  disabled={approvalStatus !== "pending"}
-                  onClick={() => setApprovalStatus("rejected")}
-                >
-                  {t.reject}
-                </button>
+            {activeApproval ? (
+              <div className={`approval-box ${activeApproval.approval.status}`}>
+                <p>{activeApproval.title[locale]}</p>
+                <small>
+                  {t.action}: <code>{activeApproval.approval.action}</code> ·{" "}
+                  {t.status}: {activeApproval.approval.status}
+                </small>
+                <small>{activeApproval.approval.payloadSummary}</small>
+                <div className="approval-actions">
+                  <button
+                    disabled={activeApproval.approval.status !== "pending"}
+                    onClick={() => handleApprovalResolution("approved")}
+                  >
+                    {t.approve}
+                  </button>
+                  <button
+                    disabled={activeApproval.approval.status !== "pending"}
+                    onClick={() => handleApprovalResolution("rejected")}
+                  >
+                    {t.reject}
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="stack">
+                <div className="empty-row">{t.noApproval}</div>
+              </div>
+            )}
           </Panel>
 
           <Panel title={t.artifacts}>
             <div className="stack">
-              {artifacts.map((artifact) => (
-                <div className="artifact-row" key={artifact.title}>
-                  <span>{artifact.title}</span>
+              {activeArtifacts.length === 0 ? (
+                <div className="empty-row">{t.noArtifacts}</div>
+              ) : (
+                activeArtifacts.map((artifact) => (
+                  <div className="artifact-row" key={artifact.id}>
+                  <span>{artifact.title[locale]}</span>
                   <small>{artifact.kind}</small>
                 </div>
-              ))}
+                ))
+              )}
             </div>
           </Panel>
         </aside>
@@ -640,14 +865,7 @@ function getTimelineRows(
   events: readonly RunEvent[],
   activeRunId: string,
 ): TimelineRow[] {
-  return events
-    .filter((event) => event.runId === activeRunId)
-    .toSorted(
-      (left, right) =>
-        left.sequence - right.sequence ||
-        left.createdAt.localeCompare(right.createdAt),
-    )
-    .map(toTimelineRow);
+  return getEventsForRun(events, activeRunId).map(toTimelineRow);
 }
 
 function toTimelineRow(event: RunEvent): TimelineRow {
@@ -771,4 +989,130 @@ function nextEventSequence(events: readonly RunEvent[], runId: string): number {
       .filter((event) => event.runId === runId)
       .reduce((max, event) => Math.max(max, event.sequence), 0) + 1
   );
+}
+
+function getToolCallRows(
+  events: readonly RunEvent[],
+  activeRunId: string,
+): ToolCallRow[] {
+  const toolCalls = new Map<string, ToolCall>();
+
+  for (const event of getEventsForRun(events, activeRunId)) {
+    if (isToolEvent(event)) {
+      toolCalls.set(event.payload.toolCall.id, event.payload.toolCall);
+    }
+  }
+
+  return [...toolCalls.values()]
+    .toSorted(
+      (left, right) =>
+        left.startedAt.localeCompare(right.startedAt) ||
+        left.id.localeCompare(right.id),
+    )
+    .map((call) => ({
+      id: call.id,
+      tool: call.toolName,
+      agent: agentLabels[call.agent],
+      status: call.status,
+    }));
+}
+
+function getActiveApproval(
+  events: readonly RunEvent[],
+  activeRunId: string,
+): ApprovalPanelState | null {
+  const approvals = new Map<string, Approval>();
+  const approvalOrder: string[] = [];
+
+  for (const event of getEventsForRun(events, activeRunId)) {
+    if (isApprovalEvent(event)) {
+      if (!approvals.has(event.payload.approval.id)) {
+        approvalOrder.push(event.payload.approval.id);
+      }
+      approvals.set(event.payload.approval.id, event.payload.approval);
+    }
+  }
+
+  const orderedApprovals = approvalOrder
+    .map((approvalId) => approvals.get(approvalId))
+    .filter((approval): approval is Approval => approval !== undefined);
+  const activeApproval =
+    orderedApprovals.findLast((approval) => approval.status === "pending") ??
+    orderedApprovals.at(-1) ??
+    null;
+
+  if (!activeApproval) return null;
+
+  return {
+    approval: activeApproval,
+    title:
+      activeApproval.action === "write_file"
+        ? {
+            zh: copy.zh.writeFileRequest,
+            en: copy.en.writeFileRequest,
+          }
+        : {
+            zh: activeApproval.reason,
+            en: activeApproval.reason,
+          },
+  };
+}
+
+function getArtifactRows(
+  events: readonly RunEvent[],
+  activeRunId: string,
+): ArtifactRow[] {
+  return getEventsForRun(events, activeRunId)
+    .filter(
+      (event): event is Extract<RunEvent, { type: "artifact.created" }> =>
+        event.type === "artifact.created",
+    )
+    .map((event) => toArtifactRow(event.payload.artifact));
+}
+
+function toArtifactRow(artifact: Artifact): ArtifactRow {
+  return {
+    id: artifact.id,
+    title: artifactTitleCopy[artifact.id] ?? {
+      zh: artifact.title,
+      en: artifact.title,
+    },
+    kind: artifact.kind,
+  };
+}
+
+function getEventsForRun(
+  events: readonly RunEvent[],
+  activeRunId: string,
+): RunEvent[] {
+  return events
+    .filter((event) => event.runId === activeRunId)
+    .toSorted(
+      (left, right) =>
+        left.sequence - right.sequence ||
+        left.createdAt.localeCompare(right.createdAt) ||
+        left.id.localeCompare(right.id),
+    );
+}
+
+function isToolEvent(
+  event: RunEvent,
+): event is Extract<
+  RunEvent,
+  { type: "tool.started" | "tool.completed" | "tool.failed" }
+> {
+  return (
+    event.type === "tool.started" ||
+    event.type === "tool.completed" ||
+    event.type === "tool.failed"
+  );
+}
+
+function isApprovalEvent(
+  event: RunEvent,
+): event is Extract<
+  RunEvent,
+  { type: "approval.requested" | "approval.resolved" }
+> {
+  return event.type === "approval.requested" || event.type === "approval.resolved";
 }

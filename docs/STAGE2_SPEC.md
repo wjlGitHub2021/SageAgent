@@ -155,3 +155,27 @@ Stage 2 按以下小 task 推进：
 - 不迁移 tool calls、approvals、artifacts 面板数据源。
 - 不把 create-run API 接入 composer。
 - 不做真正 streaming timeline。
+
+## Task 2.6：Event-Derived Inspector Panels
+
+范围：
+
+- 将右侧 `Tool Calls`、`Approval`、`Artifacts` 面板从静态数组改为从本地 `RunEvent[]` 派生。
+- 继续使用 Stage 2 本地 seed events，不接 live SSE / EventSource。
+- tool 面板从 `tool.started`、`tool.completed`、`tool.failed` 派生最新 tool call 状态。
+- approval 面板从 `approval.requested`、`approval.resolved` 派生当前 active run 的 approval。
+- artifact 面板从 `artifact.created` 派生当前 active run artifacts。
+- Approve / Reject 仍是本地交互，但需要追加 `approval.resolved` event，让面板状态来自事件流。
+
+验收：
+
+- 切换 run 后，tool calls、approval、artifacts 跟随 active run 更新。
+- Approve / Reject 后，approval 状态通过 `approval.resolved` event 更新。
+- Timeline、tool calls、approval、artifacts 使用同一组本地 `RunEvent[]`。
+- 不接 DeepSeek、不执行真实工具、不写文件、不运行 shell。
+
+暂不做：
+
+- 不把 approval 操作接到 API。
+- 不实现真实 tool execution。
+- 不实现 artifact 文件预览。
