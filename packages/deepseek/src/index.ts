@@ -11,3 +11,11 @@ export {
   type DeepSeekEnvironment,
   type DeepSeekProviderConfig,
 } from "./config.js";
+export {
+  getDeepSeekApiKeyReadyState,
+  redactDeepSeekApiKey,
+  requireDeepSeekApiKey,
+  type DeepSeekApiKeyIssue,
+  type DeepSeekApiKeyReadyState,
+  type DeepSeekApiKeyResult,
+} from "./api-key.js";

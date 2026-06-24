@@ -65,3 +65,27 @@ Stage 3 按以下小 task 推进：
 - 不实现 streaming parser。
 - 不把 UI composer 接到 DeepSeek。
 - 不持久化 provider settings。
+
+## Task 3.2：API Key Environment Handling
+
+范围：
+
+- 在 `@sage/deepseek` 中添加 API key 状态与请求前校验工具。
+- 配置加载阶段仍允许 `apiKey: null`，用于本地启动和 UI 提示。
+- adapter 发起真实请求前必须通过显式 guard 获取非空 API key。
+- 提供 API key 脱敏显示工具，只暴露前后少量字符和长度状态，不返回完整 key。
+- 提供 provider readiness 状态，便于后续 UI 展示 DeepSeek 是否可用。
+
+验收：
+
+- 空 API key 返回 `missing_api_key` 类结构化错误。
+- 非空 API key 可以通过请求前校验，并返回完整 key 给 adapter 内部使用。
+- 脱敏工具不会泄露完整 API key。
+- 错误 message 不包含真实 API key。
+- 不发起真实 DeepSeek HTTP 请求。
+
+暂不做：
+
+- 不读取 `.env` 文件本身，只消费传入 env 或 `process.env`。
+- 不实现 adapter。
+- 不把 readiness 状态接入 UI。
