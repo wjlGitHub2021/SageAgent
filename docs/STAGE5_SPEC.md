@@ -111,3 +111,27 @@ Stage 5 必须继续遵守：
 - 不测试真实 API key 和真实 DeepSeek 服务。
 - 不新增 coverage gate。
 - 不把临时截图或测试报告写入仓库。
+
+## Task 5.5：手动 QA Checklist
+
+范围：
+
+- 新增 `docs/QA_CHECKLIST.md`，作为商业化质量加固阶段的人工验收入口。
+- Checklist 覆盖本地环境、自动化门禁、UI 双语、响应式布局、run/audit、approval 安全边界、agent 编排、DeepSeek 配置、BUG 记录。
+- 明确每个检查项的状态字段，支持 `pass`、`fail`、`blocked`、`n/a`。
+- 明确发现问题后如何记录到 `docs/BUGS.md`，避免手动 QA 只停留在口头结论。
+- 不在本 task 执行完整人工验收，只建立可复用 checklist 和执行规则。
+
+验收：
+
+- `docs/QA_CHECKLIST.md` 存在，并能让后续执行者按步骤完成手动验收。
+- Checklist 包含中文/English UI 切换、desktop/mobile、approval、安全边界、provider error、audit trail、关键命令。
+- `docs/TASKS.md` 标记“建立手动 QA checklist”完成。
+- `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+
+暂不做：
+
+- 不要求本 task 完成所有人工 QA 记录。
+- 不引入外部测试管理系统。
+- 不新增 screenshot artifact 到仓库。
+- 不修改产品 UI 或 runtime 行为。
