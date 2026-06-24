@@ -117,6 +117,43 @@ export type BuilderDraftResult =
       readonly issue: BuilderDraftIssue;
     };
 
+export type ReviewDecision = "pass" | "needs_changes";
+
+export interface ReviewerReportInput {
+  readonly goal: string;
+  readonly draftSummary?: string;
+  readonly acceptanceCriteria?: readonly string[];
+  readonly findings?: readonly string[];
+  readonly risks?: readonly string[];
+  readonly missingChecks?: readonly string[];
+}
+
+export interface ReviewerReport {
+  readonly goal: string;
+  readonly summary: string;
+  readonly decision: ReviewDecision;
+  readonly acceptanceCriteria: readonly string[];
+  readonly findings: readonly string[];
+  readonly risks: readonly string[];
+  readonly missingChecks: readonly string[];
+  readonly safetyNotes: readonly string[];
+}
+
+export interface ReviewerReportIssue {
+  readonly code: "invalid_goal";
+  readonly message: string;
+}
+
+export type ReviewerReportResult =
+  | {
+      readonly ok: true;
+      readonly report: ReviewerReport;
+    }
+  | {
+      readonly ok: false;
+      readonly issue: ReviewerReportIssue;
+    };
+
 export const supervisorAgent: AgentDefinition = {
   role: "supervisor",
   displayName: "Supervisor",
@@ -140,6 +177,15 @@ export const builderAgent: AgentDefinition = {
   displayName: "Builder",
   mission:
     "Turn approved context into implementation drafts, patch plans, and artifact drafts without applying side effects.",
+  allowedActions: ["read_context", "draft_artifact"],
+  handoffTargets: [],
+};
+
+export const reviewerAgent: AgentDefinition = {
+  role: "reviewer",
+  displayName: "Reviewer",
+  mission:
+    "Review draft work for specification fit, safety boundaries, verification gaps, and commercial readiness before final synthesis.",
   allowedActions: ["read_context", "draft_artifact"],
   handoffTargets: [],
 };
@@ -312,6 +358,52 @@ export function createBuilderDraft(
         "Do not write files, run shell commands, or make external requests from the builder draft step.",
         "Any proposed file write must become an approval request before execution.",
         "Reviewer should inspect the draft before Supervisor produces the final summary.",
+      ],
+    },
+  };
+}
+
+export function createReviewerReport(
+  input: ReviewerReportInput,
+): ReviewerReportResult {
+  const normalizedGoal = input.goal.trim();
+  if (normalizedGoal.length === 0) {
+    return {
+      ok: false,
+      issue: {
+        code: "invalid_goal",
+        message: "Reviewer report requires a non-empty goal.",
+      },
+    };
+  }
+
+  const acceptanceCriteria = normalizeList(input.acceptanceCriteria);
+  const findings = normalizeList(input.findings);
+  const risks = normalizeList(input.risks);
+  const missingChecks = normalizeList(input.missingChecks);
+  const draftSummary = input.draftSummary?.trim();
+  const decision: ReviewDecision =
+    findings.length === 0 && missingChecks.length === 0
+      ? "pass"
+      : "needs_changes";
+
+  return {
+    ok: true,
+    report: {
+      goal: normalizedGoal,
+      summary:
+        draftSummary && draftSummary.length > 0
+          ? draftSummary
+          : "Reviewer should evaluate the draft against acceptance criteria, safety boundaries, and verification evidence.",
+      decision,
+      acceptanceCriteria,
+      findings,
+      risks,
+      missingChecks,
+      safetyNotes: [
+        "Do not write files, run shell commands, or make external requests from the reviewer step.",
+        "Treat missing verification as a review concern even when no functional defect is found.",
+        "Supervisor should synthesize the final response only after reviewer decision is understood.",
       ],
     },
   };

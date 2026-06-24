@@ -122,3 +122,32 @@ Stage 4 仍采用 Read + Draft 权限模型：
 - 不实现 approval flow。
 - 不调用真实 LLM。
 - 不接 UI。
+
+## Task 4.4：Reviewer Agent
+
+范围：
+
+- 实现 `reviewerAgent` definition。
+- Reviewer 的职责是检查规格一致性、安全边界、测试覆盖、风险和遗漏。
+- 提供纯函数 `createReviewerReport(input)`，根据目标、draft 摘要、验收标准和检查结果生成结构化 review report。
+- `createReviewerReport` 不调用 LLM、不读写文件、不执行工具、不联网，只返回结构化 report。
+- Reviewer 只拥有 `read_context` 和 `draft_artifact` 权限；不允许写文件、运行 shell、发起外部副作用请求。
+- Reviewer 不直接 handoff 给其他 agent；后续 final summary 由 Supervisor / orchestrator 决定。
+
+验收：
+
+- `reviewerAgent.role` 为 `reviewer`。
+- `reviewerAgent.allowedActions` 不包含写文件、shell、external request 等 risky action 权限。
+- `createReviewerReport` 对非空 goal 返回稳定结构，至少包含 goal、summary、decision、acceptanceCriteria、findings、risks、missingChecks、safetyNotes。
+- `createReviewerReport` 对空 goal 返回结构化 `invalid_goal` 错误。
+- findings、risks、missingChecks、acceptanceCriteria 需要 trim、过滤空字符串、去重。
+- decision 必须能根据 findings / missingChecks 自动给出 `pass` 或 `needs_changes`。
+- root `typecheck`、`lint`、`build` 通过。
+
+暂不做：
+
+- 不执行真实测试命令。
+- 不读取真实文件。
+- 不实现 final summary flow。
+- 不调用真实 LLM。
+- 不接 UI。

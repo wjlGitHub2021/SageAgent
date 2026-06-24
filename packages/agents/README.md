@@ -10,6 +10,8 @@ Stage 4 开始承载 Sage Agent 的 agent definitions。
 - `createResearcherBrief(input)`：本地纯函数 research brief，整理目标、建议阅读路径、已知约束和交接说明。
 - `builderAgent`：Builder agent 的职责、草稿权限边界和无直接 side effects 策略。
 - `createBuilderDraft(input)`：本地纯函数 builder draft，整理实现说明、patch plan、artifact 草稿和安全提示。
+- `reviewerAgent`：Reviewer agent 的职责、审查权限边界和 final synthesis 前检查策略。
+- `createReviewerReport(input)`：本地纯函数 reviewer report，整理验收标准、findings、risks、missing checks 和 review decision。
 
 边界：
 
