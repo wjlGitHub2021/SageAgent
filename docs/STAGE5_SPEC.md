@@ -35,3 +35,27 @@ Stage 5 必须继续遵守：
 - 不做持久化 run history。
 - 不引入 toast 系统。
 - 不接真实 DeepSeek 请求。
+
+## Task 5.2：Local Cancel / Retry Feedback
+
+范围：
+
+- 为 composer 添加本地 Cancel 操作：仅在本地 busy 状态中可用，用于取消当前模拟 run 反馈。
+- 为 provider error 面板添加本地 Retry 操作：仅追加本地模拟 retry message / event，不调用真实 DeepSeek。
+- Cancel / Retry 的新增 UI 文案必须进入 copy 字典，保持中文/English 切换。
+- Cancel / Retry 必须提供可见反馈，避免用户不知道操作是否生效。
+- 不改变真实 runtime/provider 行为，不新增依赖。
+
+验收：
+
+- Run 进入 busy 状态后，Cancel 可见且可点击，点击后 busy 状态结束并追加取消反馈。
+- Provider error 出现后，Retry 可见且可点击，点击后追加重试反馈并保留原 provider error 审计信息。
+- 中文和 English 切换后，Cancel / Retry 相关文案同步切换。
+- `rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+
+暂不做：
+
+- 不取消真实网络请求。
+- 不重试真实 provider。
+- 不实现队列级 cancel。
+- 不写持久化 run history。

@@ -615,12 +615,20 @@ code {
   overflow-wrap: anywhere;
 }
 
-.approval-actions {
+.approval-actions,
+.provider-error-actions {
   display: flex;
   gap: 8px;
 }
 
-.approval-actions button {
+.approval-actions button,
+.provider-error-actions button {
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 600;
   min-height: 30px;
   padding: 0 10px;
 }

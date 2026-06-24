@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type {
   AgentRole,
   Approval,
@@ -53,6 +53,8 @@ const copy = {
     nextStep: "下一步",
     run: "运行",
     running: "运行中",
+    cancel: "取消",
+    retry: "重试",
     approve: "批准",
     reject: "拒绝",
     action: "操作",
@@ -78,6 +80,8 @@ const copy = {
     writeFileRequest: "Builder 请求写入文件",
     composerHint: "点击运行会追加一条本地模拟消息，不触发真实 provider。",
     composerRunningHint: "正在写入本地模拟 run event，请稍候。",
+    composerCancelledHint: "本地模拟 run 已取消，未触发真实 provider。",
+    retryProviderHint: "已追加本地重试反馈；真实 provider 重试将在后续接入。",
     headerFallback: "初始化 Sage Agent Product Shell",
     headerDescription:
       "中的 Supervisor 正在协调 Researcher、Builder、Reviewer 完成 Stage 1 本地交互工作台。",
@@ -120,6 +124,8 @@ const copy = {
     nextStep: "Next step",
     run: "Run",
     running: "Running",
+    cancel: "Cancel",
+    retry: "Retry",
     approve: "Approve",
     reject: "Reject",
     action: "action",
@@ -149,6 +155,10 @@ const copy = {
     composerHint:
       "Click Run to append a local simulated message without calling a real provider.",
     composerRunningHint: "Writing a local simulated run event. Please wait.",
+    composerCancelledHint:
+      "Local simulated run was cancelled without calling a real provider.",
+    retryProviderHint:
+      "Added a local retry note. Real provider retry will be wired later.",
     headerFallback: "Initialize Sage Agent Product Shell",
     headerDescription:
       "has Supervisor coordinating Researcher, Builder, and Reviewer for the Stage 1 local interactive workbench.",
@@ -602,6 +612,10 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>(baseMessages);
   const [runEvents, setRunEvents] = useState<RunEvent[]>(seedRunEvents);
   const [isRunBusy, setIsRunBusy] = useState(false);
+  const [lastComposerState, setLastComposerState] = useState<"idle" | "cancelled">(
+    "idle",
+  );
+  const runBusyTimerRef = useRef<number | null>(null);
 
   const activeThread = threadItems.find((thread) => thread.id === activeThreadId);
   const activeRun = runs.find((run) => run.id === activeRunId);
@@ -635,6 +649,7 @@ export default function Home() {
     }
 
     setIsRunBusy(true);
+    setLastComposerState("idle");
     const createdAt = new Date().toISOString();
     const messageId = `message-local-${Date.now()}`;
     const messageBody = {
@@ -670,7 +685,30 @@ export default function Home() {
         },
       },
     ]);
-    window.setTimeout(() => setIsRunBusy(false), 650);
+    runBusyTimerRef.current = window.setTimeout(() => {
+      setIsRunBusy(false);
+      runBusyTimerRef.current = null;
+    }, 650);
+  }
+
+  function handleCancelRun() {
+    if (runBusyTimerRef.current) {
+      window.clearTimeout(runBusyTimerRef.current);
+      runBusyTimerRef.current = null;
+    }
+
+    setIsRunBusy(false);
+    setLastComposerState("cancelled");
+    setMessages((current) => [
+      ...current,
+      {
+        role: "Supervisor",
+        body: {
+          zh: copy.zh.composerCancelledHint,
+          en: copy.en.composerCancelledHint,
+        },
+      },
+    ]);
   }
 
   function handleApprovalResolution(status: ApprovalStatus) {
@@ -732,6 +770,19 @@ export default function Home() {
         payload: {
           run: failedRun,
           error: copy.en.providerErrorSafeMessage,
+        },
+      },
+    ]);
+  }
+
+  function handleProviderRetry() {
+    setMessages((current) => [
+      ...current,
+      {
+        role: "Supervisor",
+        body: {
+          zh: copy.zh.retryProviderHint,
+          en: copy.en.retryProviderHint,
         },
       },
     ]);
@@ -904,11 +955,24 @@ export default function Home() {
           <div className="composer">
             <div>
               <p>{t.nextStep}</p>
-              <span>{isRunBusy ? t.composerRunningHint : t.composerHint}</span>
+              <span>
+                {isRunBusy
+                  ? t.composerRunningHint
+                  : lastComposerState === "cancelled"
+                    ? t.composerCancelledHint
+                    : t.composerHint}
+              </span>
             </div>
             <div className="composer-actions">
               <button className="secondary-button" onClick={handleProviderError}>
                 {t.simulateProviderError}
+              </button>
+              <button
+                className="secondary-button"
+                disabled={!isRunBusy}
+                onClick={handleCancelRun}
+              >
+                {t.cancel}
               </button>
               <button disabled={isRunBusy} onClick={handleRunClick}>
                 {isRunBusy ? t.running : t.run}
@@ -959,6 +1023,9 @@ export default function Home() {
                 </small>
                 <small>{t.providerErrorSafeMessage}</small>
                 <small>{t.providerErrorNextStep}</small>
+                <div className="provider-error-actions">
+                  <button onClick={handleProviderRetry}>{t.retry}</button>
+                </div>
               </div>
             ) : (
               <div className="stack">
