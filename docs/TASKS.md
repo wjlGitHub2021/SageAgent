@@ -77,7 +77,8 @@
 - [x] 添加 `high` / `max` reasoning effort selector。
 - [x] 编写 Task 3.7 streamed output run events 范围与验收标准。
 - [x] 将 streamed model output 写入 run events。
-- [ ] 在 UI 中清楚展示 provider errors。
+- [x] 编写 Task 3.8 provider error display 范围与验收标准。
+- [x] 在 UI 中清楚展示 provider errors。
 
 ## Stage 4：Multi-Agent MVP
 

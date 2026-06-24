@@ -241,3 +241,31 @@ Stage 3 按以下小 task 推进：
 - 不调用真实 `@sage/deepseek` streaming HTTP。
 - 不实现 token 级 backpressure、abort、retry 或长连接推送。
 - 不把 provider errors 显示到 UI；它在 Task 3.8 单独处理。
+
+## Task 3.8：Provider Error Display
+
+范围：
+
+- 在 workbench 中清楚展示 provider error，不只把错误埋在 timeline。
+- 使用现有 `run.failed` event 表示 provider error 的 MVP 状态。
+- 新增本地 UI 触发入口，用于模拟 provider error，不发起真实 DeepSeek 请求。
+- inspector 新增 Provider Error 面板：
+  - 无错误时显示空状态。
+  - 有错误时显示失败 agent、错误信息、run 状态。
+- provider error 必须加入 agent timeline，状态为 failed。
+- composer 区域必须能触发本地 provider error，便于 QA 验证错误展示链路。
+
+验收：
+
+- 点击本地模拟 provider error 后，右侧 inspector 显示 Provider Error 面板内容。
+- timeline 中出现 failed 状态的 run failed 事件。
+- Provider Error 面板中不得泄露 API key 或 Authorization header。
+- 中文/English 界面下 Provider Error 面板标题、空状态、触发按钮文案可切换。
+- desktop 与 mobile 下错误面板不溢出、不遮挡 approval/artifacts。
+- `rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+
+暂不做：
+
+- 不调用真实 DeepSeek 请求。
+- 不实现自动 retry。
+- 不把 provider error 持久化到数据库。

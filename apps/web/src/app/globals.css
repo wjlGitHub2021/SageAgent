@@ -493,6 +493,20 @@ code {
   color: #fff;
 }
 
+.composer-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.composer button.secondary-button {
+  border-color: var(--border-strong);
+  background: #fff;
+  color: var(--text-main);
+}
+
 .timeline,
 .approval-box {
   padding: 10px;
@@ -533,12 +547,22 @@ code {
   padding: 9px;
 }
 
-.approval-box {
+.approval-box,
+.provider-error-box {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.approval-box {
   border-left: 3px solid #f59e0b;
   background: #fff8eb;
+}
+
+.provider-error-box {
+  border-left: 3px solid #ef4444;
+  background: #fff1f2;
+  padding: 10px;
 }
 
 .approval-box.approved {
@@ -551,9 +575,22 @@ code {
   background: #fff1f2;
 }
 
-.approval-box p {
+.approval-box p,
+.provider-error-box p {
   font-size: 13px;
   font-weight: 750;
+}
+
+.provider-error-box p,
+.provider-error-box small {
+  margin: 0;
+}
+
+.provider-error-box small {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .approval-actions {
@@ -608,6 +645,15 @@ code {
   .composer {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .composer-actions {
+    justify-content: stretch;
+  }
+
+  .composer-actions button {
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .model-controls {

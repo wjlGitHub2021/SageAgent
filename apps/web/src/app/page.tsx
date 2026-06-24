@@ -7,6 +7,7 @@ import type {
   ApprovalStatus,
   Artifact,
   DeepSeekModel,
+  Run,
   RunEvent,
   ToolCall,
 } from "@sage/shared";
@@ -38,6 +39,13 @@ const copy = {
     toolCalls: "工具调用",
     approval: "审批",
     artifacts: "产物",
+    providerError: "Provider Error",
+    noProviderError: "当前任务暂无 provider error",
+    simulateProviderError: "模拟错误",
+    providerErrorSafeMessage:
+      "DeepSeek provider 返回了本地模拟错误；敏感凭据已隐藏。",
+    failureSource: "失败来源",
+    deepSeekProvider: "DeepSeek Provider",
     nextStep: "下一步",
     run: "运行",
     approve: "批准",
@@ -89,6 +97,13 @@ const copy = {
     toolCalls: "Tool Calls",
     approval: "Approval",
     artifacts: "Artifacts",
+    providerError: "Provider Error",
+    noProviderError: "No provider error for this run",
+    simulateProviderError: "Simulate error",
+    providerErrorSafeMessage:
+      "DeepSeek provider returned a local simulated error; sensitive credentials are hidden.",
+    failureSource: "Failure source",
+    deepSeekProvider: "DeepSeek Provider",
     nextStep: "Next step",
     run: "Run",
     approve: "Approve",
@@ -497,6 +512,11 @@ type ArtifactRow = {
   kind: string;
 };
 
+type ProviderErrorState = {
+  readonly failedAgent: string;
+  readonly status: string;
+};
+
 function StatusDot({ status }: { status: string }) {
   const color =
     status === "completed" || status === "approved"
@@ -550,6 +570,7 @@ export default function Home() {
   const activeToolCalls = getToolCallRows(runEvents, activeRunId);
   const activeApproval = getActiveApproval(runEvents, activeRunId);
   const activeArtifacts = getArtifactRows(runEvents, activeRunId);
+  const activeProviderError = getProviderError(runEvents, activeRunId);
 
   function handleNewThread() {
     const nextIndex = threadItems.length + 1;
@@ -634,6 +655,41 @@ export default function Home() {
         },
       ];
     });
+  }
+
+  function handleProviderError() {
+    const failedAt = new Date().toISOString();
+    const failedRun: Run = {
+      id: activeRunId,
+      threadId: activeThreadId,
+      title: activeRun?.title.en ?? "Local provider run",
+      goal: activeRun?.title.en ?? "Local provider run",
+      status: "failed",
+      activeAgent: "supervisor",
+      settings: {
+        model,
+        thinkingEnabled,
+        reasoningEffort,
+      },
+      createdAt: failedAt,
+      updatedAt: failedAt,
+      completedAt: failedAt,
+    };
+
+    setRunEvents((current) => [
+      ...current,
+      {
+        id: `event-provider-error-${Date.now()}`,
+        runId: activeRunId,
+        type: "run.failed",
+        sequence: nextEventSequence(current, activeRunId),
+        createdAt: failedAt,
+        payload: {
+          run: failedRun,
+          error: copy.en.providerErrorSafeMessage,
+        },
+      },
+    ]);
   }
 
   return (
@@ -805,7 +861,12 @@ export default function Home() {
               <p>{t.nextStep}</p>
               <span>{t.composerHint}</span>
             </div>
-            <button onClick={handleRunClick}>{t.run}</button>
+            <div className="composer-actions">
+              <button className="secondary-button" onClick={handleProviderError}>
+                {t.simulateProviderError}
+              </button>
+              <button onClick={handleRunClick}>{t.run}</button>
+            </div>
           </div>
         </section>
 
@@ -839,6 +900,23 @@ export default function Home() {
                 ))
               )}
             </div>
+          </Panel>
+
+          <Panel title={t.providerError}>
+            {activeProviderError ? (
+              <div className="provider-error-box">
+                <p>{t.providerError}</p>
+                <small>
+                  {t.failureSource}: {activeProviderError.failedAgent} ·{" "}
+                  {t.status}: {activeProviderError.status}
+                </small>
+                <small>{t.providerErrorSafeMessage}</small>
+              </div>
+            ) : (
+              <div className="stack">
+                <div className="empty-row">{t.noProviderError}</div>
+              </div>
+            )}
           </Panel>
 
           <Panel title={t.approval}>
@@ -1099,6 +1177,27 @@ function getArtifactRows(
         event.type === "artifact.created",
     )
     .map((event) => toArtifactRow(event.payload.artifact));
+}
+
+function getProviderError(
+  events: readonly RunEvent[],
+  activeRunId: string,
+): ProviderErrorState | null {
+  const failedEvent = getEventsForRun(events, activeRunId)
+    .filter(
+      (event): event is Extract<RunEvent, { type: "run.failed" }> =>
+        event.type === "run.failed",
+    )
+    .at(-1);
+
+  if (!failedEvent) return null;
+
+  return {
+    failedAgent: failedEvent.payload.run.activeAgent
+      ? agentLabels[failedEvent.payload.run.activeAgent]
+      : "System",
+    status: failedEvent.payload.run.status,
+  };
 }
 
 function toArtifactRow(artifact: Artifact): ArtifactRow {
