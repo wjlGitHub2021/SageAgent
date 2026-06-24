@@ -75,3 +75,33 @@ Stage 2 按以下小 task 推进：
 - 不实现 SSE endpoint。
 - 不把 Stage 1 UI seed data 迁移到 runtime store。
 - 不做跨进程持久化或数据库。
+
+## Task 2.3：Create Run API
+
+范围：
+
+- 在 `apps/web` 中添加 `POST /api/runs`。
+- API 使用 `@sage/runtime` 的 local in-memory store 创建 thread/run/event。
+- request body 支持：
+  - `goal`：必填，非空字符串。
+  - `threadId`：可选；提供时必须能在 runtime store 中找到对应 thread。
+  - `threadTitle`：可选；当未提供 `threadId` 时用于创建 thread。
+  - `title`：可选；未提供时从 `goal` 生成 run title。
+  - `settings`：可选，只允许 `deepseek-v4-flash` / `deepseek-v4-pro`、`high` / `max` 和 boolean thinking。
+- response 返回新建的 `thread`、`run`、初始 `run.created` event 和当前 `snapshot`。
+
+验收：
+
+- 合法请求返回 `201`，并创建 `queued` run。
+- 空 goal 返回 `400`。
+- 非字符串 `threadId`、`threadTitle` 或 `title` 返回 `400`。
+- 提供空白 `threadId` 返回 `400`，避免误创建新 thread。
+- 不存在的 `threadId` 返回 `404`。
+- 非法 model 或 reasoning effort 返回 `400`。
+- API 不发起真实 DeepSeek 请求，不启动 agent loop，不实现 SSE。
+
+暂不做：
+
+- 不把 Product Shell 的 composer 接到该 API。
+- 不实现 run event streaming。
+- 不持久化到数据库或文件。

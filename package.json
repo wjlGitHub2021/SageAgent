@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@11.9.0",
   "scripts": {
-    "dev": "pnpm --filter web dev",
+    "dev": "pnpm --filter @sage/shared build && pnpm --filter @sage/runtime build && pnpm --filter web dev",
     "build": "pnpm --filter @sage/shared build && pnpm --filter @sage/runtime build && pnpm --filter web build",
     "lint": "pnpm --filter web lint",
     "typecheck": "pnpm --filter @sage/shared typecheck && pnpm --filter @sage/runtime typecheck"

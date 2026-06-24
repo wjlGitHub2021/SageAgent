@@ -51,7 +51,8 @@
 - [x] 编写 `docs/STAGE2_SPEC.md`，锁定 Stage 2 分块策略与 Task 2.1 验收标准。
 - [x] 定义 shared domain types。
 - [x] 添加 local runtime state store。
-- [ ] 添加 create-run API。
+- [x] 编写 Task 2.3 create-run API 范围与验收标准。
+- [x] 添加 create-run API。
 - [ ] 添加 SSE event endpoint。
 - [ ] 渲染 event-driven timeline。
 - [ ] 在 inspector 中渲染 tool calls、approvals、artifacts。
