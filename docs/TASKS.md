@@ -44,6 +44,7 @@
 - [x] 添加 Settings 中文/English 界面切换，并建立双语文案约束。
 - [x] 优化 Settings 移动端视觉，使语言切换更紧凑、对齐且符合商业化设置项质感。
 - [x] 根据浏览器视觉反馈 polish Settings 侧栏区域。
+- [x] 根据浏览器选区反馈再次 polish Settings 语言切换区域。
 - [x] 验证 desktop layout。
 - [x] 验证 mobile layout。
 

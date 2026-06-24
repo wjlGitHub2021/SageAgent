@@ -122,3 +122,22 @@ Stage 1 seed data 至少覆盖：
 - `docs/TASKS.md` 状态与实际完成情况一致。
 - 暂不修复的问题记录到 `docs/BUGS.md`。
 - 完成后使用中文 git commit。
+
+## Task 1.y：Settings 第二轮视觉 polish
+
+目标：根据浏览器选区反馈，继续压低侧栏 Settings 区域的视觉噪音，使语言切换控件更像稳定的偏好设置控件，而不是独立表单卡片。
+
+范围：
+
+- 保留现有中英文切换能力和 copy 字典，不改动业务状态。
+- 调整 Settings 设置条的背景、边框、间距和 selected state。
+- 仅处理侧栏 Settings 区域，不扩大到工作区、runtime、provider 或 agent 逻辑。
+- 不引入新的 UI 依赖。
+
+验收标准：
+
+- Settings 区域与侧栏 brand、threads、runs 的层级更协调。
+- 语言切换的 selected state 清晰但不突兀。
+- Desktop 与 mobile 下按钮不抖动、不溢出、不遮挡文字。
+- 中文和 English 主界面切换继续可用。
+- `rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
