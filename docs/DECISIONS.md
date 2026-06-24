@@ -163,3 +163,24 @@ Stage 1 使用 `pnpm` workspace、Next.js App Router、TypeScript 和 Tailwind C
 
 - Stage 1 只做静态 product shell，不接真实 DeepSeek。
 - Stage 1 不实现真实 agent loop、工具执行或持久化 runtime。
+
+## DEC-0010：Shared Domain Types 作为 Run System 合同
+
+状态：accepted
+
+决策：
+
+Stage 2 从 `@sage/shared` package 开始，先定义 `Thread`、`Run`、`Message`、`Step`、`ToolCall`、`Approval`、`Artifact`、`RunEvent` 等共享 domain types，再实现 runtime store、API 和 SSE。
+
+要求：
+
+- UI、runtime、API、provider adapter 后续都复用 `@sage/shared` 的类型。
+- status、agent role、event type、approval action、artifact kind、DeepSeek model 和 reasoning effort 使用共享 union 类型。
+- 未完成或暂不存在的字段优先显式建模为 `null`，避免 API consumer 猜测字段缺失含义。
+- `run.failed` 必须携带完整 `run` 快照和 `error`；step/tool 失败使用独立失败事件，便于后续 SSE reducer 和 audit UI 稳定处理。
+
+理由：
+
+- Run system 是 Sage Agent 的核心抽象，必须先统一数据合同。
+- 共享类型可以减少 UI 与 runtime 各自发明状态形状导致的漂移。
+- 明确失败事件和快照语义，能降低后续 event-driven UI 的复杂度。

@@ -48,7 +48,8 @@
 
 ## Stage 2：Run System 与 Event Flow
 
-- [ ] 定义 shared domain types。
+- [x] 编写 `docs/STAGE2_SPEC.md`，锁定 Stage 2 分块策略与 Task 2.1 验收标准。
+- [x] 定义 shared domain types。
 - [ ] 添加 local runtime state store。
 - [ ] 添加 create-run API。
 - [ ] 添加 SSE event endpoint。

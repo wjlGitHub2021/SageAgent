@@ -78,6 +78,7 @@ Run 是一次完整任务执行。
 - `goal`
 - `status`
 - `activeAgent`
+- `settings`
 - `createdAt`
 - `updatedAt`
 - `completedAt`
@@ -222,15 +223,19 @@ MVP 中 UI 通过 SSE 接收 run updates。
 - `run.status_changed`
 - `step.started`
 - `step.completed`
+- `step.failed`
 - `message.delta`
 - `message.completed`
 - `tool.started`
 - `tool.completed`
+- `tool.failed`
 - `approval.requested`
 - `approval.resolved`
 - `artifact.created`
 - `run.completed`
 - `run.failed`
+
+`run.failed` 事件应携带完整的 `run` 快照和 `error`，便于 UI 与 runtime 在失败时同步更新状态。
 
 ## Multi-Agent Model
 
