@@ -180,3 +180,40 @@ Stage 4 仍采用 Read + Draft 权限模型：
 - 不执行 Read + Draft tool set。
 - 不实现 approval flow。
 - 不接 UI。
+
+## Task 4.6：Read + Draft Tool Set
+
+范围：
+
+- 在 `@sage/runtime` 中添加最小 tool registry。
+- 定义一期允许的 Read + Draft tools：
+  - `read_project_file`：只读项目文件意图。
+  - `draft_patch`：生成 patch 草稿意图。
+  - `draft_artifact`：生成 artifact 草稿意图。
+- 每个 tool definition 必须包含 name、kind、description、allowedAgents、requiresApproval、approvalAction。
+- Read + Draft tools 默认不需要 approval，且 `approvalAction` 必须为 `null`。
+- 提供查询函数：
+  - `getToolDefinition(name)`
+  - `listToolDefinitions()`
+  - `canAgentUseTool(agent, toolName)`
+  - `requiresToolApproval(toolName)`
+- 当前 task 只定义 registry 和权限判断，不执行文件读取、不生成真实 patch、不写 artifact、不写 run events。
+
+验收：
+
+- 三个 Read + Draft tools 均存在且可查询。
+- `read_project_file` 只允许 `researcher`、`builder`、`reviewer` 使用。
+- `draft_patch` 只允许 `builder` 使用。
+- `draft_artifact` 允许 `researcher`、`builder`、`reviewer` 使用。
+- 所有 Read + Draft tools 的 `requiresApproval` 为 `false`，`approvalAction` 为 `null`。
+- 未知 tool 的查询和权限判断必须返回安全默认值。
+- `@sage/runtime` 可以独立 typecheck 和 build。
+- root `typecheck`、`lint`、`build` 通过。
+
+暂不做：
+
+- 不读取真实文件内容。
+- 不应用 patch。
+- 不写 artifact。
+- 不实现写文件、shell、external request 等需要 approval 的工具。
+- 不接 UI。

@@ -12,3 +12,14 @@ export {
   type DelegationStep,
 } from "./orchestrator.js";
 export { createEmptyRuntimeSnapshot, type RuntimeSnapshot } from "./state.js";
+export {
+  READ_DRAFT_TOOL_DEFINITIONS,
+  TOOL_NAMES,
+  canAgentUseTool,
+  getToolDefinition,
+  listToolDefinitions,
+  requiresToolApproval,
+  type ToolDefinition,
+  type ToolKind,
+  type ToolName,
+} from "./tools.js";
