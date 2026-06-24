@@ -1,4 +1,14 @@
 export {
+  createApprovalRequest,
+  requiresApprovalForAction,
+  resolveApproval,
+  type ApprovalFlowIssue,
+  type ApprovalFlowIssueCode,
+  type CreateApprovalRequestInput,
+  type CreateApprovalRequestResult,
+  type ResolveApprovalResult,
+} from "./approval-flow.js";
+export {
   createMemoryRuntimeStore,
   isTerminalRunStatus,
   type RuntimeStore,

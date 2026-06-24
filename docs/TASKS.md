@@ -90,7 +90,7 @@
 - [x] 添加 Reviewer agent。
 - [x] 添加 orchestrator delegation flow。
 - [x] 添加 Read + Draft tool set。
-- [ ] 添加 writes、shell commands、external side effects 的 approval flow。
+- [x] 添加 writes、shell commands、external side effects 的 approval flow。
 - [ ] 添加 final artifact flow。
 - [ ] 在 final summary 前添加 reviewer pass。
 

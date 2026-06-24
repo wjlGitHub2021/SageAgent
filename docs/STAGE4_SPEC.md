@@ -217,3 +217,35 @@ Stage 4 仍采用 Read + Draft 权限模型：
 - 不写 artifact。
 - 不实现写文件、shell、external request 等需要 approval 的工具。
 - 不接 UI。
+
+## Task 4.7：Approval Flow for Side Effects
+
+范围：
+
+- 在 `@sage/runtime` 中添加最小 approval helper。
+- 覆盖需要审批的 action：`write_file`、`run_shell`、`external_request`、`persist_state`。
+- 提供纯函数：
+  - `requiresApprovalForAction(action)`
+  - `createApprovalRequest(input)`
+  - `resolveApproval(approval, status, resolvedAt)`
+- `createApprovalRequest` 必须生成完整 `Approval` 对象，包含 requesting agent、reason、action type、payload summary、pending status、createdAt、resolvedAt。
+- `resolveApproval` 只允许把 pending approval 转为 `approved` 或 `rejected`，并写入 resolution timestamp。
+- 已处理 approval 再次 resolve 必须返回结构化错误，不得覆盖原结果。
+- 未知 action / 非 approval action 必须按安全默认处理。
+- 当前 task 不执行被批准的动作，不写文件、不运行 shell、不发外部请求。
+
+验收：
+
+- 四类 side-effect action 均被判定为需要 approval。
+- `createApprovalRequest` 对有效输入返回 pending approval。
+- 空 reason / payload summary / runId 必须返回结构化错误。
+- `resolveApproval` 对 pending approval 能返回 approved / rejected 结果。
+- `resolveApproval` 对已处理 approval 返回结构化 `approval_already_resolved` 错误。
+- root `typecheck`、`lint`、`build` 通过。
+
+暂不做：
+
+- 不执行 approved action。
+- 不接真实工具执行器。
+- 不写 run events。
+- 不接 UI approval panel。
