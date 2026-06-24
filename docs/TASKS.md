@@ -96,7 +96,8 @@
 
 ## Stage 5：商业化质量加固
 
-- [ ] 完善 error states、empty states、loading states。
+- [x] 编写 `docs/STAGE5_SPEC.md`，锁定 Stage 5 分块策略与 Task 5.1 验收标准。
+- [x] 完善 error states、empty states、loading states。
 - [ ] 添加 cancel / retry 行为。
 - [ ] 完善 run history 和 audit trail。
 - [ ] 添加关键测试。

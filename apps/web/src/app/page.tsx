@@ -41,13 +41,18 @@ const copy = {
     artifacts: "产物",
     providerError: "Provider Error",
     noProviderError: "当前任务暂无 provider error",
+    noProviderErrorDetail:
+      "如果 provider 调用失败，失败来源、状态和安全错误说明会显示在这里。",
     simulateProviderError: "模拟错误",
     providerErrorSafeMessage:
       "DeepSeek provider 返回了本地模拟错误；敏感凭据已隐藏。",
+    providerErrorNextStep:
+      "检查 API key、模型配置或稍后重试；当前 run 已保留审计事件。",
     failureSource: "失败来源",
     deepSeekProvider: "DeepSeek Provider",
     nextStep: "下一步",
     run: "运行",
+    running: "运行中",
     approve: "批准",
     reject: "拒绝",
     action: "操作",
@@ -65,10 +70,14 @@ const copy = {
     runCompleted: "完成 run",
     runFailed: "run 失败",
     noToolCalls: "当前任务暂无工具调用",
+    noToolCallsDetail: "当 Researcher、Builder 或 Reviewer 使用工具时，会在这里显示调用记录。",
     noApproval: "当前任务暂无待处理审批",
+    noApprovalDetail: "写文件、shell、外部请求等副作用操作会先进入审批流。",
     noArtifacts: "当前任务暂无产物",
+    noArtifactsDetail: "计划、patch 草稿、文档或最终总结会在生成后出现在这里。",
     writeFileRequest: "Builder 请求写入文件",
     composerHint: "点击运行会追加一条本地模拟消息，不触发真实 provider。",
+    composerRunningHint: "正在写入本地模拟 run event，请稍候。",
     headerFallback: "初始化 Sage Agent Product Shell",
     headerDescription:
       "中的 Supervisor 正在协调 Researcher、Builder、Reviewer 完成 Stage 1 本地交互工作台。",
@@ -99,13 +108,18 @@ const copy = {
     artifacts: "Artifacts",
     providerError: "Provider Error",
     noProviderError: "No provider error for this run",
+    noProviderErrorDetail:
+      "Provider failures will show the source, status, and safe error details here.",
     simulateProviderError: "Simulate error",
     providerErrorSafeMessage:
       "DeepSeek provider returned a local simulated error; sensitive credentials are hidden.",
+    providerErrorNextStep:
+      "Check the API key, model settings, or retry later; this run keeps its audit event.",
     failureSource: "Failure source",
     deepSeekProvider: "DeepSeek Provider",
     nextStep: "Next step",
     run: "Run",
+    running: "Running",
     approve: "Approve",
     reject: "Reject",
     action: "action",
@@ -123,11 +137,18 @@ const copy = {
     runCompleted: "Completed run",
     runFailed: "Run failed",
     noToolCalls: "No tool calls for this run",
+    noToolCallsDetail:
+      "Tool calls from Researcher, Builder, or Reviewer will appear here.",
     noApproval: "No pending approval for this run",
+    noApprovalDetail:
+      "File writes, shell commands, and external requests enter approval first.",
     noArtifacts: "No artifacts for this run",
+    noArtifactsDetail:
+      "Plans, patch drafts, documents, or final summaries will appear here.",
     writeFileRequest: "Builder requests file write",
     composerHint:
       "Click Run to append a local simulated message without calling a real provider.",
+    composerRunningHint: "Writing a local simulated run event. Please wait.",
     headerFallback: "Initialize Sage Agent Product Shell",
     headerDescription:
       "has Supervisor coordinating Researcher, Builder, and Reviewer for the Stage 1 local interactive workbench.",
@@ -552,6 +573,23 @@ function Panel({
   );
 }
 
+function StateBlock({
+  title,
+  detail,
+  tone = "neutral",
+}: {
+  title: string;
+  detail: string;
+  tone?: "neutral" | "danger";
+}) {
+  return (
+    <div className={`state-block ${tone}`}>
+      <p>{title}</p>
+      <small>{detail}</small>
+    </div>
+  );
+}
+
 export default function Home() {
   const [locale, setLocale] = useState<Locale>("zh");
   const t = copy[locale];
@@ -563,6 +601,7 @@ export default function Home() {
   const [reasoningEffort, setReasoningEffort] = useState<"high" | "max">("high");
   const [messages, setMessages] = useState<Message[]>(baseMessages);
   const [runEvents, setRunEvents] = useState<RunEvent[]>(seedRunEvents);
+  const [isRunBusy, setIsRunBusy] = useState(false);
 
   const activeThread = threadItems.find((thread) => thread.id === activeThreadId);
   const activeRun = runs.find((run) => run.id === activeRunId);
@@ -591,6 +630,11 @@ export default function Home() {
   }
 
   function handleRunClick() {
+    if (isRunBusy) {
+      return;
+    }
+
+    setIsRunBusy(true);
     const createdAt = new Date().toISOString();
     const messageId = `message-local-${Date.now()}`;
     const messageBody = {
@@ -626,6 +670,7 @@ export default function Home() {
         },
       },
     ]);
+    window.setTimeout(() => setIsRunBusy(false), 650);
   }
 
   function handleApprovalResolution(status: ApprovalStatus) {
@@ -859,13 +904,15 @@ export default function Home() {
           <div className="composer">
             <div>
               <p>{t.nextStep}</p>
-              <span>{t.composerHint}</span>
+              <span>{isRunBusy ? t.composerRunningHint : t.composerHint}</span>
             </div>
             <div className="composer-actions">
               <button className="secondary-button" onClick={handleProviderError}>
                 {t.simulateProviderError}
               </button>
-              <button onClick={handleRunClick}>{t.run}</button>
+              <button disabled={isRunBusy} onClick={handleRunClick}>
+                {isRunBusy ? t.running : t.run}
+              </button>
             </div>
           </div>
         </section>
@@ -888,7 +935,7 @@ export default function Home() {
           <Panel title={t.toolCalls}>
             <div className="stack">
               {activeToolCalls.length === 0 ? (
-                <div className="empty-row">{t.noToolCalls}</div>
+                <StateBlock title={t.noToolCalls} detail={t.noToolCallsDetail} />
               ) : (
                 activeToolCalls.map((call) => (
                   <div className="tool-row" key={call.id}>
@@ -911,10 +958,11 @@ export default function Home() {
                   {t.status}: {activeProviderError.status}
                 </small>
                 <small>{t.providerErrorSafeMessage}</small>
+                <small>{t.providerErrorNextStep}</small>
               </div>
             ) : (
               <div className="stack">
-                <div className="empty-row">{t.noProviderError}</div>
+                <StateBlock title={t.noProviderError} detail={t.noProviderErrorDetail} />
               </div>
             )}
           </Panel>
@@ -945,7 +993,7 @@ export default function Home() {
               </div>
             ) : (
               <div className="stack">
-                <div className="empty-row">{t.noApproval}</div>
+                <StateBlock title={t.noApproval} detail={t.noApprovalDetail} />
               </div>
             )}
           </Panel>
@@ -953,7 +1001,7 @@ export default function Home() {
           <Panel title={t.artifacts}>
             <div className="stack">
               {activeArtifacts.length === 0 ? (
-                <div className="empty-row">{t.noArtifacts}</div>
+                <StateBlock title={t.noArtifacts} detail={t.noArtifactsDetail} />
               ) : (
                 activeArtifacts.map((artifact) => (
                   <div className="artifact-row" key={artifact.id}>
