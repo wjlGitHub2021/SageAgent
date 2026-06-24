@@ -15,10 +15,11 @@
     "dist"
   ],
   "scripts": {
-    "build": "pnpm --filter @sage/shared build && tsc -p tsconfig.json",
-    "typecheck": "pnpm --filter @sage/shared build && tsc -p tsconfig.json --noEmit"
+    "build": "pnpm --filter @sage/shared build && pnpm --filter @sage/agents build && tsc -p tsconfig.json",
+    "typecheck": "pnpm --filter @sage/shared build && pnpm --filter @sage/agents build && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@sage/agents": "workspace:*",
     "@sage/shared": "workspace:*"
   },
   "devDependencies": {

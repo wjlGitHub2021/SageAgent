@@ -76,6 +76,9 @@ importers:
 
   packages/runtime:
     dependencies:
+      '@sage/agents':
+        specifier: workspace:*
+        version: link:../agents
       '@sage/shared':
         specifier: workspace:*
         version: link:../shared

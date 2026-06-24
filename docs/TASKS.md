@@ -88,7 +88,7 @@
 - [x] 添加 Researcher agent。
 - [x] 添加 Builder agent。
 - [x] 添加 Reviewer agent。
-- [ ] 添加 orchestrator delegation flow。
+- [x] 添加 orchestrator delegation flow。
 - [ ] 添加 Read + Draft tool set。
 - [ ] 添加 writes、shell commands、external side effects 的 approval flow。
 - [ ] 添加 final artifact flow。

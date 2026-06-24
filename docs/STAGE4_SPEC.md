@@ -151,3 +151,32 @@ Stage 4 仍采用 Read + Draft 权限模型：
 - 不实现 final summary flow。
 - 不调用真实 LLM。
 - 不接 UI。
+
+## Task 4.5：Orchestrator Delegation Flow
+
+范围：
+
+- 在 `@sage/runtime` 中添加最小 orchestrator delegation flow。
+- 提供纯函数 `createDelegationFlow(input)`，串联 Supervisor、Researcher、Builder、Reviewer 的本地纯函数输出。
+- 输入至少包含 `goal`，可选包含 suggested paths、known constraints、context notes、acceptance criteria、review findings、risks、missing checks。
+- flow 必须按 Supervisor -> Researcher -> Builder -> Reviewer 顺序组织，返回结构化结果。
+- 任一前置阶段出现 `invalid_goal` 时，flow 返回结构化失败结果，不继续伪造后续阶段。
+- 当前 task 只建立 delegation 结构和 agent 输出汇总，不写 runtime store、不写 run events、不执行工具。
+
+验收：
+
+- `createDelegationFlow` 对非空 goal 返回 `ok: true`，包含 supervisor plan、researcher brief、builder draft、reviewer report 和 delegation steps。
+- delegation steps 的 agent 顺序必须是 `supervisor`、`researcher`、`builder`、`reviewer`。
+- reviewer decision 必须透传到 flow result，便于后续 final summary / event flow 使用。
+- `createDelegationFlow` 对空 goal 返回结构化 `invalid_goal` 失败。
+- `@sage/runtime` 可以独立 typecheck 和 build。
+- root `typecheck`、`lint`、`build` 通过。
+
+暂不做：
+
+- 不写入 `RuntimeStore`。
+- 不创建真实 `Step` / `RunEvent`。
+- 不调用 DeepSeek provider。
+- 不执行 Read + Draft tool set。
+- 不实现 approval flow。
+- 不接 UI。
