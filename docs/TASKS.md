@@ -41,6 +41,7 @@
 - [x] 添加 threads、runs、events、tools、approvals、artifacts 静态 seed data。
 - [x] 添加 `.env.example`。
 - [x] 为 Stage 1 关键控件添加本地交互反馈。
+- [x] 添加 Settings 中文/English 界面切换，并建立双语文案约束。
 - [x] 验证 desktop layout。
 - [x] 验证 mobile layout。
 

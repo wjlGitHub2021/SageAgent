@@ -12,6 +12,14 @@ Sage Agent 的一期目标是 Web First 的 Hermes-like agent 工作台，UI 信
 - 专业英语名词、模型名、API 字段、文件名、目录名、代码标识符可以保留英文，例如 `Run`、`ToolCall`、`Approval`、`reasoning_effort`、`AGENTS.md`。
 - 面向用户的最终说明要简洁清楚，优先说明完成了什么、如何验证、还有什么风险。
 
+## 双语 UI 规范
+
+- 产品 UI 从 Stage 1 开始支持中文/English 切换，默认中文。
+- 新增 UI 文案必须进入 copy 字典或后续 i18n 资源，不要在组件中散落硬编码。
+- 后续实现要同步考虑中英文界面，包括导航、面板标题、按钮、状态说明、空状态、错误提示、composer 提示和 seed data 展示文案。
+- 专业名词、模型名、API 字段、agent role、tool name 可以保留英文。
+- QA 时要至少验证一次中文和英文主界面都能显示关键内容。
+
 ## 本地规则
 
 - shell 命令必须使用 `rtk` 前缀，例如 `rtk git status`、`rtk npm test`。

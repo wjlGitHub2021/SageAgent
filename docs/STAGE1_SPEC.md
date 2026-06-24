@@ -57,6 +57,7 @@ Stage 1 必须实现本地可交互的模拟 UI：
 - 右侧 inspector：agent timeline、tool calls、approvals、artifacts、run metadata。
 - 顶部或局部 controls：model selector、thinking mode toggle、reasoning effort selector，其中 reasoning effort 只展示 `high` 和 `max`。
 - 可见按钮必须有本地交互反馈：New thread、thread/run 切换、model selector、thinking toggle、reasoning effort、approval approve/reject、composer run。
+- Settings 面板必须提供中文/English language selector，并能切换主要界面文案。
 
 Stage 1 seed data 至少覆盖：
 
@@ -87,6 +88,7 @@ Stage 1 seed data 至少覆盖：
 - model、thinking mode、reasoning effort 控件有明确 selected state，且点击后能更新本地状态。
 - approval 在右侧 inspector 中可见，Approve/Reject 点击后能更新状态。
 - composer 的 Run 点击后能追加一条模拟消息或状态反馈。
+- Settings 中切换中文/English 后，主要导航、面板标题、按钮、状态说明、composer 提示和 seed data 展示文案同步切换。
 
 视觉验收：
 
