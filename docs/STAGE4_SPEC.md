@@ -249,3 +249,30 @@ Stage 4 仍采用 Read + Draft 权限模型：
 - 不接真实工具执行器。
 - 不写 run events。
 - 不接 UI approval panel。
+
+## Task 4.8：Final Artifact Flow
+
+范围：
+
+- 在 `@sage/runtime` 中添加最小 final artifact helper。
+- 提供纯函数：
+  - `createFinalArtifact(input)`
+  - `createFinalArtifactSummary(artifact)`
+- `createFinalArtifact` 必须生成完整 `Artifact` 对象，包含 id、runId、kind、title、content、path、createdAt。
+- final artifact 可以是 `plan`、`patch`、`document`、`summary` 或 `link`，必须复用 shared `ArtifactKind`。
+- 当前 task 只创建 artifact 对象和摘要，不写入 `RuntimeStore`，不发 `artifact.created` event，不写文件。
+
+验收：
+
+- 有效输入返回 `ok: true` 和完整 artifact。
+- 空 id / runId / title / content / createdAt 返回结构化 `invalid_artifact_input` 错误。
+- `path` 可为 null；非空 path 需要 trim。
+- `createFinalArtifactSummary` 返回 artifact id、kind、title、是否有 path 和 content length。
+- root `typecheck`、`lint`、`build` 通过。
+
+暂不做：
+
+- 不写入 `RuntimeStore`。
+- 不创建真实 `artifact.created` event。
+- 不写入文件系统。
+- 不接 UI artifacts panel。

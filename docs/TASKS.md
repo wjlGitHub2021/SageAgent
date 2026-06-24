@@ -91,7 +91,7 @@
 - [x] 添加 orchestrator delegation flow。
 - [x] 添加 Read + Draft tool set。
 - [x] 添加 writes、shell commands、external side effects 的 approval flow。
-- [ ] 添加 final artifact flow。
+- [x] 添加 final artifact flow。
 - [ ] 在 final summary 前添加 reviewer pass。
 
 ## Stage 5：商业化质量加固

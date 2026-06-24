@@ -9,6 +9,14 @@ export {
   type ResolveApprovalResult,
 } from "./approval-flow.js";
 export {
+  createFinalArtifact,
+  createFinalArtifactSummary,
+  type ArtifactFlowIssue,
+  type CreateFinalArtifactInput,
+  type CreateFinalArtifactResult,
+  type FinalArtifactSummary,
+} from "./artifact-flow.js";
+export {
   createMemoryRuntimeStore,
   isTerminalRunStatus,
   type RuntimeStore,
