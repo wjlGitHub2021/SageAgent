@@ -67,3 +67,30 @@ Stage 4 仍采用 Read + Draft 权限模型：
 - 不实现 orchestrator delegation flow。
 - 不调用真实 LLM。
 - 不接 UI。
+
+## Task 4.2：Researcher Agent
+
+范围：
+
+- 实现 `researcherAgent` definition。
+- Researcher 的职责是整理本地上下文需求、约束、风险和下一步交接信息。
+- 提供纯函数 `createResearcherBrief(input)`，根据目标、建议阅读路径和已知约束生成结构化 research brief。
+- `createResearcherBrief` 不调用 LLM、不读写文件、不执行工具、不联网，只返回结构化 brief。
+- Researcher 只拥有 `read_context` 和 `draft_artifact` 权限；不允许写文件、运行 shell、发起外部副作用请求。
+- Researcher 不 handoff 给其他 agent；后续交接由 Supervisor / orchestrator 决定。
+
+验收：
+
+- `researcherAgent.role` 为 `researcher`。
+- `researcherAgent.allowedActions` 不包含写文件、shell、external request 等 risky action 权限。
+- `createResearcherBrief` 对非空 goal 返回稳定结构，至少包含 goal、summary、contextTargets、constraints、handoffNotes。
+- `createResearcherBrief` 对空 goal 返回结构化 `invalid_goal` 错误。
+- 建议阅读路径需要去重、trim，并过滤空字符串。
+- root `typecheck`、`lint`、`build` 通过。
+
+暂不做：
+
+- 不实现真实文件读取。
+- 不实现联网 research。
+- 不实现 orchestrator delegation flow。
+- 不接 UI。

@@ -6,6 +6,8 @@ Stage 4 开始承载 Sage Agent 的 agent definitions。
 
 - `supervisorAgent`：Supervisor agent 的职责、权限边界和 handoff 目标。
 - `createSupervisorPlan(goal)`：本地纯函数 planning，返回 Researcher、Builder、Reviewer 和最终 Supervisor 汇总步骤。
+- `researcherAgent`：Researcher agent 的职责、只读权限边界和无直接 handoff 策略。
+- `createResearcherBrief(input)`：本地纯函数 research brief，整理目标、建议阅读路径、已知约束和交接说明。
 
 边界：
 
