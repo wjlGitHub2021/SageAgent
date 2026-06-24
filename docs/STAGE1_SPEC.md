@@ -96,6 +96,8 @@ Stage 1 seed data 至少覆盖：
 - Mobile 不出现横向溢出。
 - 文本不互相遮挡，不被按钮或 panels 截断。
 - UI 密度接近 Codex 桌面端：工作导向、安静、可扫描。
+- Settings 面板在 mobile 下必须保持紧凑、对齐和工具化气质；`界面语言` / `Interface language` 不应表现得像页面标题，语言切换控件要与 label 形成稳定设置行。
+- Mobile 设置区域不得出现突兀的大字号、松散留白或按钮宽度抖动。
 
 文档验收：
 
