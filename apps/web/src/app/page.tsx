@@ -6,9 +6,11 @@ import type {
   Approval,
   ApprovalStatus,
   Artifact,
+  DeepSeekModel,
   RunEvent,
   ToolCall,
 } from "@sage/shared";
+import { DEEPSEEK_MODELS } from "@sage/shared";
 
 type Locale = "zh" | "en";
 
@@ -27,6 +29,7 @@ const copy = {
     runs: "任务",
     currentRun: "当前任务",
     modelSettings: "模型设置",
+    model: "模型",
     thinking: "推理",
     on: "开",
     off: "关",
@@ -76,6 +79,7 @@ const copy = {
     runs: "Runs",
     currentRun: "Current Run",
     modelSettings: "Model settings",
+    model: "Model",
     thinking: "Thinking",
     on: "on",
     off: "off",
@@ -532,7 +536,7 @@ export default function Home() {
   const [threadItems, setThreadItems] = useState(initialThreads);
   const [activeThreadId, setActiveThreadId] = useState(initialThreads[0].id);
   const [activeRunId, setActiveRunId] = useState(runs[0].id);
-  const [model, setModel] = useState("deepseek-v4-flash");
+  const [model, setModel] = useState<DeepSeekModel>("deepseek-v4-flash");
   const [thinkingEnabled, setThinkingEnabled] = useState(true);
   const [reasoningEffort, setReasoningEffort] = useState<"high" | "max">("high");
   const [messages, setMessages] = useState<Message[]>(baseMessages);
@@ -723,18 +727,18 @@ export default function Home() {
             </div>
 
             <div className="model-controls" aria-label={t.modelSettings}>
-              <button
-                className="select-button"
-                onClick={() =>
-                  setModel((current) =>
-                    current === "deepseek-v4-flash"
-                      ? "deepseek-v4-pro"
-                      : "deepseek-v4-flash",
-                  )
-                }
-              >
-                {model}
-              </button>
+              <div className="segmented model-selector" aria-label={t.model}>
+                {DEEPSEEK_MODELS.map((modelOption) => (
+                  <button
+                    aria-pressed={model === modelOption}
+                    className={model === modelOption ? "selected" : ""}
+                    key={modelOption}
+                    onClick={() => setModel(modelOption)}
+                  >
+                    {modelOption}
+                  </button>
+                ))}
+              </div>
               <button
                 className={
                   thinkingEnabled ? "toggle-button active" : "toggle-button"

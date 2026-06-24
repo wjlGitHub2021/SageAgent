@@ -263,6 +263,18 @@ code {
   width: auto;
 }
 
+.model-selector {
+  max-width: 100%;
+}
+
+.model-selector button {
+  min-width: 0;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .thread-item {
   display: flex;
   min-height: 50px;
@@ -604,6 +616,16 @@ code {
     min-height: 31px;
     padding: 0 9px;
     font-size: 11px;
+  }
+
+  .model-selector {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .model-selector button {
+    max-width: none;
   }
 
   .inspector {

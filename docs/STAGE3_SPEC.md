@@ -127,3 +127,31 @@ Stage 3 按以下小 task 推进：
 - 不开放会返回完整 `Authorization` header 的 request builder；请求细节只允许在注入的 fake fetch 内验证。
 - 不实现 retry、timeout、abort controller 或 rate limit。
 - 不实现 tool calling、JSON mode、file upload 或其它 DeepSeek 高级参数。
+
+## Task 3.4：Model Selector
+
+范围：
+
+- 将工作台 header 中的 model control 从单按钮轮换升级为明确的 model selector。
+- 仅暴露 Stage 3 支持的模型：
+  - `deepseek-v4-flash`
+  - `deepseek-v4-pro`
+- 默认选中 `deepseek-v4-flash`。
+- 选中状态必须清楚，且在中文/English 界面下保持可读。
+- composer 的本地模拟 run message 必须继续使用当前选中的 model。
+- 不改变 create-run API 的 settings schema；该 API 已能校验 `DeepSeekSettings.model`。
+
+验收：
+
+- 用户可以直接看到两个可选模型，而不是只能通过点击单个按钮猜测切换。
+- 切换到 `deepseek-v4-pro` 后，Run 本地模拟消息包含 `deepseek-v4-pro`。
+- 切回 `deepseek-v4-flash` 后，Run 本地模拟消息包含 `deepseek-v4-flash`。
+- desktop 与 mobile 下 model selector 不溢出、不遮挡 thinking/reasoning controls。
+- `rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+
+暂不做：
+
+- 不接入真实 DeepSeek 请求。
+- 不持久化 model preference。
+- 不新增模型列表 API。
+- 不实现 thinking mode toggle 或 reasoning effort selector 的新交互；它们在 Task 3.5 和 Task 3.6 单独处理。

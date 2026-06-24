@@ -69,7 +69,8 @@
 - [x] 添加 API key environment handling。
 - [x] 编写 Task 3.3 DeepSeek V4 adapter 范围与验收标准。
 - [x] 实现 DeepSeek V4 adapter。
-- [ ] 添加 model selector。
+- [x] 编写 Task 3.4 model selector 范围与验收标准。
+- [x] 添加 model selector。
 - [ ] 添加 thinking mode toggle。
 - [ ] 添加 `high` / `max` reasoning effort selector。
 - [ ] 将 streamed model output 写入 run events。
