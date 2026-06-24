@@ -135,3 +135,26 @@ Stage 5 必须继续遵守：
 - 不引入外部测试管理系统。
 - 不新增 screenshot artifact 到仓库。
 - 不修改产品 UI 或 runtime 行为。
+
+## Task 5.6：高优先级 BUG 清理
+
+范围：
+
+- 审查 `docs/BUGS.md` 中是否存在 open / blocked 的 P0/P1 问题。
+- 搜索仓库中的 `BUG`、`FIXME`、`TODO`、`P0`、`P1`、`blocked` 等线索，确认是否有未登记的高优先级问题。
+- 对当前可解决的 P0/P1 立即修复；当前无法解决的必须补充阻塞原因和后续处理建议。
+- 若没有发现高优先级问题，在 `docs/BUGS.md` 写入本次审计记录，包含日期、commit、检查范围、命令和结论。
+- 不把普通失败状态文案、测试断言里的 blocked 分支误判为 bug。
+
+验收：
+
+- `docs/BUGS.md` 明确记录当前 P0/P1 审计结论。
+- `docs/TASKS.md` 标记“清理 `docs/BUGS.md` 中高优先级问题”完成。
+- 仓库搜索未发现未记录的 P0/P1 / TODO / FIXME 缺陷线索。
+- `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+
+暂不做：
+
+- 不把低优先级改进项强行升格为 P0/P1。
+- 不为了清空 BUG 文档而删除真实问题。
+- 不执行完整手动 QA checklist；完整人工验收另行按 `docs/QA_CHECKLIST.md` 运行。

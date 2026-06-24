@@ -102,4 +102,4 @@
 - [x] 完善 run history 和 audit trail。
 - [x] 添加关键测试。
 - [x] 建立手动 QA checklist。
-- [ ] 清理 `docs/BUGS.md` 中高优先级问题。
+- [x] 清理 `docs/BUGS.md` 中高优先级问题。
