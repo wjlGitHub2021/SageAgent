@@ -86,3 +86,28 @@ Stage 5 必须继续遵守：
 - 不做跨 session run history。
 - 不接真实 telemetry。
 - 不新增图表库。
+
+## Task 5.4：关键自动化测试
+
+范围：
+
+- 添加轻量单元测试框架，用于覆盖当前 MVP 中最关键、最稳定的纯逻辑。
+- 测试入口放在根目录脚本，运行前构建 workspace packages，测试已导出的 public API。
+- 覆盖 DeepSeek provider 配置、API key、请求/响应解析，不触发真实网络请求。
+- 覆盖 runtime store 的 event application、approval flow、tool permission、artifact flow、final summary reviewer gate。
+- 覆盖 multi-agent delegation happy path 与 reviewer gate blocked path。
+- 不在本 task 引入浏览器 e2e、数据库、真实 DeepSeek 调用或 UI screenshot 测试。
+
+验收：
+
+- 根目录提供 `rtk pnpm test`。
+- 单元测试覆盖 provider / runtime / agents 的关键商业化风险点。
+- 测试不能依赖外部网络或本机私有环境变量。
+- `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+
+暂不做：
+
+- 不建立完整 e2e 测试矩阵。
+- 不测试真实 API key 和真实 DeepSeek 服务。
+- 不新增 coverage gate。
+- 不把临时截图或测试报告写入仓库。

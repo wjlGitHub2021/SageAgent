@@ -100,6 +100,6 @@
 - [x] 完善 error states、empty states、loading states。
 - [x] 添加 cancel / retry 行为。
 - [x] 完善 run history 和 audit trail。
-- [ ] 添加关键测试。
+- [x] 添加关键测试。
 - [ ] 建立手动 QA checklist。
 - [ ] 清理 `docs/BUGS.md` 中高优先级问题。

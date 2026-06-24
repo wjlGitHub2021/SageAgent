@@ -146,7 +146,7 @@ function prepareDeepSeekChatCompletionRequest(
   return {
     ok: true,
     value: {
-      url: `${config.baseUrl}${DEEPSEEK_CHAT_COMPLETIONS_PATH}`,
+      url: joinDeepSeekUrl(config.baseUrl, DEEPSEEK_CHAT_COMPLETIONS_PATH),
       init: {
         method: "POST",
         headers: {
@@ -404,6 +404,10 @@ function defaultDeepSeekFetch(
   }
 
   return fetch(input, init);
+}
+
+function joinDeepSeekUrl(baseUrl: string, path: string): string {
+  return `${baseUrl.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
 }
 
 function invalidResponse(
