@@ -1,15 +1,17 @@
-const threads = [
+"use client";
+
+import { useState } from "react";
+
+const initialThreads = [
   {
     id: "thread-1",
     title: "Sage Agent MVP",
     subtitle: "Product Shell",
-    active: true,
   },
   {
     id: "thread-2",
     title: "DeepSeek Provider",
     subtitle: "Stage 3 草案",
-    active: false,
   },
 ];
 
@@ -28,7 +30,7 @@ const runs = [
   },
 ];
 
-const messages = [
+const baseMessages = [
   {
     role: "User",
     body: "创建 Sage Agent 的 Codex-like product shell，并展示多 agent 的运行状态。",
@@ -64,9 +66,16 @@ const artifacts = [
   { title: "Product Shell 截图检查", kind: "summary" },
 ];
 
+type Message = {
+  role: string;
+  body: string;
+};
+
+type ApprovalStatus = "pending" | "approved" | "rejected";
+
 function StatusDot({ status }: { status: string }) {
   const color =
-    status === "completed"
+    status === "completed" || status === "approved"
       ? "bg-emerald-500"
       : status === "running"
         ? "bg-sky-500"
@@ -84,13 +93,13 @@ function Panel({
 }: {
   title: string;
   children: React.ReactNode;
-  action?: string;
+  action?: React.ReactNode;
 }) {
   return (
     <section className="panel">
       <div className="panel-header">
         <h2>{title}</h2>
-        {action ? <button className="ghost-button">{action}</button> : null}
+        {action}
       </div>
       {children}
     </section>
@@ -98,6 +107,41 @@ function Panel({
 }
 
 export default function Home() {
+  const [threadItems, setThreadItems] = useState(initialThreads);
+  const [activeThreadId, setActiveThreadId] = useState(initialThreads[0].id);
+  const [activeRunId, setActiveRunId] = useState(runs[0].id);
+  const [model, setModel] = useState("deepseek-v4-flash");
+  const [thinkingEnabled, setThinkingEnabled] = useState(true);
+  const [reasoningEffort, setReasoningEffort] = useState<"high" | "max">("high");
+  const [approvalStatus, setApprovalStatus] =
+    useState<ApprovalStatus>("pending");
+  const [messages, setMessages] = useState<Message[]>(baseMessages);
+
+  const activeThread = threadItems.find((thread) => thread.id === activeThreadId);
+  const activeRun = runs.find((run) => run.id === activeRunId);
+
+  function handleNewThread() {
+    const nextIndex = threadItems.length + 1;
+    const nextThread = {
+      id: `thread-${nextIndex}`,
+      title: `新任务草稿 ${nextIndex}`,
+      subtitle: "Local draft",
+    };
+
+    setThreadItems((current) => [...current, nextThread]);
+    setActiveThreadId(nextThread.id);
+  }
+
+  function handleRunClick() {
+    setMessages((current) => [
+      ...current,
+      {
+        role: "Supervisor",
+        body: `已用 ${model} / ${reasoningEffort} 生成一条本地模拟 run event，真实 agent loop 将在 Stage 2 之后接入。`,
+      },
+    ]);
+  }
+
   return (
     <main className="min-h-screen bg-[var(--app-bg)] text-[var(--text-main)]">
       <div className="app-shell">
@@ -110,12 +154,24 @@ export default function Home() {
             </div>
           </div>
 
-          <Panel title="Threads" action="New">
+          <Panel
+            title="Threads"
+            action={
+              <button className="ghost-button" onClick={handleNewThread}>
+                New
+              </button>
+            }
+          >
             <div className="stack">
-              {threads.map((thread) => (
+              {threadItems.map((thread) => (
                 <button
-                  className={thread.active ? "thread-item active" : "thread-item"}
+                  className={
+                    thread.id === activeThreadId
+                      ? "thread-item active"
+                      : "thread-item"
+                  }
                   key={thread.id}
+                  onClick={() => setActiveThreadId(thread.id)}
                 >
                   <span>{thread.title}</span>
                   <small>{thread.subtitle}</small>
@@ -127,7 +183,11 @@ export default function Home() {
           <Panel title="Runs">
             <div className="stack">
               {runs.map((run) => (
-                <div className="run-row" key={run.id}>
+                <button
+                  className={run.id === activeRunId ? "run-row active" : "run-row"}
+                  key={run.id}
+                  onClick={() => setActiveRunId(run.id)}
+                >
                   <StatusDot status={run.status} />
                   <div>
                     <p>{run.title}</p>
@@ -135,7 +195,7 @@ export default function Home() {
                       {run.id} · {run.time}
                     </small>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </Panel>
@@ -145,26 +205,54 @@ export default function Home() {
           <header className="workspace-header">
             <div>
               <p className="section-label">Current Run</p>
-              <h1>初始化 Sage Agent Product Shell</h1>
+              <h1>{activeRun?.title ?? "初始化 Sage Agent Product Shell"}</h1>
               <p>
-                Supervisor 正在协调 Researcher、Builder、Reviewer 完成 Stage 1
-                静态工作台。
+                {activeThread?.title} 中的 Supervisor 正在协调
+                Researcher、Builder、Reviewer 完成 Stage 1 本地交互工作台。
               </p>
             </div>
 
             <div className="model-controls" aria-label="模型设置">
-              <button className="select-button">deepseek-v4-flash</button>
-              <button className="toggle-button active">Thinking on</button>
+              <button
+                className="select-button"
+                onClick={() =>
+                  setModel((current) =>
+                    current === "deepseek-v4-flash"
+                      ? "deepseek-v4-pro"
+                      : "deepseek-v4-flash",
+                  )
+                }
+              >
+                {model}
+              </button>
+              <button
+                className={
+                  thinkingEnabled ? "toggle-button active" : "toggle-button"
+                }
+                onClick={() => setThinkingEnabled((current) => !current)}
+              >
+                Thinking {thinkingEnabled ? "on" : "off"}
+              </button>
               <div className="segmented" aria-label="reasoning effort">
-                <button className="selected">high</button>
-                <button>max</button>
+                <button
+                  className={reasoningEffort === "high" ? "selected" : ""}
+                  onClick={() => setReasoningEffort("high")}
+                >
+                  high
+                </button>
+                <button
+                  className={reasoningEffort === "max" ? "selected" : ""}
+                  onClick={() => setReasoningEffort("max")}
+                >
+                  max
+                </button>
               </div>
             </div>
           </header>
 
           <div className="conversation">
-            {messages.map((message) => (
-              <article className="message" key={`${message.role}-${message.body}`}>
+            {messages.map((message, index) => (
+              <article className="message" key={`${message.role}-${index}`}>
                 <div className="message-avatar">{message.role.slice(0, 1)}</div>
                 <div>
                   <p className="message-role">{message.role}</p>
@@ -177,9 +265,9 @@ export default function Home() {
           <div className="composer">
             <div>
               <p>下一步</p>
-              <span>继续实现静态 seed data 与视觉 QA。</span>
+              <span>点击 Run 会追加一条本地模拟消息，不触发真实 provider。</span>
             </div>
-            <button>Run</button>
+            <button onClick={handleRunClick}>Run</button>
           </div>
         </section>
 
@@ -210,14 +298,24 @@ export default function Home() {
           </Panel>
 
           <Panel title="Approval">
-            <div className="approval-box">
+            <div className={`approval-box ${approvalStatus}`}>
               <p>Builder 请求写入文件</p>
               <small>
-                action: <code>write_file</code> · status: pending
+                action: <code>write_file</code> · status: {approvalStatus}
               </small>
               <div className="approval-actions">
-                <button>Approve</button>
-                <button>Reject</button>
+                <button
+                  disabled={approvalStatus !== "pending"}
+                  onClick={() => setApprovalStatus("approved")}
+                >
+                  Approve
+                </button>
+                <button
+                  disabled={approvalStatus !== "pending"}
+                  onClick={() => setApprovalStatus("rejected")}
+                >
+                  Reject
+                </button>
               </div>
             </div>
           </Panel>

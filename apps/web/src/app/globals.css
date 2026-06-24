@@ -49,6 +49,11 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 code {
   font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo,
     Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -237,7 +242,13 @@ code {
   font-size: 11px;
 }
 
-.thread-item.active {
+.thread-item:hover,
+.run-row:hover {
+  background: var(--panel-muted);
+}
+
+.thread-item.active,
+.run-row.active {
   border-color: #c7d7fe;
   background: var(--accent-soft);
 }
@@ -250,6 +261,15 @@ code {
   align-items: center;
   gap: 9px;
   min-width: 0;
+}
+
+.run-row {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  padding: 8px;
+  text-align: left;
 }
 
 .run-row p,
@@ -442,6 +462,16 @@ code {
   gap: 8px;
   border-left: 3px solid #f59e0b;
   background: #fff8eb;
+}
+
+.approval-box.approved {
+  border-left-color: #10b981;
+  background: var(--success-soft);
+}
+
+.approval-box.rejected {
+  border-left-color: #ef4444;
+  background: #fff1f2;
 }
 
 .approval-box p {

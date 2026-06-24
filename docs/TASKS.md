@@ -40,6 +40,7 @@
 - [x] 建立 Codex desktop-inspired app shell。
 - [x] 添加 threads、runs、events、tools、approvals、artifacts 静态 seed data。
 - [x] 添加 `.env.example`。
+- [x] 为 Stage 1 关键控件添加本地交互反馈。
 - [x] 验证 desktop layout。
 - [x] 验证 mobile layout。
 

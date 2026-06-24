@@ -50,12 +50,13 @@ Stage 1 添加 `.env.example`，但不读取真实 API。
 
 ## Product Shell 范围
 
-Stage 1 必须实现静态/模拟 UI：
+Stage 1 必须实现本地可交互的模拟 UI：
 
 - 左侧 sidebar：threads、runs、workspace context、recent activity。
 - 中间 workspace：当前 run conversation、streamed-like messages、final output 区域、composer。
 - 右侧 inspector：agent timeline、tool calls、approvals、artifacts、run metadata。
 - 顶部或局部 controls：model selector、thinking mode toggle、reasoning effort selector，其中 reasoning effort 只展示 `high` 和 `max`。
+- 可见按钮必须有本地交互反馈：New thread、thread/run 切换、model selector、thinking toggle、reasoning effort、approval approve/reject、composer run。
 
 Stage 1 seed data 至少覆盖：
 
@@ -83,8 +84,9 @@ Stage 1 seed data 至少覆盖：
 - 本地 dev server 可以启动。
 - 首屏直接进入 Sage Agent workbench。
 - seed data 在三栏中都可见。
-- model、thinking mode、reasoning effort 控件有明确 selected state。
-- approval 在右侧 inspector 中可见。
+- model、thinking mode、reasoning effort 控件有明确 selected state，且点击后能更新本地状态。
+- approval 在右侧 inspector 中可见，Approve/Reject 点击后能更新状态。
+- composer 的 Run 点击后能追加一条模拟消息或状态反馈。
 
 视觉验收：
 
