@@ -209,3 +209,35 @@ Stage 3 按以下小 task 推进：
 - 不接入真实 DeepSeek 请求。
 - 不持久化 reasoning preference。
 - 不新增除 `high` / `max` 以外的档位。
+
+## Task 3.7：Streamed Output Run Events
+
+范围：
+
+- 添加一个本地优先的 stream output event bridge，用于把 streamed model output 写入 Stage 2 Run System。
+- 新增 API route：`POST /api/runs/[runId]/stream-output`。
+- 输入为本地模拟的文本 chunks，不发起真实 DeepSeek 请求：
+  - `chunks: string[]`
+  - `agent?: "supervisor" | "researcher" | "builder" | "reviewer"`
+- API 必须按顺序追加：
+  - 多个 `message.delta` events。
+  - 一个 `message.completed` event。
+- `messageId` 必须在本次 stream 内稳定，delta 与 completed 指向同一个 message。
+- 事件 sequence 必须接续当前 run 事件流，保证 SSE endpoint 可通过 `after` 增量读取。
+- `message.completed` 内容必须等于所有 chunks 拼接后的完整文本。
+
+验收：
+
+- 对不存在的 run 返回 `run_not_found`。
+- chunks 缺失、为空、包含空字符串 chunk 或非 string chunk 时返回结构化 400 错误；空格 token 允许作为有效 delta。
+- 成功请求后，runtime store 中能通过 `GET /api/runs/[runId]/events` 读取新增的 `message.delta` 与 `message.completed` events。
+- `message.delta` events 的 sequence 严格递增，且 completed event 在所有 delta 后。
+- 不发起真实 DeepSeek HTTP 请求，不读取真实 API key。
+- `rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+
+暂不做：
+
+- 不把 UI composer 接到该 API。
+- 不调用真实 `@sage/deepseek` streaming HTTP。
+- 不实现 token 级 backpressure、abort、retry 或长连接推送。
+- 不把 provider errors 显示到 UI；它在 Task 3.8 单独处理。

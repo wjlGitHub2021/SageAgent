@@ -75,7 +75,8 @@
 - [x] 添加 thinking mode toggle。
 - [x] 编写 Task 3.6 reasoning effort selector 范围与验收标准。
 - [x] 添加 `high` / `max` reasoning effort selector。
-- [ ] 将 streamed model output 写入 run events。
+- [x] 编写 Task 3.7 streamed output run events 范围与验收标准。
+- [x] 将 streamed model output 写入 run events。
 - [ ] 在 UI 中清楚展示 provider errors。
 
 ## Stage 4：Multi-Agent MVP

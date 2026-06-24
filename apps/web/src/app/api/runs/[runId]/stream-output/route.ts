@@ -1,0 +1,237 @@
+import { NextResponse } from "next/server";
+import { AGENT_ROLES, type AgentRole, type Message } from "@sage/shared";
+import { getRuntimeStore } from "@/lib/runtime-store";
+
+export const runtime = "nodejs";
+
+type RouteContext = {
+  params: Promise<{
+    runId: string;
+  }>;
+};
+
+type StreamOutputRequest = {
+  chunks?: unknown;
+  agent?: unknown;
+};
+
+type NormalizedStreamOutputRequest = {
+  readonly chunks: readonly string[];
+  readonly agent: AgentRole;
+};
+
+export async function POST(request: Request, context: RouteContext) {
+  const { runId } = await context.params;
+  const store = getRuntimeStore();
+  const run = store.getRun(runId);
+
+  if (!run) {
+    return jsonError("run_not_found", "Run was not found.", 404);
+  }
+
+  const body = await readJsonBody(request);
+  if (!body.ok) {
+    return jsonError("invalid_json", "Request body must be valid JSON.", 400);
+  }
+
+  const input = normalizeStreamOutputRequest(body.value);
+  if (!input.ok) {
+    return jsonError(input.code, input.message, 400);
+  }
+
+  const now = new Date().toISOString();
+  const messageId = createId("message");
+  const events = createStreamOutputEvents({
+    run,
+    messageId,
+    input: input.value,
+    now,
+    firstSequence: nextRunSequence(store, run.id),
+  });
+
+  for (const event of events) {
+    store.appendEvent(event);
+  }
+
+  return NextResponse.json(
+    {
+      messageId,
+      events,
+      message: store
+        .getMessagesByRun(run.id)
+        .find((message) => message.id === messageId),
+      snapshot: store.getSnapshot(),
+    },
+    { status: 201 },
+  );
+}
+
+async function readJsonBody(
+  request: Request,
+): Promise<{ ok: true; value: unknown } | { ok: false }> {
+  try {
+    return { ok: true, value: await request.json() };
+  } catch {
+    return { ok: false };
+  }
+}
+
+function normalizeStreamOutputRequest(
+  value: unknown,
+):
+  | { ok: true; value: NormalizedStreamOutputRequest }
+  | { ok: false; code: string; message: string } {
+  if (!isRecord(value)) {
+    return {
+      ok: false,
+      code: "invalid_body",
+      message: "Request body must be an object.",
+    };
+  }
+
+  const request = value as StreamOutputRequest;
+  const chunks = normalizeChunks(request.chunks);
+  if (!chunks.ok) return chunks;
+
+  const agent = normalizeAgent(request.agent);
+  if (!agent.ok) return agent;
+
+  return {
+    ok: true,
+    value: {
+      chunks: chunks.value,
+      agent: agent.value,
+    },
+  };
+}
+
+function normalizeChunks(
+  value: unknown,
+):
+  | { ok: true; value: readonly string[] }
+  | { ok: false; code: string; message: string } {
+  if (!Array.isArray(value)) {
+    return {
+      ok: false,
+      code: "invalid_chunks",
+      message: "chunks must be a non-empty string array.",
+    };
+  }
+
+  if (value.length === 0) {
+    return {
+      ok: false,
+      code: "invalid_chunks",
+      message: "chunks must include at least one item.",
+    };
+  }
+
+  const chunks: string[] = [];
+  for (const chunk of value) {
+    if (typeof chunk !== "string" || chunk.length === 0) {
+      return {
+        ok: false,
+        code: "invalid_chunks",
+        message: "Each chunk must be a non-empty string.",
+      };
+    }
+
+    chunks.push(chunk);
+  }
+
+  return { ok: true, value: chunks };
+}
+
+function normalizeAgent(
+  value: unknown,
+):
+  | { ok: true; value: AgentRole }
+  | { ok: false; code: string; message: string } {
+  if (value === undefined || value === null) {
+    return { ok: true, value: "supervisor" };
+  }
+
+  if (
+    typeof value !== "string" ||
+    !AGENT_ROLES.includes(value as AgentRole)
+  ) {
+    return {
+      ok: false,
+      code: "invalid_agent",
+      message: "agent must be supervisor, researcher, builder, or reviewer.",
+    };
+  }
+
+  return { ok: true, value: value as AgentRole };
+}
+
+function createStreamOutputEvents({
+  run,
+  messageId,
+  input,
+  now,
+  firstSequence,
+}: {
+  run: { readonly id: string; readonly threadId: string };
+  messageId: string;
+  input: NormalizedStreamOutputRequest;
+  now: string;
+  firstSequence: number;
+}) {
+  const events = input.chunks.map((chunk, index) => ({
+    id: createId("event"),
+    runId: run.id,
+    type: "message.delta" as const,
+    sequence: firstSequence + index,
+    createdAt: now,
+    payload: {
+      messageId,
+      role: "agent" as const,
+      agent: input.agent,
+      delta: chunk,
+    },
+  }));
+  const message: Message = {
+    id: messageId,
+    threadId: run.threadId,
+    runId: run.id,
+    role: "agent",
+    agent: input.agent,
+    content: input.chunks.join(""),
+    createdAt: now,
+  };
+
+  return [
+    ...events,
+    {
+      id: createId("event"),
+      runId: run.id,
+      type: "message.completed" as const,
+      sequence: firstSequence + input.chunks.length,
+      createdAt: now,
+      payload: {
+        message,
+      },
+    },
+  ];
+}
+
+function nextRunSequence(
+  store: ReturnType<typeof getRuntimeStore>,
+  runId: string,
+): number {
+  const events = store.getEventsByRun(runId);
+  return (events.at(-1)?.sequence ?? 0) + 1;
+}
+
+function createId(prefix: string): string {
+  return `${prefix}-${crypto.randomUUID()}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function jsonError(code: string, message: string, status: number) {
+  return NextResponse.json({ error: { code, message } }, { status });
+}
