@@ -110,3 +110,24 @@
 - 核心流程有明确测试和手动验收记录。
 - 高优先级 bug 已解决或有清晰延期说明。
 - 文档、实现和 UI 行为保持一致。
+
+## Phase 2：真实 Run Loop 最小闭环
+
+目标：让 Sage Agent 从静态/本地模拟工作台进入真实后端 run loop。用户在 composer 输入任务后，前端调用后端 API 创建 run，后端写入 run events，前端再用 events 驱动 conversation、timeline、audit 和状态面板。
+
+计划交付物：
+
+- 将 composer 接入 `POST /api/runs`、`POST /api/runs/:runId/stream-output` 和 `GET /api/runs/:runId/events`。
+- 先完成 Supervisor-only 的真实 API/event 闭环。
+- 再接入 DeepSeek provider，使用 `.env` 中的 `DEEPSEEK_API_KEY`。
+- 将 provider output 转换为 `message.delta` / `message.completed` / `run.completed` events。
+- 添加 read-only file tool。
+- 逐步扩展到 Supervisor / Researcher / Builder / Reviewer 多 agent 编排。
+
+退出标准：
+
+- 用户可以在 UI 输入任务并触发真实后端 run。
+- 前端主要面板由后端 run events 驱动，而不是仅靠本地 seed state。
+- 配置 DeepSeek API key 后可以获得真实模型回复。
+- 未配置或 provider 失败时有安全、可理解、可审计的错误展示。
+- Read + Draft 安全边界仍然成立。

@@ -107,6 +107,55 @@ describe("runtime flows", () => {
     ]);
   });
 
+  it("applies run completed events with a full run snapshot", () => {
+    const store = createMemoryRuntimeStore(createEmptyRuntimeSnapshot());
+    store.upsertThread(thread);
+    store.appendEvent({
+      id: "event-run-created-for-completion",
+      runId: run.id,
+      type: "run.created",
+      sequence: 1,
+      createdAt,
+      payload: { run: { ...run, status: "queued", activeAgent: null } },
+    });
+
+    store.appendEvent({
+      id: "event-run-started-for-completion",
+      runId: run.id,
+      type: "run.status_changed",
+      sequence: 2,
+      createdAt: "2026-06-24T01:00:01.000Z",
+      payload: {
+        previousStatus: "queued",
+        status: "running",
+        activeAgent: "supervisor",
+      },
+    });
+
+    store.appendEvent({
+      id: "event-run-completed-with-snapshot",
+      runId: run.id,
+      type: "run.completed",
+      sequence: 3,
+      createdAt: "2026-06-24T01:00:02.000Z",
+      payload: {
+        run: {
+          ...run,
+          status: "completed",
+          activeAgent: null,
+          updatedAt: "2026-06-24T01:00:02.000Z",
+          completedAt: "2026-06-24T01:00:02.000Z",
+        },
+      },
+    });
+
+    expect(store.getRun(run.id)).toMatchObject({
+      status: "completed",
+      activeAgent: null,
+      completedAt: "2026-06-24T01:00:02.000Z",
+    });
+  });
+
   it("keeps approval flow explicit for side-effect actions", () => {
     expect(requiresApprovalForAction("write_file")).toBe(true);
     expect(requiresApprovalForAction("run_shell")).toBe(true);

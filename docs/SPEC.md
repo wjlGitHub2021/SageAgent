@@ -237,6 +237,24 @@ MVP 中 UI 通过 SSE 接收 run updates。
 
 `run.failed` 事件应携带完整的 `run` 快照和 `error`，便于 UI 与 runtime 在失败时同步更新状态。
 
+## Phase 2 Run Loop
+
+Phase 2 起，首页 composer 必须逐步从本地模拟切换为真实后端 run loop：
+
+```text
+用户输入任务
+  -> POST /api/runs 创建 Thread/Run
+  -> 后端写入 run.created event
+  -> 后端执行 Supervisor-only 或后续 multi-agent loop
+  -> run events 写入 runtime store
+  -> 前端拉取或订阅 run events
+  -> conversation / timeline / audit / inspector 从 events 派生
+```
+
+Phase 2 的第一步允许使用本地模拟 Supervisor output 写入真实 run events，用来验证 UI 与 API/event 闭环。真实 DeepSeek 调用在后续 task 接入。
+
+Phase 2 不把 API key 放入前端存储；DeepSeek key 默认来自 `.env`。
+
 ## Multi-Agent Model
 
 MVP 使用 supervisor-led workflow。

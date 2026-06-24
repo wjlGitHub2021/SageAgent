@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { AGENT_ROLES, type AgentRole, type Message } from "@sage/shared";
+import {
+  AGENT_ROLES,
+  type AgentRole,
+  type Message,
+  type Run,
+} from "@sage/shared";
 import { getRuntimeStore, getTelemetryLogger } from "@/lib/runtime-store";
 
 export const runtime = "nodejs";
@@ -220,17 +225,30 @@ function createStreamOutputEvents({
   now,
   firstSequence,
 }: {
-  run: { readonly id: string; readonly threadId: string };
+  run: Run;
   messageId: string;
   input: NormalizedStreamOutputRequest;
   now: string;
   firstSequence: number;
 }) {
+  const startedRun: Run = {
+    ...run,
+    status: "running",
+    activeAgent: input.agent,
+    updatedAt: now,
+  };
+  const completedRun: Run = {
+    ...startedRun,
+    status: "completed",
+    activeAgent: null,
+    updatedAt: now,
+    completedAt: now,
+  };
   const events = input.chunks.map((chunk, index) => ({
     id: createId("event"),
     runId: run.id,
     type: "message.delta" as const,
-    sequence: firstSequence + index,
+    sequence: firstSequence + 1 + index,
     createdAt: now,
     payload: {
       messageId,
@@ -250,15 +268,37 @@ function createStreamOutputEvents({
   };
 
   return [
+    {
+      id: createId("event"),
+      runId: run.id,
+      type: "run.status_changed" as const,
+      sequence: firstSequence,
+      createdAt: now,
+      payload: {
+        previousStatus: run.status,
+        status: startedRun.status,
+        activeAgent: startedRun.activeAgent,
+      },
+    },
     ...events,
     {
       id: createId("event"),
       runId: run.id,
       type: "message.completed" as const,
-      sequence: firstSequence + input.chunks.length,
+      sequence: firstSequence + input.chunks.length + 1,
       createdAt: now,
       payload: {
         message,
+      },
+    },
+    {
+      id: createId("event"),
+      runId: run.id,
+      type: "run.completed" as const,
+      sequence: firstSequence + input.chunks.length + 2,
+      createdAt: now,
+      payload: {
+        run: completedRun,
       },
     },
   ];

@@ -55,6 +55,7 @@ packages/shared
 
 - [计划](docs/PLAN.md)
 - [规格](docs/SPEC.md)
+- [Phase 2 规格](docs/PHASE2_SPEC.md)
 - [Stage 1 实施规格](docs/STAGE1_SPEC.md)
 - [任务](docs/TASKS.md)
 - [决策](docs/DECISIONS.md)

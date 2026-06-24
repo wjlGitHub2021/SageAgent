@@ -9,6 +9,7 @@ import type {
   DeepSeekModel,
   Run,
   RunEvent,
+  Thread,
   ToolCall,
 } from "@sage/shared";
 import { DEEPSEEK_MODELS } from "@sage/shared";
@@ -17,7 +18,48 @@ type Locale = "zh" | "en";
 
 type Message = {
   role: string;
+  runId: string;
   body: Record<Locale, string>;
+};
+
+type ThreadItem = {
+  id: string;
+  title: Record<Locale, string>;
+  subtitle: Record<Locale, string>;
+};
+
+type RunItem = {
+  id: string;
+  title: Record<Locale, string>;
+  status: string;
+  time: string;
+  goal?: string;
+};
+
+type CreateRunResponse = {
+  thread: Thread;
+  run: Run;
+  events: RunEvent[];
+};
+
+type StreamOutputResponse = {
+  events: RunEvent[];
+};
+
+type CreateRunPayload = {
+  goal: string;
+  title: string;
+  threadTitle: string;
+  settings: {
+    model: DeepSeekModel;
+    thinkingEnabled: boolean;
+    reasoningEffort: "high" | "max";
+  };
+};
+
+type StreamOutputPayload = {
+  agent: AgentRole;
+  chunks: readonly string[];
 };
 
 const copy = {
@@ -69,7 +111,7 @@ const copy = {
     runCreated: "创建 run",
     runStatusChanged: "更新 run 状态",
     messageDelta: "接收消息增量",
-    messageCompleted: "生成本地消息",
+    messageCompleted: "生成消息",
     toolStarted: "开始工具调用",
     toolCompleted: "完成工具调用",
     toolFailed: "工具调用失败",
@@ -85,15 +127,21 @@ const copy = {
     noArtifacts: "当前任务暂无产物",
     noArtifactsDetail: "计划、patch 草稿、文档或最终总结会在生成后出现在这里。",
     writeFileRequest: "Builder 请求写入文件",
-    composerHint: "点击运行会追加一条本地模拟消息，不触发真实 provider。",
-    composerRunningHint: "正在写入本地模拟 run event，请稍候。",
-    composerCancelledHint: "本地模拟 run 已取消，未触发真实 provider。",
+    composerInput: "任务输入",
+    composerPlaceholder: "描述你希望 Sage Agent 完成的任务...",
+    composerHint:
+      "点击运行会创建真实后端 run，并写入 run events；DeepSeek 将在下一步接入。",
+    composerEmptyHint: "请输入任务目标后再运行。",
+    composerRunningHint: "正在创建后端 run 并写入 run events，请稍候。",
+    composerCancelledHint: "本次 API run 已取消，未触发真实 provider。",
+    composerFailedHint: "运行失败",
     retryProviderHint: "已追加本地重试反馈；真实 provider 重试将在后续接入。",
+    apiThreadSubtitle: "API run",
+    apiSupervisorOutput:
+      "已通过后端 API 创建 run 并写入真实 run events。当前输出仍是本地占位，DeepSeek provider 将在 Phase 2.2 接入。",
     headerFallback: "初始化 Sage Agent Product Shell",
     headerDescription:
       "中的 Supervisor 正在协调 Researcher、Builder、Reviewer 完成 Stage 1 本地交互工作台。",
-    simulatedEvent:
-      "已生成一条本地模拟 run event，真实 agent loop 将在 Stage 2 之后接入。",
     newDraft: "新任务草稿",
     localDraft: "本地草稿",
     stage1Spec: "Stage 1 实施规格",
@@ -148,7 +196,7 @@ const copy = {
     runCreated: "Created run",
     runStatusChanged: "Updated run status",
     messageDelta: "Received message delta",
-    messageCompleted: "Generated local message",
+    messageCompleted: "Generated message",
     toolStarted: "Started tool call",
     toolCompleted: "Completed tool call",
     toolFailed: "Tool call failed",
@@ -167,18 +215,24 @@ const copy = {
     noArtifactsDetail:
       "Plans, patch drafts, documents, or final summaries will appear here.",
     writeFileRequest: "Builder requests file write",
+    composerInput: "Task input",
+    composerPlaceholder: "Describe what you want Sage Agent to do...",
     composerHint:
-      "Click Run to append a local simulated message without calling a real provider.",
-    composerRunningHint: "Writing a local simulated run event. Please wait.",
+      "Click Run to create a real backend run and write run events. DeepSeek will be wired next.",
+    composerEmptyHint: "Enter a task goal before running.",
+    composerRunningHint:
+      "Creating a backend run and writing run events. Please wait.",
     composerCancelledHint:
-      "Local simulated run was cancelled without calling a real provider.",
+      "This API run was cancelled without calling a real provider.",
+    composerFailedHint: "Run failed",
     retryProviderHint:
       "Added a local retry note. Real provider retry will be wired later.",
+    apiThreadSubtitle: "API run",
+    apiSupervisorOutput:
+      "Created a run through the backend API and wrote real run events. This output is still a local placeholder; the DeepSeek provider will be wired in Phase 2.2.",
     headerFallback: "Initialize Sage Agent Product Shell",
     headerDescription:
       "has Supervisor coordinating Researcher, Builder, and Reviewer for the Stage 1 local interactive workbench.",
-    simulatedEvent:
-      "created a local simulated run event. The real agent loop will be wired after Stage 2.",
     newDraft: "New task draft",
     localDraft: "Local draft",
     stage1Spec: "Stage 1 Implementation Spec",
@@ -187,7 +241,7 @@ const copy = {
   },
 } satisfies Record<Locale, Record<string, string>>;
 
-const initialThreads = [
+const initialThreads: ThreadItem[] = [
   {
     id: "thread-1",
     title: { zh: "Sage Agent MVP", en: "Sage Agent MVP" },
@@ -200,7 +254,7 @@ const initialThreads = [
   },
 ];
 
-const runs = [
+const initialRuns: RunItem[] = [
   {
     id: "run-1842",
     title: { zh: "初始化三栏工作台", en: "Initialize three-column workbench" },
@@ -218,6 +272,7 @@ const runs = [
 const baseMessages: Message[] = [
   {
     role: "User",
+    runId: "run-1842",
     body: {
       zh: "创建 Sage Agent 的 Codex-like product shell，并展示多 agent 的运行状态。",
       en: "Create a Codex-like product shell for Sage Agent and show multi-agent run state.",
@@ -225,6 +280,7 @@ const baseMessages: Message[] = [
   },
   {
     role: "Supervisor",
+    runId: "run-1842",
     body: {
       zh: "已将任务拆分为 UI shell、seed data、controls、inspector 四个部分，当前由 Builder 生成静态工作台。",
       en: "The task is split into UI shell, seed data, controls, and inspector. Builder is generating the static workbench.",
@@ -232,6 +288,7 @@ const baseMessages: Message[] = [
   },
   {
     role: "Builder",
+    runId: "run-1842",
     body: {
       zh: "正在实现三栏布局：左侧 threads/runs，中间 run conversation，右侧 timeline/tool calls/approval/artifacts。",
       en: "Implementing the three-column layout: threads/runs on the left, run conversation in the center, timeline/tool calls/approval/artifacts on the right.",
@@ -239,6 +296,7 @@ const baseMessages: Message[] = [
   },
   {
     role: "Reviewer",
+    runId: "run-1842",
     body: {
       zh: "等待实现完成后检查移动端溢出、状态可见性、approval 是否足够醒目。",
       en: "Waiting to review mobile overflow, state visibility, and whether approval is prominent enough.",
@@ -625,31 +683,63 @@ function StateBlock({
   );
 }
 
+function getComposerStatusText({
+  t,
+  isRunBusy,
+  composerError,
+  lastComposerState,
+  hasInput,
+}: {
+  t: (typeof copy)[Locale];
+  isRunBusy: boolean;
+  composerError: string | null;
+  lastComposerState: "idle" | "cancelled";
+  hasInput: boolean;
+}) {
+  if (isRunBusy) return t.composerRunningHint;
+  if (composerError) return `${t.composerFailedHint}: ${composerError}`;
+  if (lastComposerState === "cancelled") return t.composerCancelledHint;
+  if (!hasInput) return t.composerEmptyHint;
+  return t.composerHint;
+}
+
 export default function Home() {
   const [locale, setLocale] = useState<Locale>("zh");
   const t = copy[locale];
   const [threadItems, setThreadItems] = useState(initialThreads);
   const [activeThreadId, setActiveThreadId] = useState(initialThreads[0].id);
-  const [activeRunId, setActiveRunId] = useState(runs[0].id);
+  const [runItems, setRunItems] = useState(initialRuns);
+  const [activeRunId, setActiveRunId] = useState(initialRuns[0].id);
   const [model, setModel] = useState<DeepSeekModel>("deepseek-v4-flash");
   const [thinkingEnabled, setThinkingEnabled] = useState(true);
   const [reasoningEffort, setReasoningEffort] = useState<"high" | "max">("high");
+  const [composerInput, setComposerInput] = useState("");
+  const [composerError, setComposerError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>(baseMessages);
   const [runEvents, setRunEvents] = useState<RunEvent[]>(seedRunEvents);
   const [isRunBusy, setIsRunBusy] = useState(false);
-  const [lastComposerState, setLastComposerState] = useState<"idle" | "cancelled">(
-    "idle",
-  );
-  const runBusyTimerRef = useRef<number | null>(null);
+  const [lastComposerState, setLastComposerState] = useState<
+    "idle" | "cancelled"
+  >("idle");
+  const runRequestRef = useRef<AbortController | null>(null);
 
   const activeThread = threadItems.find((thread) => thread.id === activeThreadId);
-  const activeRun = runs.find((run) => run.id === activeRunId);
+  const activeRun = runItems.find((run) => run.id === activeRunId);
   const timelineRows = getTimelineRows(runEvents, activeRunId);
   const activeToolCalls = getToolCallRows(runEvents, activeRunId);
   const activeApproval = getActiveApproval(runEvents, activeRunId);
   const activeArtifacts = getArtifactRows(runEvents, activeRunId);
   const activeProviderError = getProviderError(runEvents, activeRunId);
   const activeAuditSummary = getAuditSummary(runEvents, activeRunId);
+  const activeMessages = messages.filter((message) => message.runId === activeRunId);
+  const trimmedComposerInput = composerInput.trim();
+  const composerStatusText = getComposerStatusText({
+    t,
+    isRunBusy,
+    composerError,
+    lastComposerState,
+    hasInput: trimmedComposerInput.length > 0,
+  });
 
   function handleNewThread() {
     const nextIndex = threadItems.length + 1;
@@ -669,72 +759,96 @@ export default function Home() {
     setActiveThreadId(nextThread.id);
   }
 
-  function handleRunClick() {
-    if (isRunBusy) {
+  async function handleRunClick() {
+    const goal = composerInput.trim();
+    if (isRunBusy || goal.length === 0) {
       return;
     }
 
+    const controller = new AbortController();
+    runRequestRef.current = controller;
     setIsRunBusy(true);
     setLastComposerState("idle");
-    const createdAt = new Date().toISOString();
-    const messageId = `message-local-${Date.now()}`;
-    const messageBody = {
-      zh: `已用 ${model} / thinking ${thinkingEnabled ? "enabled" : "disabled"} / ${reasoningEffort} ${copy.zh.simulatedEvent}`,
-      en: `${model} / thinking ${thinkingEnabled ? "enabled" : "disabled"} / ${reasoningEffort} ${copy.en.simulatedEvent}`,
-    };
+    setComposerError(null);
 
-    setMessages((current) => [
-      ...current,
-      {
-        role: "Supervisor",
-        body: messageBody,
-      },
-    ]);
-    setRunEvents((current) => [
-      ...current,
-      {
-        id: `event-local-${Date.now()}`,
-        runId: activeRunId,
-        type: "message.completed",
-        sequence: nextEventSequence(current, activeRunId),
-        createdAt,
-        payload: {
-          message: {
-            id: messageId,
-            threadId: activeThreadId,
-            runId: activeRunId,
-            role: "agent",
-            agent: "supervisor",
-            content: messageBody.en,
-            createdAt,
+    try {
+      const created = await createApiRun(
+        {
+          goal,
+          title: deriveTitle(goal),
+          threadTitle: deriveTitle(goal),
+          settings: {
+            model,
+            thinkingEnabled,
+            reasoningEffort,
           },
         },
-      },
-    ]);
-    runBusyTimerRef.current = window.setTimeout(() => {
+        controller.signal,
+      );
+      const output = createApiSupervisorOutput({
+        goal,
+        model,
+        thinkingEnabled,
+        reasoningEffort,
+        locale,
+      });
+
+      await createApiStreamOutput(
+        created.run.id,
+        {
+          agent: "supervisor",
+          chunks: splitOutputChunks(output),
+        },
+        controller.signal,
+      );
+      const fetchedEvents = await fetchRunEvents(created.run.id, controller.signal);
+
+      setThreadItems((current) => appendThreadItem(current, created.thread));
+      setRunItems((current) =>
+        updateRunItemFromEvents(
+          appendRunItem(current, created.run),
+          fetchedEvents,
+        ),
+      );
+      setActiveThreadId(created.thread.id);
+      setActiveRunId(created.run.id);
+      setRunEvents((current) =>
+        mergeRunEvents(current, [...created.events, ...fetchedEvents]),
+      );
+      setMessages((current) => [
+        ...current,
+        {
+          role: "User",
+          runId: created.run.id,
+          body: {
+            zh: goal,
+            en: goal,
+          },
+        },
+        ...messagesFromRunEvents(fetchedEvents, created.run.id),
+      ]);
+      setComposerInput("");
+    } catch (error) {
+      if (isAbortError(error)) {
+        setLastComposerState("cancelled");
+        return;
+      }
+
+      setComposerError(toSafeErrorMessage(error));
+    } finally {
       setIsRunBusy(false);
-      runBusyTimerRef.current = null;
-    }, 650);
+      if (runRequestRef.current === controller) {
+        runRequestRef.current = null;
+      }
+    }
   }
 
   function handleCancelRun() {
-    if (runBusyTimerRef.current) {
-      window.clearTimeout(runBusyTimerRef.current);
-      runBusyTimerRef.current = null;
-    }
+    runRequestRef.current?.abort();
+    runRequestRef.current = null;
 
     setIsRunBusy(false);
     setLastComposerState("cancelled");
-    setMessages((current) => [
-      ...current,
-      {
-        role: "Supervisor",
-        body: {
-          zh: copy.zh.composerCancelledHint,
-          en: copy.en.composerCancelledHint,
-        },
-      },
-    ]);
   }
 
   function handleApprovalResolution(status: ApprovalStatus) {
@@ -806,6 +920,7 @@ export default function Home() {
       ...current,
       {
         role: "Supervisor",
+        runId: activeRunId,
         body: {
           zh: copy.zh.retryProviderHint,
           en: copy.en.retryProviderHint,
@@ -877,7 +992,7 @@ export default function Home() {
 
           <Panel title={t.runs}>
             <div className="stack">
-              {runs.map((run) => (
+              {runItems.map((run) => (
                 <button
                   className={run.id === activeRunId ? "run-row active" : "run-row"}
                   key={run.id}
@@ -901,9 +1016,7 @@ export default function Home() {
             <div>
               <p className="section-label">{t.currentRun}</p>
               <h1>{activeRun?.title[locale] ?? t.headerFallback}</h1>
-              <p>
-                {activeThread?.title[locale]} {t.headerDescription}
-              </p>
+              <p>{activeRun?.goal ?? `${activeThread?.title[locale]} ${t.headerDescription}`}</p>
             </div>
 
             <div className="model-controls" aria-label={t.modelSettings}>
@@ -967,7 +1080,7 @@ export default function Home() {
           </header>
 
           <div className="conversation">
-            {messages.map((message, index) => (
+            {activeMessages.map((message, index) => (
               <article className="message" key={`${message.role}-${index}`}>
                 <div className="message-avatar">{message.role.slice(0, 1)}</div>
                 <div>
@@ -979,15 +1092,28 @@ export default function Home() {
           </div>
 
           <div className="composer">
-            <div>
+            <div className="composer-main">
               <p>{t.nextStep}</p>
-              <span>
-                {isRunBusy
-                  ? t.composerRunningHint
-                  : lastComposerState === "cancelled"
-                    ? t.composerCancelledHint
-                    : t.composerHint}
-              </span>
+              <label className="sr-only" htmlFor="sage-composer-input">
+                {t.composerInput}
+              </label>
+              <textarea
+                aria-label={t.composerInput}
+                className="composer-input"
+                disabled={isRunBusy}
+                id="sage-composer-input"
+                onChange={(event) => {
+                  setComposerInput(event.target.value);
+                  if (composerError) setComposerError(null);
+                  if (lastComposerState === "cancelled") {
+                    setLastComposerState("idle");
+                  }
+                }}
+                placeholder={t.composerPlaceholder}
+                rows={3}
+                value={composerInput}
+              />
+              <span>{composerStatusText}</span>
             </div>
             <div className="composer-actions">
               <button className="secondary-button" onClick={handleProviderError}>
@@ -1000,7 +1126,10 @@ export default function Home() {
               >
                 {t.cancel}
               </button>
-              <button disabled={isRunBusy} onClick={handleRunClick}>
+              <button
+                disabled={isRunBusy || trimmedComposerInput.length === 0}
+                onClick={handleRunClick}
+              >
                 {isRunBusy ? t.running : t.run}
               </button>
             </div>
@@ -1280,6 +1409,275 @@ function nextEventSequence(events: readonly RunEvent[], runId: string): number {
       .filter((event) => event.runId === runId)
       .reduce((max, event) => Math.max(max, event.sequence), 0) + 1
   );
+}
+
+async function createApiRun(
+  payload: CreateRunPayload,
+  signal: AbortSignal,
+): Promise<CreateRunResponse> {
+  const response = await fetch("/api/runs", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  return parseJsonResponse<CreateRunResponse>(response, "create_run_failed");
+}
+
+async function createApiStreamOutput(
+  runId: string,
+  payload: StreamOutputPayload,
+  signal: AbortSignal,
+): Promise<StreamOutputResponse> {
+  const response = await fetch(`/api/runs/${encodeURIComponent(runId)}/stream-output`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  return parseJsonResponse<StreamOutputResponse>(
+    response,
+    "stream_output_failed",
+  );
+}
+
+async function fetchRunEvents(
+  runId: string,
+  signal: AbortSignal,
+): Promise<RunEvent[]> {
+  const response = await fetch(
+    `/api/runs/${encodeURIComponent(runId)}/events`,
+    {
+      headers: {
+        Accept: "text/event-stream",
+      },
+      signal,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`events_failed_${response.status}`);
+  }
+
+  return parseRunEventsSse(await response.text());
+}
+
+async function parseJsonResponse<ResponseBody>(
+  response: Response,
+  fallbackCode: string,
+): Promise<ResponseBody> {
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new Error(fallbackCode);
+  }
+
+  if (!response.ok) {
+    throw new Error(readApiErrorCode(payload) ?? `${fallbackCode}_${response.status}`);
+  }
+
+  return payload as ResponseBody;
+}
+
+function readApiErrorCode(payload: unknown): string | null {
+  if (!isPlainRecord(payload)) return null;
+  const error = payload.error;
+  if (!isPlainRecord(error)) return null;
+  return typeof error.code === "string" ? error.code : null;
+}
+
+function parseRunEventsSse(payload: string): RunEvent[] {
+  const events: RunEvent[] = [];
+  const blocks = payload.split(/\n\n+/);
+
+  for (const block of blocks) {
+    const dataLine = block
+      .split("\n")
+      .find((line) => line.startsWith("data: "));
+    if (!dataLine) continue;
+
+    try {
+      events.push(JSON.parse(dataLine.slice("data: ".length)) as RunEvent);
+    } catch {
+      // Ignore malformed SSE blocks; the API contract is validated server-side.
+    }
+  }
+
+  return events;
+}
+
+function appendThreadItem(
+  current: readonly ThreadItem[],
+  thread: Thread,
+): ThreadItem[] {
+  const item: ThreadItem = {
+    id: thread.id,
+    title: {
+      zh: thread.title,
+      en: thread.title,
+    },
+    subtitle: {
+      zh: copy.zh.apiThreadSubtitle,
+      en: copy.en.apiThreadSubtitle,
+    },
+  };
+
+  return [item, ...current.filter((threadItem) => threadItem.id !== thread.id)];
+}
+
+function appendRunItem(current: readonly RunItem[], run: Run): RunItem[] {
+  const item: RunItem = {
+    id: run.id,
+    title: {
+      zh: run.title,
+      en: run.title,
+    },
+    status: run.status,
+    time: formatRunListTime(run.createdAt),
+    goal: run.goal,
+  };
+
+  return [item, ...current.filter((runItem) => runItem.id !== run.id)];
+}
+
+function updateRunItemFromEvents(
+  current: readonly RunItem[],
+  events: readonly RunEvent[],
+): RunItem[] {
+  return current.map((item) => {
+    const runUpdate = findLastRunUpdate(events, item.id);
+    if (!runUpdate) return item;
+
+    return {
+      ...item,
+      status: runUpdate.status,
+    };
+  });
+}
+
+function findLastRunUpdate(
+  events: readonly RunEvent[],
+  runId: string,
+): { status: string } | null {
+  const event = events
+    .filter((candidate) => candidate.runId === runId)
+    .findLast(
+      (
+        candidate,
+      ): candidate is Extract<
+        RunEvent,
+        { type: "run.status_changed" | "run.completed" | "run.failed" }
+      > =>
+        candidate.type === "run.status_changed" ||
+        candidate.type === "run.completed" ||
+        candidate.type === "run.failed",
+    );
+
+  if (!event) return null;
+  if (event.type === "run.status_changed") {
+    return { status: event.payload.status };
+  }
+
+  return { status: event.payload.run.status };
+}
+
+function mergeRunEvents(
+  current: readonly RunEvent[],
+  incoming: readonly RunEvent[],
+): RunEvent[] {
+  const events = new Map<string, RunEvent>();
+  for (const event of current) events.set(event.id, event);
+  for (const event of incoming) events.set(event.id, event);
+  return [...events.values()].toSorted(
+    (left, right) =>
+      left.createdAt.localeCompare(right.createdAt) ||
+      left.runId.localeCompare(right.runId) ||
+      left.sequence - right.sequence ||
+      left.id.localeCompare(right.id),
+  );
+}
+
+function messagesFromRunEvents(
+  events: readonly RunEvent[],
+  runId: string,
+): Message[] {
+  return events
+    .filter(
+      (event): event is Extract<RunEvent, { type: "message.completed" }> =>
+        event.type === "message.completed",
+    )
+    .map((event) => {
+      const role = event.payload.message.agent
+        ? agentLabels[event.payload.message.agent]
+        : "System";
+      return {
+        role,
+        runId,
+        body: {
+          zh: event.payload.message.content,
+          en: event.payload.message.content,
+        },
+      };
+    });
+}
+
+function createApiSupervisorOutput({
+  goal,
+  model,
+  thinkingEnabled,
+  reasoningEffort,
+  locale,
+}: {
+  goal: string;
+  model: DeepSeekModel;
+  thinkingEnabled: boolean;
+  reasoningEffort: "high" | "max";
+  locale: Locale;
+}) {
+  const localized = copy[locale].apiSupervisorOutput;
+  return `${localized}\n\nGoal: ${goal}\nSettings: ${model}, thinking ${
+    thinkingEnabled ? "enabled" : "disabled"
+  }, reasoning ${reasoningEffort}.`;
+}
+
+function splitOutputChunks(output: string): string[] {
+  const midpoint = Math.ceil(output.length / 2);
+  return [output.slice(0, midpoint), output.slice(midpoint)].filter(Boolean);
+}
+
+function deriveTitle(goal: string): string {
+  return goal.length <= 80 ? goal : `${goal.slice(0, 77)}...`;
+}
+
+function formatRunListTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--:--";
+  const hours = String(date.getUTCHours()).padStart(2, "0");
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+function toSafeErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim();
+  }
+
+  return "request_failed";
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function getToolCallRows(

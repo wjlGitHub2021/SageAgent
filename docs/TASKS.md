@@ -105,3 +105,12 @@
 - [x] 建立手动 QA checklist。
 - [x] 清理 `docs/BUGS.md` 中高优先级问题。
 - [x] 修复首屏 hydration mismatch 和桌面工作台滚动容器。
+
+## Phase 2：真实 Run Loop 最小闭环
+
+- [x] 编写 `docs/PHASE2_SPEC.md`，锁定 Phase 2 分块策略与 Task 2.1 验收标准。
+- [x] 将 composer 接入 create-run / stream-output / events API。
+- [ ] 接入 Supervisor-only DeepSeek 调用。
+- [ ] 将 DeepSeek streamed output 转换为 run events。
+- [ ] 添加 read-only file tool。
+- [ ] 扩展到 supervisor-led multi-agent run。
