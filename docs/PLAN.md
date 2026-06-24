@@ -25,17 +25,20 @@
 
 计划交付物：
 
+- 锁定 Stage 1 技术选型与验收标准。
 - 在 `apps/web` 下创建 Next.js app。
 - 建立 TypeScript workspace。
 - 创建三栏 app shell：左侧导航、中间 run workspace、右侧 inspector。
 - 添加 threads、runs、steps、tool calls、approvals、artifacts 的静态 seed data。
 - 建立适合密集工作台的 design tokens。
+- 添加 `.env.example`，但不接入真实 DeepSeek 请求。
 
 退出标准：
 
 - 本地 dev server 可以成功启动。
 - 首屏是可用的 Sage Agent workbench，不是 landing page。
 - 桌面和移动端布局无明显溢出、遮挡或不可读文本。
+- Stage 1 只展示静态/模拟状态，不实现真实 agent loop、DeepSeek provider 或工具执行。
 
 ## Stage 2：Run System 与 Event Flow
 

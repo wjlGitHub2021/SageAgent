@@ -32,12 +32,14 @@
 
 ## Stage 1：Product Shell
 
-- [ ] 选择 package manager 和 workspace layout。
+- [x] 锁定 Stage 1 技术选型与验收标准。
+- [x] 选择 package manager 和 workspace layout。
 - [ ] Scaffold `apps/web`。
 - [ ] 添加 TypeScript configuration。
 - [ ] 选择 UI styling approach。
 - [ ] 建立 Codex desktop-inspired app shell。
 - [ ] 添加 threads、runs、events、tools、approvals、artifacts 静态 seed data。
+- [ ] 添加 `.env.example`。
 - [ ] 验证 desktop layout。
 - [ ] 验证 mobile layout。
 

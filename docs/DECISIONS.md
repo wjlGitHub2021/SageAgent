@@ -135,3 +135,31 @@ Sage Agent 按商业化项目标准推进，而不是 demo 标准。
 - 子 agent 能隔离上下文，尤其适合 QA 和 review。
 - 明确生命周期可以避免多个 agent 长期运行导致状态混乱。
 - 主 agent 仍负责最终整合、判断和提交。
+
+## DEC-0009：Stage 1 前端技术选型
+
+状态：accepted
+
+决策：
+
+Stage 1 使用 `pnpm` workspace、Next.js App Router、TypeScript 和 Tailwind CSS 初始化 Web app。
+
+默认结构：
+
+- `apps/web`：Next.js 应用。
+- `packages/shared`：后续共享类型。
+- `packages/runtime`：后续 runtime。
+- `packages/agents`：后续 agent definitions。
+- `packages/deepseek`：后续 DeepSeek provider adapter。
+
+理由：
+
+- `pnpm` workspace 适合 monorepo，依赖安装快且边界清晰。
+- Next.js App Router 能同时承载前端页面和后续 API/SSE endpoints。
+- TypeScript 便于共享 Run、Step、ToolCall、Approval、Artifact 等 domain types。
+- Tailwind CSS 适合快速构建密集、稳定、可控的工作台 UI。
+
+限制：
+
+- Stage 1 只做静态 product shell，不接真实 DeepSeek。
+- Stage 1 不实现真实 agent loop、工具执行或持久化 runtime。
