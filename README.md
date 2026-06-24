@@ -1,47 +1,60 @@
 # Sage Agent
 
-Sage Agent is a lightweight Hermes-like agent workspace. It aims to feel like a Codex desktop-style workbench: a local, focused UI where one visible assistant coordinates a small team of agents, shows its work, asks for approval before risky actions, and produces useful artifacts.
+Sage Agent 是一个轻量级 Hermes-like agent 工作台。它希望呈现 Codex 桌面端那种专注、密集、可观察的工作体验：用户前台看到一个统一助手，后台由一组小 agent 协作推进任务，并在关键操作前请求 approval。
 
-## MVP Goals
+这是一个商业化项目，不是一次性 demo。项目从一开始就要求清晰文档、可追踪任务、可审计安全边界和稳定的工程质量。
 
-- Build a Web First local single-user agent workspace.
-- Use a Codex desktop-inspired layout with threads/runs on the left, task conversation in the center, and timeline/tool/artifact details on the right.
-- Use DeepSeek V4 as the only LLM provider in the first release.
-- Support `deepseek-v4-flash` and `deepseek-v4-pro`.
-- Default to `deepseek-v4-flash`, thinking enabled, and `reasoning_effort: high`.
-- Expose only `high` and `max` reasoning effort options in the UI.
-- Model work as runs, steps, tool calls, approvals, artifacts, and events.
-- Start with Read + Draft tools; require approval for writes, shell commands, and external side effects.
+## MVP 目标
 
-## Planned Architecture
+- 构建 Web First 的 local single-user agent workspace。
+- 使用 Codex desktop-inspired 三栏布局：左侧 threads/runs，中间当前任务工作区，右侧 timeline/tool/artifact/approval inspector。
+- 一期只接入 DeepSeek V4。
+- 支持 `deepseek-v4-flash` 和 `deepseek-v4-pro`。
+- 默认 `deepseek-v4-flash`、thinking enabled、`reasoning_effort: high`。
+- UI 只暴露 `high` 和 `max` 两档 reasoning effort。
+- 使用 run-based 模型组织任务：Run、Step、ToolCall、Approval、Artifact、Event。
+- 先采用 Read + Draft 工具权限；写文件、shell、外部副作用操作都必须 approval。
+
+## 计划架构
 
 ```text
 apps/web
-  Next.js frontend, API routes, SSE event endpoints
+  Next.js 前端、API routes、SSE event endpoints
 
 packages/runtime
-  orchestrator, agent loop, event bus, approvals
+  orchestrator、agent loop、event bus、approval handling
 
 packages/agents
-  supervisor, researcher, builder, reviewer
+  supervisor、researcher、builder、reviewer
 
 packages/deepseek
   DeepSeek V4 provider adapter
 
 packages/shared
-  shared domain types and schemas
+  共享 domain types 和 schemas
 ```
 
 ## MVP Agent Team
 
-- Supervisor: understands the user goal, creates the run plan, delegates work, and summarizes the final result.
-- Researcher: reads files and gathers context.
-- Builder: drafts implementation plans, patches, documents, or artifacts.
-- Reviewer: checks risks, missing requirements, and quality before final handoff.
+- Supervisor：理解用户目标，创建 run plan，分派子任务，汇总最终结果。
+- Researcher：读取项目上下文，整理发现。
+- Builder：生成实现方案、patch 草稿、文档或 artifact。
+- Reviewer：检查风险、遗漏、质量问题和商业化可用性。
 
-## Documentation
+## 工作方法
 
-- [Plan](docs/PLAN.md)
-- [Spec](docs/SPEC.md)
-- [Tasks](docs/TASKS.md)
-- [Decisions](docs/DECISIONS.md)
+每个小 task 遵循固定流程：
+
+```text
+写文档 -> 实现 -> QA 审查 -> 修复或记录 BUG -> 中文 git commit
+```
+
+复杂任务可以分派一次性子 agent 协助 research、implementation 或 QA。子 agent 完成明确子任务后立即结束，由主 agent 负责整合结论。
+
+## 文档
+
+- [计划](docs/PLAN.md)
+- [规格](docs/SPEC.md)
+- [任务](docs/TASKS.md)
+- [决策](docs/DECISIONS.md)
+- [BUG 跟踪](docs/BUGS.md)

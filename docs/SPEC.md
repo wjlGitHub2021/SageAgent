@@ -1,36 +1,38 @@
-# Sage Agent Spec
+# Sage Agent 规格
 
-## Product Definition
+## 产品定义
 
-Sage Agent is a local single-user, Web First agent workbench named Sage Agent. It is inspired by the Codex desktop app's information architecture and work-focused density, but it is not a pixel clone.
+Sage Agent 是一个 local single-user、Web First 的 agent workbench。产品名称为 Sage Agent，信息架构和工作密度参考 Codex 桌面端，但不做逐像素克隆。
 
-The product should feel like one assistant in the foreground and a small agent team in the background.
+产品体验目标：前台像一个统一助手，后台像一支小 agent 团队。用户应该能看到当前谁在工作、做了什么、调用了什么工具、产出了什么，以及哪里需要 approval。
+
+这是商业化项目。规格要优先考虑可维护性、可审计性、安全边界、用户信任和后续扩展。
 
 ## UI Layout
 
-Primary desktop layout:
+桌面端主布局：
 
-- Left sidebar: threads, runs, workspace context, and recent activity.
-- Center workspace: current run conversation, streamed agent messages, final output, and composer.
-- Right inspector: agent timeline, tool calls, approvals, artifacts, and run metadata.
+- 左侧 sidebar：threads、runs、workspace context、recent activity。
+- 中间 workspace：当前 run conversation、streamed agent messages、final output、composer。
+- 右侧 inspector：agent timeline、tool calls、approvals、artifacts、run metadata。
 
-Responsive behavior:
+响应式行为：
 
-- Desktop keeps all three regions visible.
-- Tablet may collapse the inspector into tabs.
-- Mobile prioritizes the center workspace, with sidebar and inspector accessible through navigation controls.
+- Desktop：三栏同时可见。
+- Tablet：inspector 可以折叠为 tabs。
+- Mobile：优先显示中间 workspace，sidebar 和 inspector 通过导航控件进入。
 
-Visual direction:
+视觉方向：
 
-- Dense but readable.
-- Quiet, utilitarian, and work-focused.
-- No marketing landing page as the default screen.
-- No decorative card-heavy hero treatment.
-- Stable dimensions for timelines, toolbar controls, panels, and buttons.
+- 密集但可读。
+- 安静、实用、工作导向。
+- 默认首屏不是 marketing landing page。
+- 不做装饰性 card-heavy hero。
+- timeline、toolbar controls、panels、buttons 需要稳定尺寸，避免状态变化导致布局跳动。
 
 ## Run System
 
-Sage Agent is run-based rather than message-only.
+Sage Agent 以 Run 为核心，而不是单纯 message-based chat。
 
 ```text
 Thread
@@ -45,9 +47,9 @@ Thread
 
 ### Thread
 
-A thread groups user conversation and related runs.
+Thread 用于组织连续对话和相关 runs。
 
-Required fields:
+字段：
 
 - `id`
 - `title`
@@ -56,9 +58,9 @@ Required fields:
 
 ### Run
 
-A run is one complete task execution.
+Run 是一次完整任务执行。
 
-Required fields:
+字段：
 
 - `id`
 - `threadId`
@@ -70,7 +72,7 @@ Required fields:
 - `updatedAt`
 - `completedAt`
 
-Allowed statuses:
+允许的 status：
 
 - `queued`
 - `planning`
@@ -82,9 +84,9 @@ Allowed statuses:
 
 ### Message
 
-A message is visible conversation content from the user, an agent, or the system.
+Message 是用户、agent 或 system 可见的对话内容。
 
-Required fields:
+字段：
 
 - `id`
 - `threadId`
@@ -96,9 +98,9 @@ Required fields:
 
 ### Step
 
-A step is a unit of work performed by an agent.
+Step 是某个 agent 执行的一段工作。
 
-Required fields:
+字段：
 
 - `id`
 - `runId`
@@ -110,14 +112,14 @@ Required fields:
 - `startedAt`
 - `completedAt`
 
-Allowed agents:
+允许的 agents：
 
 - `supervisor`
 - `researcher`
 - `builder`
 - `reviewer`
 
-Allowed step statuses:
+允许的 step status：
 
 - `pending`
 - `running`
@@ -127,9 +129,9 @@ Allowed step statuses:
 
 ### ToolCall
 
-A tool call records an agent using a tool.
+ToolCall 记录 agent 调用工具的过程。
 
-Required fields:
+字段：
 
 - `id`
 - `runId`
@@ -143,7 +145,7 @@ Required fields:
 - `startedAt`
 - `completedAt`
 
-Allowed statuses:
+允许的 status：
 
 - `running`
 - `completed`
@@ -151,26 +153,28 @@ Allowed statuses:
 
 ### Approval
 
-An approval records a risky action request.
+Approval 记录 risky action request。
 
-Required fields:
+字段：
 
 - `id`
 - `runId`
 - `requestedBy`
 - `reason`
+- `payloadSummary`
 - `action`
 - `status`
 - `createdAt`
 - `resolvedAt`
 
-Allowed action types:
+允许的 action types：
 
 - `write_file`
 - `run_shell`
 - `external_request`
+- `persist_state`
 
-Allowed statuses:
+允许的 status：
 
 - `pending`
 - `approved`
@@ -178,9 +182,9 @@ Allowed statuses:
 
 ### Artifact
 
-An artifact is an output produced by the run.
+Artifact 是 run 产生的中间或最终产物。
 
-Required fields:
+字段：
 
 - `id`
 - `runId`
@@ -190,7 +194,7 @@ Required fields:
 - `path`
 - `createdAt`
 
-Initial artifact kinds:
+初始 artifact kinds：
 
 - `plan`
 - `patch`
@@ -200,9 +204,9 @@ Initial artifact kinds:
 
 ## Run Events
 
-The UI receives run updates over SSE in the MVP.
+MVP 中 UI 通过 SSE 接收 run updates。
 
-Initial event types:
+初始 event types：
 
 - `run.created`
 - `run.status_changed`
@@ -220,16 +224,16 @@ Initial event types:
 
 ## Multi-Agent Model
 
-Sage Agent uses one supervisor-led workflow in the MVP.
+MVP 使用 supervisor-led workflow。
 
-Agents:
+Agents：
 
-- Supervisor: understands the user goal, creates a plan, delegates work, and summarizes.
-- Researcher: reads local context and prepares findings.
-- Builder: drafts plans, patch content, documents, or artifacts.
-- Reviewer: checks output for risk, missing requirements, and quality issues.
+- Supervisor：理解用户目标、创建计划、分派工作、汇总结果。
+- Researcher：读取本地上下文并整理发现。
+- Builder：生成方案、patch content、文档或 artifacts。
+- Reviewer：检查风险、遗漏、规格一致性和质量问题。
 
-MVP orchestration pattern:
+MVP orchestration pattern：
 
 ```text
 User goal
@@ -241,69 +245,96 @@ User goal
   -> Supervisor final summary
 ```
 
-The MVP should avoid free-form agent swarm behavior. Sub-agents are task workers with narrow responsibilities.
+MVP 避免 free-form agent swarm。子 agents 是职责明确的 task workers，不是长期开放聊天角色。
+
+## 子 agent 工作策略
+
+Sage Agent 自身实现过程中也允许使用子 agent 协作，但必须遵守：
+
+- 主 agent 负责拆分任务、定义输入输出、检查结果和最终提交。
+- 子 agent 只处理单一明确子任务。
+- 子 agent 结束后关闭其工作上下文，不保留长期运行状态。
+- QA 子 agent 应在实现完成后独立审查，避免实现上下文污染判断。
+- 任何由子 agent 发现但暂不修复的问题，要进入 `docs/BUGS.md`。
 
 ## DeepSeek Settings
 
-Provider:
+Provider：
 
-- DeepSeek only in the first release.
-- API base URL default: `https://api.deepseek.com`.
-- API style: OpenAI-compatible chat completions.
+- 一期只支持 DeepSeek。
+- API base URL 默认 `https://api.deepseek.com`。
+- API style：OpenAI-compatible chat completions。
 
-Models:
+Models：
 
 - `deepseek-v4-flash`
 - `deepseek-v4-pro`
 
-Defaults:
+Defaults：
 
-- Model: `deepseek-v4-flash`
-- Thinking mode: enabled
-- Reasoning effort: `high`
+- Model：`deepseek-v4-flash`
+- Thinking mode：enabled
+- Reasoning effort：`high`
 
-UI options:
+UI options：
 
-- Model selector: Flash or Pro.
-- Thinking mode toggle: on or off.
-- Reasoning effort selector: `high` or `max`.
+- Model selector：Flash 或 Pro。
+- Thinking mode toggle：on / off。
+- Reasoning effort selector：`high` 或 `max`。
 
-The UI should not expose provider options that are not intentionally supported by the MVP.
+UI 不暴露 MVP 未明确支持的 provider options。
 
 ## Tool and Approval Model
 
-Default MVP mode: Read + Draft.
+MVP 默认模式：Read + Draft。
 
-Allowed without approval:
+无需 approval：
 
-- Read project files.
-- Inspect project metadata.
-- Draft plans.
-- Draft patches.
-- Generate artifacts that do not mutate persistent state.
+- Read project files。
+- Inspect project metadata。
+- Draft plans。
+- Draft patches。
+- Generate artifacts that do not mutate persistent state。
 
-Requires approval:
+必须 approval：
 
-- Write or edit files.
-- Run shell commands.
-- Make external requests with side effects.
-- Persist changes outside the local run state.
+- Write or edit files。
+- Run shell commands。
+- Make external requests with side effects。
+- Persist non-file state changes outside local run state。
 
-Approval requests must show:
+Approval requests 必须展示：
 
-- Requesting agent.
-- Reason.
-- Action type.
-- Payload summary.
-- Approve and reject controls.
-- Final resolution.
+- Requesting agent。
+- Reason。
+- Action type。
+- Payload summary，对应数据字段 `payloadSummary`。
+- Approve / reject controls。
+- Final resolution。
 
-## Out of Scope for MVP
+## 工作流与质量门禁
 
-- Hosted multi-user accounts.
-- Billing.
-- Tenant isolation.
-- Full desktop wrapper.
-- Unrestricted local automation.
-- Arbitrary provider marketplace.
-- Free-form multi-agent swarm.
+每个小 task 必须遵循：
+
+```text
+写文档 -> 实现 -> QA 审查 -> 修复或记录 BUG -> 中文 git commit
+```
+
+质量门禁：
+
+- 文档与实现一致。
+- UI 行为符合规格。
+- 安全边界未被绕过。
+- 关键状态可追踪。
+- 当前可修复 bug 已修复。
+- 暂不修复 bug 已记录到 `docs/BUGS.md`。
+
+## MVP 不做
+
+- Hosted multi-user accounts。
+- Billing。
+- Tenant isolation。
+- Full desktop wrapper。
+- Unrestricted local automation。
+- Arbitrary provider marketplace。
+- Free-form multi-agent swarm。
