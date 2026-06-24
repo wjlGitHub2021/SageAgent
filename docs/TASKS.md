@@ -82,7 +82,8 @@
 
 ## Stage 4：Multi-Agent MVP
 
-- [ ] 添加 Supervisor agent。
+- [x] 编写 `docs/STAGE4_SPEC.md`，锁定 Stage 4 分块策略与 Task 4.1 验收标准。
+- [x] 添加 Supervisor agent。
 - [ ] 添加 Researcher agent。
 - [ ] 添加 Builder agent。
 - [ ] 添加 Reviewer agent。

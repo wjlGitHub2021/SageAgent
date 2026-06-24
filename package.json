@@ -5,8 +5,8 @@
   "packageManager": "pnpm@11.9.0",
   "scripts": {
     "dev": "pnpm --filter @sage/shared build && pnpm --filter @sage/deepseek build && pnpm --filter @sage/runtime build && pnpm --filter web dev",
-    "build": "pnpm --filter @sage/shared build && pnpm --filter @sage/deepseek build && pnpm --filter @sage/runtime build && pnpm --filter web build",
+    "build": "pnpm --filter @sage/shared build && pnpm --filter @sage/deepseek build && pnpm --filter @sage/runtime build && pnpm --filter @sage/agents build && pnpm --filter web build",
     "lint": "pnpm --filter web lint",
-    "typecheck": "pnpm --filter @sage/shared typecheck && pnpm --filter @sage/deepseek typecheck && pnpm --filter @sage/runtime typecheck"
+    "typecheck": "pnpm --filter @sage/shared typecheck && pnpm --filter @sage/deepseek typecheck && pnpm --filter @sage/runtime typecheck && pnpm --filter @sage/agents typecheck"
   }
 }
