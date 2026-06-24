@@ -20,7 +20,26 @@
 
 ## 当前 BUG
 
-暂无。
+### BUG-0001：首屏 hydration mismatch 与桌面滚动容器不符合工作台预期
+
+- 状态：`fixed`
+- 严重级别：`P1`
+- 发现阶段：manual review
+- 影响范围：`apps/web` Product Shell 首屏稳定性与桌面可用性。
+- 复现步骤或线索：
+  - 打开 `http://localhost:3000/`，页面出现 Next.js `Recoverable Error Hydration failed because the server rendered text didn't match the client`。
+  - 右侧 Agent 时间线和 inspector 内容会撑高页面，导致整个页面需要向下滚动。
+  - 运行输入框 composer 需要下滑才能看到，不符合 Codex-like desktop workbench 预期。
+- 初步原因：
+  - audit 时间使用 `toLocaleTimeString`，SSR 与 client 的 locale / timezone 输出可能不同。
+  - desktop 根容器未固定为视口高度，conversation / inspector / timeline 缺少内部滚动边界。
+- 修复方式：
+  - 将 audit 时间从 `toLocaleTimeString` 改为固定 UTC `HH:mm UTC` 格式，避免 SSR/client locale 或 timezone 差异。
+  - 将 desktop Product Shell 固定在视口高度内，conversation、inspector 和 Agent 时间线改为内部滚动，composer 保持首屏可见。
+  - 移动端恢复页面纵向滚动，避免小屏滚动陷阱。
+- 验证结论：
+  - `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+  - 临时 Playwright QA 验证 desktop 无 hydration / recoverable console error，composer 首屏可见，desktop 整页不滚动，mobile 无横向溢出且可纵向浏览。
 
 ## 高优先级审计记录
 

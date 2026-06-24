@@ -182,3 +182,29 @@ Stage 5 必须继续遵守：
 - 不做文件日志、数据库日志或跨进程持久化。
 - 不在 UI 中展示 telemetry 面板。
 - 不记录完整 prompt、model response、API key 或用户私密内容。
+
+## Task 5.8：首屏水合与桌面滚动容器修复
+
+范围：
+
+- 修复 Product Shell 首屏 hydration mismatch，避免 SSR 与 client 因本地化时间格式不同产生 Recoverable Error。
+- 桌面端保持工作台式固定视口：整体页面不应因为右侧 inspector 或消息列表变长而滚动。
+- 中间 conversation 使用内部滚动，composer 必须在 1440x900 等桌面首屏可见。
+- 右侧 inspector 使用内部滚动；Agent 时间线作为独立滑动列表，避免撑高整个页面。
+- 移动端继续允许页面纵向滚动，避免小屏出现不可达内容或滚动陷阱。
+- 不接真实 DeepSeek provider，不改变 run system，不新增依赖。
+
+验收：
+
+- 打开 `http://localhost:3000/` 不出现 Next.js hydration mismatch / Recoverable Error overlay。
+- 1440x900 desktop 下左、中、右三栏在首屏内稳定，composer 不需要页面下滑即可看到。
+- Agent 时间线内容较长时在自身列表内滚动，不带动整个页面滚动。
+- 390x844 mobile 下仍可纵向浏览全部内容，无横向溢出。
+- `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+
+暂不做：
+
+- 不实现真实 prompt 输入和发送链路。
+- 不新增 API key 设置页。
+- 不改 DeepSeek API adapter 的环境变量配置方式。
+- 不把当前本地 seed UI 改成完整后端驱动 UI。

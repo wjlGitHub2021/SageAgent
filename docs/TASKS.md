@@ -104,3 +104,4 @@
 - [x] 添加关键测试。
 - [x] 建立手动 QA checklist。
 - [x] 清理 `docs/BUGS.md` 中高优先级问题。
+- [x] 修复首屏 hydration mismatch 和桌面工作台滚动容器。
