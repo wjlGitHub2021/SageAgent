@@ -255,6 +255,15 @@ Phase 2 的第一步允许使用本地模拟 Supervisor output 写入真实 run 
 
 Phase 2 不把 API key 放入前端存储；DeepSeek key 默认来自 `.env`。
 
+Phase 2.2 起，composer 调用真实 Supervisor route：
+
+- `POST /api/runs` 创建 queued run。
+- `POST /api/runs/:runId/supervisor` 调用 DeepSeek Chat Completions。
+- 成功追加 `run.status_changed`、`message.delta`、`message.completed`、`run.completed`。
+- 失败追加 `run.status_changed`、`run.failed`，失败 payload 只包含安全错误说明。
+- 前端再通过 `GET /api/runs/:runId/events` 拉取该 run 的事件并更新 conversation、timeline、audit 和 provider error 面板。
+- Task 2.2 是非 streaming；真实增量输出属于 Task 2.3。
+
 ## Multi-Agent Model
 
 MVP 使用 supervisor-led workflow。

@@ -26,6 +26,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@sage/deepseek':
+        specifier: workspace:*
+        version: link:../../packages/deepseek
       '@sage/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime

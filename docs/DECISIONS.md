@@ -227,3 +227,24 @@ Stage 3 先实现 `@sage/deepseek` provider configuration，再实现真实 HTTP
 - provider 边界先稳定，后续 adapter、error handling、streaming event 转换才有可靠输入。
 - API key 是敏感信息，配置层必须避免泄露。
 - 单 provider 策略可以保持 MVP 简洁，减少过早抽象。
+
+## DEC-0013：Phase 2.2 使用 Web-local Supervisor Runner
+
+状态：accepted
+
+决策：
+
+Phase 2.2 的 Supervisor-only DeepSeek 调用先放在 `apps/web/src/lib/supervisor-runner.ts`，由 `POST /api/runs/:runId/supervisor` route 调用。
+
+原因：
+
+- 当前真实 provider adapter 位于 `@sage/deepseek`，如果把 runner 直接放入 `@sage/runtime`，会让 runtime package 反向依赖 provider package，过早固化分层。
+- Web-local runner 可以复用 `@sage/runtime` 的 `RuntimeStore` 和 `@sage/shared` 的事件类型，同时通过依赖注入调用 DeepSeek adapter，便于单元测试成功与失败路径。
+- route 只负责 HTTP 边界、环境配置读取和 telemetry，run event 生成逻辑集中在 runner，避免 API handler 膨胀。
+
+约束：
+
+- runner 必须只生成标准 `RunEvent`，不能绕过 runtime store 更新 UI。
+- provider error 必须写入 `run.failed`，不能只返回 HTTP 500。
+- 错误信息必须脱敏，不输出完整 API key、Authorization header、token、secret 或 password。
+- 后续如果 provider/orchestrator 抽象稳定，再考虑把 runner 下沉到 `packages/runtime`。

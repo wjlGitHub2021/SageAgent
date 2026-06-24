@@ -65,16 +65,29 @@ Phase 2 采用渐进闭环：
 范围：
 
 - 后端读取 `DEEPSEEK_API_KEY` 和 DeepSeek 默认配置。
-- 用户输入任务后，由 Supervisor-only run 调用 DeepSeek Chat Completions。
-- 成功响应写入 `message.completed` event。
-- 无 API key、网络失败、HTTP 失败、响应解析失败写入 `run.failed` event，并在 UI provider error 面板可见。
+- 新增 `POST /api/runs/:runId/supervisor`，由 Supervisor-only run 调用 DeepSeek Chat Completions。
+- Phase 2.2 采用非 streaming 调用：请求完成后一次性把结果写入 run events；真正的增量输出留到 Task 2.3。
+- 成功路径追加 `run.status_changed` -> `message.delta` -> `message.completed` -> `run.completed`。
+- `message.delta` 与 `message.completed` 必须使用同一个 `messageId`，`message.completed.content` 必须等于 delta 拼接结果。
+- 无 API key、配置错误、网络失败、HTTP 失败、响应解析失败或空输出写入 `run.failed` event，并在 UI provider error 面板可见。
+- 缺少 API key 时不得发起真实 HTTP 请求。
+- 已经开始、完成或失败的 run 不允许重复触发 Supervisor provider 调用。
+- 前端 composer 停止调用本地占位 `stream-output`，改为调用真实 Supervisor route，再通过 `GET /api/runs/:runId/events` 回填 UI。
 
 验收：
 
 - 配置有效 API key 时，用户任务能得到真实 DeepSeek 回复。
 - 未配置 API key 时不发真实请求，UI 显示安全错误。
 - provider error 不泄露完整 API key、authorization 或 token。
-- 测试覆盖成功、缺 key、provider 失败。
+- 成功和失败都保留完整可审计 run events，不只返回 HTTP error。
+- 测试覆盖成功、缺 key、provider 失败、空模型输出。
+
+暂不做：
+
+- 不提供 API key UI 设置页。
+- 不实现真正的 streaming transport 或实时 SSE 订阅。
+- 不读取项目文件，不写文件，不运行 shell。
+- 不启动 Researcher / Builder / Reviewer 子 agent；本 task 只运行 Supervisor。
 
 ## Task 2.3：Streamed Output Events
 

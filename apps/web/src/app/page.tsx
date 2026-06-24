@@ -42,8 +42,13 @@ type CreateRunResponse = {
   events: RunEvent[];
 };
 
-type StreamOutputResponse = {
+type SupervisorRunResponse = {
+  ok: boolean;
   events: RunEvent[];
+  error: {
+    code: string;
+    message: string;
+  } | null;
 };
 
 type CreateRunPayload = {
@@ -55,11 +60,6 @@ type CreateRunPayload = {
     thinkingEnabled: boolean;
     reasoningEffort: "high" | "max";
   };
-};
-
-type StreamOutputPayload = {
-  agent: AgentRole;
-  chunks: readonly string[];
 };
 
 const copy = {
@@ -130,15 +130,14 @@ const copy = {
     composerInput: "任务输入",
     composerPlaceholder: "描述你希望 Sage Agent 完成的任务...",
     composerHint:
-      "点击运行会创建真实后端 run，并写入 run events；DeepSeek 将在下一步接入。",
+      "点击运行会创建真实后端 run，并调用 DeepSeek Supervisor；未配置 API key 会生成可审计的 provider error。",
     composerEmptyHint: "请输入任务目标后再运行。",
-    composerRunningHint: "正在创建后端 run 并写入 run events，请稍候。",
-    composerCancelledHint: "本次 API run 已取消，未触发真实 provider。",
+    composerRunningHint: "正在创建后端 run 并调用 DeepSeek Supervisor，请稍候。",
+    composerCancelledHint:
+      "本次本地等待已取消；如果 provider 请求已经发出，后端可能仍会完成并留下事件。",
     composerFailedHint: "运行失败",
     retryProviderHint: "已追加本地重试反馈；真实 provider 重试将在后续接入。",
     apiThreadSubtitle: "API run",
-    apiSupervisorOutput:
-      "已通过后端 API 创建 run 并写入真实 run events。当前输出仍是本地占位，DeepSeek provider 将在 Phase 2.2 接入。",
     headerFallback: "初始化 Sage Agent Product Shell",
     headerDescription:
       "中的 Supervisor 正在协调 Researcher、Builder、Reviewer 完成 Stage 1 本地交互工作台。",
@@ -218,18 +217,16 @@ const copy = {
     composerInput: "Task input",
     composerPlaceholder: "Describe what you want Sage Agent to do...",
     composerHint:
-      "Click Run to create a real backend run and write run events. DeepSeek will be wired next.",
+      "Click Run to create a real backend run and call the DeepSeek Supervisor. Missing API keys create auditable provider errors.",
     composerEmptyHint: "Enter a task goal before running.",
     composerRunningHint:
-      "Creating a backend run and writing run events. Please wait.",
+      "Creating a backend run and calling the DeepSeek Supervisor. Please wait.",
     composerCancelledHint:
-      "This API run was cancelled without calling a real provider.",
+      "Local waiting was cancelled; if the provider request had already started, the backend may still finish and keep events.",
     composerFailedHint: "Run failed",
     retryProviderHint:
       "Added a local retry note. Real provider retry will be wired later.",
     apiThreadSubtitle: "API run",
-    apiSupervisorOutput:
-      "Created a run through the backend API and wrote real run events. This output is still a local placeholder; the DeepSeek provider will be wired in Phase 2.2.",
     headerFallback: "Initialize Sage Agent Product Shell",
     headerDescription:
       "has Supervisor coordinating Researcher, Builder, and Reviewer for the Stage 1 local interactive workbench.",
@@ -620,6 +617,7 @@ type ArtifactRow = {
 type ProviderErrorState = {
   readonly failedAgent: string;
   readonly status: string;
+  readonly message: string;
 };
 
 type AuditSummary = {
@@ -785,20 +783,8 @@ export default function Home() {
         },
         controller.signal,
       );
-      const output = createApiSupervisorOutput({
-        goal,
-        model,
-        thinkingEnabled,
-        reasoningEffort,
-        locale,
-      });
-
-      await createApiStreamOutput(
+      const supervisor = await createApiSupervisorRun(
         created.run.id,
-        {
-          agent: "supervisor",
-          chunks: splitOutputChunks(output),
-        },
         controller.signal,
       );
       const fetchedEvents = await fetchRunEvents(created.run.id, controller.signal);
@@ -827,7 +813,11 @@ export default function Home() {
         },
         ...messagesFromRunEvents(fetchedEvents, created.run.id),
       ]);
-      setComposerInput("");
+      if (!supervisor.ok) {
+        setComposerError(supervisor.error?.message ?? "provider_failed");
+      } else {
+        setComposerInput("");
+      }
     } catch (error) {
       if (isAbortError(error)) {
         setLastComposerState("cancelled");
@@ -1217,7 +1207,7 @@ export default function Home() {
                   {t.failureSource}: {activeProviderError.failedAgent} ·{" "}
                   {t.status}: {activeProviderError.status}
                 </small>
-                <small>{t.providerErrorSafeMessage}</small>
+                <small>{activeProviderError.message}</small>
                 <small>{t.providerErrorNextStep}</small>
                 <div className="provider-error-actions">
                   <button onClick={handleProviderRetry}>{t.retry}</button>
@@ -1427,23 +1417,22 @@ async function createApiRun(
   return parseJsonResponse<CreateRunResponse>(response, "create_run_failed");
 }
 
-async function createApiStreamOutput(
+async function createApiSupervisorRun(
   runId: string,
-  payload: StreamOutputPayload,
   signal: AbortSignal,
-): Promise<StreamOutputResponse> {
-  const response = await fetch(`/api/runs/${encodeURIComponent(runId)}/stream-output`, {
+): Promise<SupervisorRunResponse> {
+  const response = await fetch(`/api/runs/${encodeURIComponent(runId)}/supervisor`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({}),
     signal,
   });
 
-  return parseJsonResponse<StreamOutputResponse>(
+  return parseJsonResponse<SupervisorRunResponse>(
     response,
-    "stream_output_failed",
+    "supervisor_run_failed",
   );
 }
 
@@ -1628,30 +1617,6 @@ function messagesFromRunEvents(
     });
 }
 
-function createApiSupervisorOutput({
-  goal,
-  model,
-  thinkingEnabled,
-  reasoningEffort,
-  locale,
-}: {
-  goal: string;
-  model: DeepSeekModel;
-  thinkingEnabled: boolean;
-  reasoningEffort: "high" | "max";
-  locale: Locale;
-}) {
-  const localized = copy[locale].apiSupervisorOutput;
-  return `${localized}\n\nGoal: ${goal}\nSettings: ${model}, thinking ${
-    thinkingEnabled ? "enabled" : "disabled"
-  }, reasoning ${reasoningEffort}.`;
-}
-
-function splitOutputChunks(output: string): string[] {
-  const midpoint = Math.ceil(output.length / 2);
-  return [output.slice(0, midpoint), output.slice(midpoint)].filter(Boolean);
-}
-
 function deriveTitle(goal: string): string {
   return goal.length <= 80 ? goal : `${goal.slice(0, 77)}...`;
 }
@@ -1777,6 +1742,7 @@ function getProviderError(
       ? agentLabels[failedEvent.payload.run.activeAgent]
       : "System",
     status: failedEvent.payload.run.status,
+    message: failedEvent.payload.error,
   };
 }
 

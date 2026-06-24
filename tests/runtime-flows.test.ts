@@ -16,6 +16,11 @@ import {
   TELEMETRY_REDACTED_VALUE,
 } from "@sage/runtime";
 import type { Run, RunEvent, Thread } from "@sage/shared";
+import {
+  appendSupervisorFailureEvent,
+  runSupervisorDeepSeekOnce,
+  type SupervisorProvider,
+} from "../apps/web/src/lib/supervisor-runner";
 
 const createdAt = "2026-06-24T01:00:00.000Z";
 
@@ -369,4 +374,246 @@ describe("runtime flows", () => {
       list: [{ token: TELEMETRY_REDACTED_VALUE }, "ok"],
     });
   });
+
+  it("runs Supervisor-only DeepSeek once and appends standard run events", async () => {
+    const store = createMemoryRuntimeStore(createEmptyRuntimeSnapshot());
+    const clock = createClock([
+      "2026-06-24T01:00:01.000Z",
+      "2026-06-24T01:00:02.000Z",
+    ]);
+    const ids = createIdFactory();
+    let providerInput: Parameters<SupervisorProvider>[1] | null = null;
+    const provider: SupervisorProvider = async (_config, input) => {
+      providerInput = input;
+      return {
+        ok: true,
+        value: {
+          id: "chatcmpl-test",
+          model: "deepseek-v4-flash",
+          choices: [
+            {
+              index: 0,
+              message: {
+                role: "assistant",
+                content: "这是 Supervisor 的真实回复。",
+                reasoningContent: null,
+              },
+              finishReason: "stop",
+            },
+          ],
+        },
+      };
+    };
+
+    store.upsertThread(thread);
+    store.appendEvent({
+      id: "event-run-created-for-supervisor",
+      runId: run.id,
+      type: "run.created",
+      sequence: 1,
+      createdAt,
+      payload: { run: { ...run, status: "queued", activeAgent: null } },
+    });
+
+    const result = await runSupervisorDeepSeekOnce({
+      store,
+      runId: run.id,
+      config: {
+        apiKey: "sk-test",
+        baseUrl: "https://api.deepseek.com",
+        defaultModel: "deepseek-v4-flash",
+        defaultReasoningEffort: "high",
+        thinkingEnabled: true,
+      },
+      provider,
+      now: clock,
+      createId: ids,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(providerInput).toMatchObject({
+      model: run.settings.model,
+      thinkingEnabled: run.settings.thinkingEnabled,
+      reasoningEffort: run.settings.reasoningEffort,
+      messages: [
+        { role: "system" },
+        { role: "user", content: run.goal },
+      ],
+    });
+    expect(result.events.map((event) => event.type)).toEqual([
+      "run.status_changed",
+      "message.delta",
+      "message.completed",
+      "run.completed",
+    ]);
+    expect(result.events.map((event) => event.sequence)).toEqual([
+      2, 3, 4, 5,
+    ]);
+
+    const delta = result.events.find(
+      (event): event is Extract<RunEvent, { type: "message.delta" }> =>
+        event.type === "message.delta",
+    );
+    const completed = result.events.find(
+      (event): event is Extract<RunEvent, { type: "message.completed" }> =>
+        event.type === "message.completed",
+    );
+    expect(delta?.payload.messageId).toBe(completed?.payload.message.id);
+    expect(completed?.payload.message.content).toBe(delta?.payload.delta);
+    expect(store.getRun(run.id)).toMatchObject({
+      status: "completed",
+      activeAgent: null,
+      completedAt: "2026-06-24T01:00:02.000Z",
+    });
+    expect(store.getMessagesByRun(run.id)[0]?.content).toBe(
+      "这是 Supervisor 的真实回复。",
+    );
+  });
+
+  it("turns provider failures into safe run.failed events", async () => {
+    const store = createMemoryRuntimeStore(createEmptyRuntimeSnapshot());
+    store.upsertThread(thread);
+    store.appendEvent({
+      id: "event-run-created-for-failure",
+      runId: run.id,
+      type: "run.created",
+      sequence: 1,
+      createdAt,
+      payload: { run: { ...run, status: "queued", activeAgent: null } },
+    });
+
+    const result = await runSupervisorDeepSeekOnce({
+      store,
+      runId: run.id,
+      config: {
+        apiKey: "sk-secret-should-not-leak",
+        baseUrl: "https://api.deepseek.com",
+        defaultModel: "deepseek-v4-flash",
+        defaultReasoningEffort: "high",
+        thinkingEnabled: true,
+      },
+      provider: async () => ({
+        ok: false,
+        issue: {
+          code: "missing_api_key",
+          message: "DEEPSEEK_API_KEY is required before calling DeepSeek.",
+        },
+      }),
+      now: createClock([
+        "2026-06-24T01:00:05.000Z",
+        "2026-06-24T01:00:06.000Z",
+      ]),
+      createId: createIdFactory(),
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.events.map((event) => event.type)).toEqual([
+      "run.status_changed",
+      "run.failed",
+    ]);
+    expect(result.safeMessage).toContain("missing_api_key");
+    expect(result.safeMessage).not.toContain("sk-secret-should-not-leak");
+    expect(store.getRun(run.id)).toMatchObject({
+      status: "failed",
+      activeAgent: "supervisor",
+      completedAt: "2026-06-24T01:00:06.000Z",
+    });
+  });
+
+  it("treats empty DeepSeek output as provider failure", async () => {
+    const store = createMemoryRuntimeStore(createEmptyRuntimeSnapshot());
+    store.upsertThread(thread);
+    store.appendEvent({
+      id: "event-run-created-for-empty-output",
+      runId: run.id,
+      type: "run.created",
+      sequence: 1,
+      createdAt,
+      payload: { run: { ...run, status: "queued", activeAgent: null } },
+    });
+
+    const result = await runSupervisorDeepSeekOnce({
+      store,
+      runId: run.id,
+      config: {
+        apiKey: "sk-test",
+        baseUrl: "https://api.deepseek.com",
+        defaultModel: "deepseek-v4-flash",
+        defaultReasoningEffort: "high",
+        thinkingEnabled: true,
+      },
+      provider: async () => ({
+        ok: true,
+        value: {
+          id: null,
+          model: null,
+          choices: [],
+        },
+      }),
+      now: createClock([
+        "2026-06-24T01:00:07.000Z",
+        "2026-06-24T01:00:08.000Z",
+      ]),
+      createId: createIdFactory(),
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.safeMessage).toContain("invalid_response");
+    expect(
+      store
+        .getEventsByRun(run.id)
+        .find((event) => event.type === "run.failed"),
+    ).toBeDefined();
+  });
+
+  it("appends config failures without calling a provider", () => {
+    const store = createMemoryRuntimeStore(createEmptyRuntimeSnapshot());
+    store.upsertThread(thread);
+    store.appendEvent({
+      id: "event-run-created-for-config-failure",
+      runId: run.id,
+      type: "run.created",
+      sequence: 1,
+      createdAt,
+      payload: { run: { ...run, status: "queued", activeAgent: null } },
+    });
+
+    const result = appendSupervisorFailureEvent({
+      store,
+      runId: run.id,
+      safeMessage:
+        "provider_error: invalid_config. Authorization Bearer sk-secret-token and sk-naked-secret-token",
+      now: createClock([
+        "2026-06-24T01:00:09.000Z",
+        "2026-06-24T01:00:10.000Z",
+      ]),
+      createId: createIdFactory(),
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.events.map((event) => event.type)).toEqual([
+      "run.status_changed",
+      "run.failed",
+    ]);
+    expect(result.safeMessage).not.toContain("sk-secret-token");
+    expect(result.safeMessage).not.toContain("sk-naked-secret-token");
+    expect(result.safeMessage).toContain("[redacted]");
+  });
 });
+
+function createClock(values: string[]): () => string {
+  let index = 0;
+  return () => values[Math.min(index++, values.length - 1)] ?? createdAt;
+}
+
+function createIdFactory(): (prefix: string) => string {
+  let index = 0;
+  return (prefix: string) => {
+    index += 1;
+    return `${prefix}-test-${index}`;
+  };
+}
