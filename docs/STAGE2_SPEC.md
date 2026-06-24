@@ -130,3 +130,28 @@ Stage 2 按以下小 task 推进：
 - 不实现 browser EventSource 长连接保持。
 - 不实现 live event bus subscription。
 - 不把 UI timeline 接到该 endpoint。
+
+## Task 2.5：Event-Driven Timeline
+
+范围：
+
+- 将 Product Shell 右侧 `Agent Timeline` 从静态 `steps` 数组改为从 `RunEvent[]` 派生渲染。
+- Stage 2.5 仍使用本地 seed events，不接 live SSE / EventSource。
+- timeline 需要按当前 active run 过滤，并按 `sequence` 渲染。
+- `step.*`、`message.*`、`tool.*`、`approval.*`、`artifact.created`、`run.*` 事件都要有可读 fallback。
+- 中英文界面切换后，timeline 的事件标题要同步切换；agent role 和 tool name 可以保留英文。
+- Composer 的本地 `Run` 点击需要追加一条本地模拟 message 和对应 `message.completed` event，用来验证 timeline 由 events 驱动。
+
+验收：
+
+- 首屏 `Agent Timeline` 仍展示 Supervisor、Researcher、Builder 等 agent 活动。
+- 切换 run 后，timeline 跟随 active run 更新。
+- 点击 composer `Run` 后，conversation 增加消息，timeline 增加对应本地 event。
+- 不接 DeepSeek、不调用 `/api/runs/[runId]/events`、不实现 live subscription。
+- Desktop/mobile 不出现 timeline 文本遮挡或横向溢出。
+
+暂不做：
+
+- 不迁移 tool calls、approvals、artifacts 面板数据源。
+- 不把 create-run API 接入 composer。
+- 不做真正 streaming timeline。

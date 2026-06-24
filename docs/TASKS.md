@@ -55,7 +55,8 @@
 - [x] 添加 create-run API。
 - [x] 编写 Task 2.4 SSE event endpoint 范围与验收标准。
 - [x] 添加 SSE event endpoint。
-- [ ] 渲染 event-driven timeline。
+- [x] 编写 Task 2.5 event-driven timeline 范围与验收标准。
+- [x] 渲染 event-driven timeline。
 - [ ] 在 inspector 中渲染 tool calls、approvals、artifacts。
 
 ## Stage 3：DeepSeek V4 Provider

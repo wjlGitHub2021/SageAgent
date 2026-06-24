@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { AgentRole, RunEvent } from "@sage/shared";
 
 type Locale = "zh" | "en";
 type ApprovalStatus = "pending" | "approved" | "rejected";
@@ -33,6 +34,18 @@ const copy = {
     reject: "拒绝",
     action: "操作",
     status: "状态",
+    runCreated: "创建 run",
+    runStatusChanged: "更新 run 状态",
+    messageDelta: "接收消息增量",
+    messageCompleted: "生成本地消息",
+    toolStarted: "开始工具调用",
+    toolCompleted: "完成工具调用",
+    toolFailed: "工具调用失败",
+    approvalRequested: "请求审批",
+    approvalResolved: "审批已处理",
+    artifactCreated: "生成产物",
+    runCompleted: "完成 run",
+    runFailed: "run 失败",
     writeFileRequest: "Builder 请求写入文件",
     composerHint: "点击运行会追加一条本地模拟消息，不触发真实 provider。",
     headerFallback: "初始化 Sage Agent Product Shell",
@@ -67,6 +80,18 @@ const copy = {
     reject: "Reject",
     action: "action",
     status: "status",
+    runCreated: "Created run",
+    runStatusChanged: "Updated run status",
+    messageDelta: "Received message delta",
+    messageCompleted: "Generated local message",
+    toolStarted: "Started tool call",
+    toolCompleted: "Completed tool call",
+    toolFailed: "Tool call failed",
+    approvalRequested: "Requested approval",
+    approvalResolved: "Approval resolved",
+    artifactCreated: "Created artifact",
+    runCompleted: "Completed run",
+    runFailed: "Run failed",
     writeFileRequest: "Builder requests file write",
     composerHint:
       "Click Run to append a local simulated message without calling a real provider.",
@@ -141,32 +166,129 @@ const baseMessages: Message[] = [
   },
 ];
 
-const steps = [
+const stepTitleCopy: Record<string, Record<Locale, string>> = {
+  "step-1842-supervisor": {
+    zh: "拆解 Stage 1 product shell",
+    en: "Break down Stage 1 product shell",
+  },
+  "step-1842-researcher": {
+    zh: "整理 Codex-like 信息架构",
+    en: "Map Codex-like information architecture",
+  },
+  "step-1842-builder": {
+    zh: "生成静态工作台 UI",
+    en: "Build static workbench UI",
+  },
+  "step-1839-supervisor": {
+    zh: "锁定 Stage 1 规格",
+    en: "Lock Stage 1 spec",
+  },
+  "step-1839-reviewer": {
+    zh: "完成规格一致性检查",
+    en: "Complete spec consistency review",
+  },
+};
+
+const seedRunEvents: RunEvent[] = [
   {
-    agent: "Supervisor",
-    title: {
-      zh: "拆解 Stage 1 product shell",
-      en: "Break down Stage 1 product shell",
+    id: "event-1842-1",
+    runId: "run-1842",
+    type: "step.completed",
+    sequence: 1,
+    createdAt: "2026-06-24T01:42:00.000Z",
+    payload: {
+      step: {
+        id: "step-1842-supervisor",
+        runId: "run-1842",
+        agent: "supervisor",
+        title: "Break down Stage 1 product shell",
+        status: "completed",
+        input: null,
+        output: null,
+        startedAt: "2026-06-24T01:42:00.000Z",
+        completedAt: "2026-06-24T01:43:00.000Z",
+      },
     },
-    status: "completed",
   },
   {
-    agent: "Researcher",
-    title: {
-      zh: "整理 Codex-like 信息架构",
-      en: "Map Codex-like information architecture",
+    id: "event-1842-2",
+    runId: "run-1842",
+    type: "step.completed",
+    sequence: 2,
+    createdAt: "2026-06-24T01:43:00.000Z",
+    payload: {
+      step: {
+        id: "step-1842-researcher",
+        runId: "run-1842",
+        agent: "researcher",
+        title: "Map Codex-like information architecture",
+        status: "completed",
+        input: null,
+        output: null,
+        startedAt: "2026-06-24T01:43:00.000Z",
+        completedAt: "2026-06-24T01:44:00.000Z",
+      },
     },
-    status: "completed",
   },
   {
-    agent: "Builder",
-    title: { zh: "生成静态工作台 UI", en: "Build static workbench UI" },
-    status: "running",
+    id: "event-1842-3",
+    runId: "run-1842",
+    type: "step.started",
+    sequence: 3,
+    createdAt: "2026-06-24T01:44:00.000Z",
+    payload: {
+      step: {
+        id: "step-1842-builder",
+        runId: "run-1842",
+        agent: "builder",
+        title: "Build static workbench UI",
+        status: "running",
+        input: null,
+        output: null,
+        startedAt: "2026-06-24T01:44:00.000Z",
+        completedAt: null,
+      },
+    },
   },
   {
-    agent: "Reviewer",
-    title: { zh: "QA 审查与风险标注", en: "QA review and risk notes" },
-    status: "pending",
+    id: "event-1839-1",
+    runId: "run-1839",
+    type: "step.completed",
+    sequence: 1,
+    createdAt: "2026-06-24T00:18:00.000Z",
+    payload: {
+      step: {
+        id: "step-1839-supervisor",
+        runId: "run-1839",
+        agent: "supervisor",
+        title: "Lock Stage 1 spec",
+        status: "completed",
+        input: null,
+        output: null,
+        startedAt: "2026-06-24T00:18:00.000Z",
+        completedAt: "2026-06-24T00:21:00.000Z",
+      },
+    },
+  },
+  {
+    id: "event-1839-2",
+    runId: "run-1839",
+    type: "step.completed",
+    sequence: 2,
+    createdAt: "2026-06-24T00:21:00.000Z",
+    payload: {
+      step: {
+        id: "step-1839-reviewer",
+        runId: "run-1839",
+        agent: "reviewer",
+        title: "Complete spec consistency review",
+        status: "completed",
+        input: null,
+        output: null,
+        startedAt: "2026-06-24T00:21:00.000Z",
+        completedAt: "2026-06-24T00:22:00.000Z",
+      },
+    },
   },
 ];
 
@@ -174,6 +296,20 @@ const toolCalls = [
   { tool: "read_project_docs", agent: "Researcher", status: "completed" },
   { tool: "draft_ui_shell", agent: "Builder", status: "running" },
 ];
+
+const agentLabels = {
+  supervisor: "Supervisor",
+  researcher: "Researcher",
+  builder: "Builder",
+  reviewer: "Reviewer",
+} satisfies Record<AgentRole, string>;
+
+type TimelineRow = {
+  id: string;
+  agent: string;
+  title: Record<Locale, string>;
+  status: string;
+};
 
 function StatusDot({ status }: { status: string }) {
   const color =
@@ -220,9 +356,11 @@ export default function Home() {
   const [approvalStatus, setApprovalStatus] =
     useState<ApprovalStatus>("pending");
   const [messages, setMessages] = useState<Message[]>(baseMessages);
+  const [runEvents, setRunEvents] = useState<RunEvent[]>(seedRunEvents);
 
   const activeThread = threadItems.find((thread) => thread.id === activeThreadId);
   const activeRun = runs.find((run) => run.id === activeRunId);
+  const timelineRows = getTimelineRows(runEvents, activeRunId);
   const artifacts = [
     { title: t.stage1Spec, kind: "document" },
     { title: t.screenshotCheck, kind: "summary" },
@@ -247,13 +385,38 @@ export default function Home() {
   }
 
   function handleRunClick() {
+    const createdAt = new Date().toISOString();
+    const messageId = `message-local-${Date.now()}`;
+    const messageBody = {
+      zh: `已用 ${model} / ${reasoningEffort} ${copy.zh.simulatedEvent}`,
+      en: `${model} / ${reasoningEffort} ${copy.en.simulatedEvent}`,
+    };
+
     setMessages((current) => [
       ...current,
       {
         role: "Supervisor",
-        body: {
-          zh: `已用 ${model} / ${reasoningEffort} ${copy.zh.simulatedEvent}`,
-          en: `${model} / ${reasoningEffort} ${copy.en.simulatedEvent}`,
+        body: messageBody,
+      },
+    ]);
+    setRunEvents((current) => [
+      ...current,
+      {
+        id: `event-local-${Date.now()}`,
+        runId: activeRunId,
+        type: "message.completed",
+        sequence: nextEventSequence(current, activeRunId),
+        createdAt,
+        payload: {
+          message: {
+            id: messageId,
+            threadId: activeThreadId,
+            runId: activeRunId,
+            role: "agent",
+            agent: "supervisor",
+            content: messageBody.en,
+            createdAt,
+          },
         },
       },
     ]);
@@ -410,12 +573,12 @@ export default function Home() {
         <aside className="inspector">
           <Panel title={t.agentTimeline}>
             <div className="timeline">
-              {steps.map((step) => (
-                <div className="timeline-row" key={`${step.agent}-${step.title.en}`}>
-                  <StatusDot status={step.status} />
+              {timelineRows.map((row) => (
+                <div className="timeline-row" key={row.id}>
+                  <StatusDot status={row.status} />
                   <div>
-                    <p>{step.agent}</p>
-                    <small>{step.title[locale]}</small>
+                    <p>{row.agent}</p>
+                    <small>{row.title[locale]}</small>
                   </div>
                 </div>
               ))}
@@ -470,5 +633,142 @@ export default function Home() {
         </aside>
       </div>
     </main>
+  );
+}
+
+function getTimelineRows(
+  events: readonly RunEvent[],
+  activeRunId: string,
+): TimelineRow[] {
+  return events
+    .filter((event) => event.runId === activeRunId)
+    .toSorted(
+      (left, right) =>
+        left.sequence - right.sequence ||
+        left.createdAt.localeCompare(right.createdAt),
+    )
+    .map(toTimelineRow);
+}
+
+function toTimelineRow(event: RunEvent): TimelineRow {
+  switch (event.type) {
+    case "run.created":
+      return systemTimelineRow(event, "Supervisor", "runCreated", "completed");
+    case "run.status_changed":
+      return systemTimelineRow(
+        event,
+        event.payload.activeAgent
+          ? agentLabels[event.payload.activeAgent]
+          : "Supervisor",
+        "runStatusChanged",
+        event.payload.status,
+      );
+    case "step.started":
+    case "step.completed":
+    case "step.failed":
+      return {
+        id: event.id,
+        agent: agentLabels[event.payload.step.agent],
+        title: stepTitleCopy[event.payload.step.id] ?? {
+          zh: event.payload.step.title,
+          en: event.payload.step.title,
+        },
+        status: event.payload.step.status,
+      };
+    case "message.delta":
+      return {
+        id: event.id,
+        agent: event.payload.agent ? agentLabels[event.payload.agent] : "System",
+        title: {
+          zh: copy.zh.messageDelta,
+          en: copy.en.messageDelta,
+        },
+        status: "running",
+      };
+    case "message.completed":
+      return {
+        id: event.id,
+        agent: event.payload.message.agent
+          ? agentLabels[event.payload.message.agent]
+          : "System",
+        title: {
+          zh: copy.zh.messageCompleted,
+          en: copy.en.messageCompleted,
+        },
+        status: "completed",
+      };
+    case "tool.started":
+      return toolTimelineRow(event, "toolStarted", "running");
+    case "tool.completed":
+      return toolTimelineRow(event, "toolCompleted", event.payload.toolCall.status);
+    case "tool.failed":
+      return toolTimelineRow(event, "toolFailed", event.payload.toolCall.status);
+    case "approval.requested":
+      return {
+        id: event.id,
+        agent: agentLabels[event.payload.approval.requestedBy],
+        title: {
+          zh: copy.zh.approvalRequested,
+          en: copy.en.approvalRequested,
+        },
+        status: event.payload.approval.status,
+      };
+    case "approval.resolved":
+      return {
+        id: event.id,
+        agent: agentLabels[event.payload.approval.requestedBy],
+        title: {
+          zh: copy.zh.approvalResolved,
+          en: copy.en.approvalResolved,
+        },
+        status: event.payload.approval.status,
+      };
+    case "artifact.created":
+      return systemTimelineRow(event, "Builder", "artifactCreated", "completed");
+    case "run.completed":
+      return systemTimelineRow(event, "Supervisor", "runCompleted", "completed");
+    case "run.failed":
+      return systemTimelineRow(event, "Supervisor", "runFailed", "failed");
+  }
+}
+
+function systemTimelineRow(
+  event: RunEvent,
+  agent: string,
+  titleKey: keyof typeof copy.zh,
+  status: string,
+): TimelineRow {
+  return {
+    id: event.id,
+    agent,
+    title: {
+      zh: copy.zh[titleKey],
+      en: copy.en[titleKey],
+    },
+    status,
+  };
+}
+
+function toolTimelineRow(
+  event: Extract<RunEvent, { type: "tool.started" | "tool.completed" | "tool.failed" }>,
+  titleKey: keyof typeof copy.zh,
+  status: string,
+): TimelineRow {
+  return {
+    id: event.id,
+    agent: agentLabels[event.payload.toolCall.agent],
+    title: {
+      zh: `${copy.zh[titleKey]}: ${event.payload.toolCall.toolName}`,
+      en: `${copy.en[titleKey]}: ${event.payload.toolCall.toolName}`,
+    },
+    status,
+  };
+}
+
+function nextEventSequence(events: readonly RunEvent[], runId: string): number {
+  return (
+    events
+      .filter((event) => event.runId === runId)
+      .reduce((max, event) => Math.max(max, event.sequence), 0) + 1
   );
 }
