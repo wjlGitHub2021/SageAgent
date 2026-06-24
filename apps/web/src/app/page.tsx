@@ -31,8 +31,8 @@ const copy = {
     modelSettings: "模型设置",
     model: "模型",
     thinking: "推理",
-    on: "开",
-    off: "关",
+    enabled: "开启",
+    disabled: "关闭",
     agentTimeline: "Agent 时间线",
     toolCalls: "工具调用",
     approval: "审批",
@@ -81,8 +81,8 @@ const copy = {
     modelSettings: "Model settings",
     model: "Model",
     thinking: "Thinking",
-    on: "on",
-    off: "off",
+    enabled: "Enabled",
+    disabled: "Disabled",
     agentTimeline: "Agent Timeline",
     toolCalls: "Tool Calls",
     approval: "Approval",
@@ -571,8 +571,8 @@ export default function Home() {
     const createdAt = new Date().toISOString();
     const messageId = `message-local-${Date.now()}`;
     const messageBody = {
-      zh: `已用 ${model} / ${reasoningEffort} ${copy.zh.simulatedEvent}`,
-      en: `${model} / ${reasoningEffort} ${copy.en.simulatedEvent}`,
+      zh: `已用 ${model} / thinking ${thinkingEnabled ? "enabled" : "disabled"} / ${reasoningEffort} ${copy.zh.simulatedEvent}`,
+      en: `${model} / thinking ${thinkingEnabled ? "enabled" : "disabled"} / ${reasoningEffort} ${copy.en.simulatedEvent}`,
     };
 
     setMessages((current) => [
@@ -727,7 +727,11 @@ export default function Home() {
             </div>
 
             <div className="model-controls" aria-label={t.modelSettings}>
-              <div className="segmented model-selector" aria-label={t.model}>
+              <div
+                className="segmented model-selector"
+                role="group"
+                aria-label={t.model}
+              >
                 {DEEPSEEK_MODELS.map((modelOption) => (
                   <button
                     aria-pressed={model === modelOption}
@@ -739,15 +743,27 @@ export default function Home() {
                   </button>
                 ))}
               </div>
-              <button
-                className={
-                  thinkingEnabled ? "toggle-button active" : "toggle-button"
-                }
-                onClick={() => setThinkingEnabled((current) => !current)}
+              <div
+                className="segmented thinking-toggle"
+                role="group"
+                aria-label={t.thinking}
               >
-                {t.thinking} {thinkingEnabled ? t.on : t.off}
-              </button>
-              <div className="segmented" aria-label="reasoning effort">
+                <button
+                  aria-pressed={thinkingEnabled}
+                  className={thinkingEnabled ? "selected" : ""}
+                  onClick={() => setThinkingEnabled(true)}
+                >
+                  {t.enabled}
+                </button>
+                <button
+                  aria-pressed={!thinkingEnabled}
+                  className={thinkingEnabled ? "" : "selected"}
+                  onClick={() => setThinkingEnabled(false)}
+                >
+                  {t.disabled}
+                </button>
+              </div>
+              <div className="segmented" role="group" aria-label="reasoning effort">
                 <button
                   className={reasoningEffort === "high" ? "selected" : ""}
                   onClick={() => setReasoningEffort("high")}

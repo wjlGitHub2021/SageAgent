@@ -275,6 +275,11 @@ code {
   white-space: nowrap;
 }
 
+.thinking-toggle button {
+  min-width: 74px;
+  white-space: nowrap;
+}
+
 .thread-item {
   display: flex;
   min-height: 50px;
@@ -626,6 +631,15 @@ code {
 
   .model-selector button {
     max-width: none;
+  }
+
+  .thinking-toggle {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, auto));
+  }
+
+  .thinking-toggle button {
+    min-width: 62px;
   }
 
   .inspector {

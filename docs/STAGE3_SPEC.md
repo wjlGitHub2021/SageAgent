@@ -155,3 +155,30 @@ Stage 3 按以下小 task 推进：
 - 不持久化 model preference。
 - 不新增模型列表 API。
 - 不实现 thinking mode toggle 或 reasoning effort selector 的新交互；它们在 Task 3.5 和 Task 3.6 单独处理。
+
+## Task 3.5：Thinking Mode Toggle
+
+范围：
+
+- 将工作台 header 中的 thinking control 从单按钮开关升级为明确的双态 toggle。
+- 仅暴露 DeepSeek V4 支持的 thinking mode：
+  - enabled
+  - disabled
+- 默认选中 enabled，对应 adapter 请求体 `thinking: { type: "enabled" }`。
+- disabled 对应 adapter 请求体 `thinking: { type: "disabled" }`。
+- 中文界面显示 `开启` / `关闭`，English 界面显示 `Enabled` / `Disabled`。
+- composer 的本地模拟 run message 必须继续反映当前 thinking mode。
+
+验收：
+
+- 用户可以直接看到 thinking enabled 与 disabled 两个状态，而不是只能通过单按钮文本判断。
+- 切换到 disabled 后，Run 本地模拟消息包含当前 thinking disabled 状态。
+- 切回 enabled 后，Run 本地模拟消息包含当前 thinking enabled 状态。
+- desktop 与 mobile 下 thinking toggle 不溢出、不遮挡 model selector 或 reasoning controls。
+- `rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+
+暂不做：
+
+- 不接入真实 DeepSeek 请求。
+- 不持久化 thinking preference。
+- 不调整 `high` / `max` reasoning effort selector；它在 Task 3.6 单独处理。
