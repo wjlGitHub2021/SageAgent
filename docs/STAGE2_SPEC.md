@@ -48,3 +48,30 @@ Stage 2 按以下小 task 推进：
 - 检查类型命名是否清晰、可维护、商业化可扩展。
 - 检查所有 union 类型是否与规格一致，避免 UI 与 runtime 后续出现状态漂移。
 - 检查 package export 是否稳定，后续 `apps/web` 和 `packages/runtime` 可以直接引用。
+
+## Task 2.2：Local Runtime State Store
+
+范围：
+
+- 在 `packages/runtime` 中建立 TypeScript package。
+- 使用 `@sage/shared` 的 domain types 定义 `RuntimeSnapshot` 和内存 store。
+- store 至少支持读取完整 snapshot、按 id 读取 thread/run、按 thread 读取 runs、按 run 读取 events。
+- store 至少支持 upsert thread/run/message/step/tool call/approval/artifact，以及 append run event。
+- append run event 时要把事件写入 event log，并根据事件 payload 更新对应实体，形成后续 SSE reducer 的服务端侧基础。
+- `message.delta` 需要累积更新 message snapshot；重复 `event.id` 的 append 应当幂等处理。
+- 保持 local single-user、in-memory，不引入数据库、文件持久化、API handler、SSE endpoint 或真实 agent loop。
+
+验收：
+
+- `packages/runtime` 可以独立通过 TypeScript typecheck。
+- root `pnpm build` 会先构建 `@sage/shared`，再构建 `@sage/runtime` 和 web app。
+- store 不重新定义 Run System 类型，所有 domain entity 必须来自 `@sage/shared`。
+- `run.failed`、`step.failed`、`tool.failed` 能通过 append event 更新对应 state。
+- `message.delta` 能正确累积 message content，并在重复 event id 时保持幂等。
+
+暂不做：
+
+- 不实现 create-run API。
+- 不实现 SSE endpoint。
+- 不把 Stage 1 UI seed data 迁移到 runtime store。
+- 不做跨进程持久化或数据库。

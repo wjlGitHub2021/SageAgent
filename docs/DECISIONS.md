@@ -184,3 +184,25 @@ Stage 2 从 `@sage/shared` package 开始，先定义 `Thread`、`Run`、`Messag
 - Run system 是 Sage Agent 的核心抽象，必须先统一数据合同。
 - 共享类型可以减少 UI 与 runtime 各自发明状态形状导致的漂移。
 - 明确失败事件和快照语义，能降低后续 event-driven UI 的复杂度。
+
+## DEC-0011：Local In-Memory Runtime Store
+
+状态：accepted
+
+决策：
+
+Stage 2 先在 `@sage/runtime` 中实现 local single-user 的 in-memory runtime state store，负责保存 `RuntimeSnapshot` 并通过 `appendEvent` 把 run events 应用到当前 state。
+
+范围：
+
+- store 只运行在本地进程内，不做数据库、文件持久化或跨进程同步。
+- store 使用 `@sage/shared` 的 domain types，不重新定义 Run System entity。
+- store 维护 entities 和 event log 两条视角，便于后续 create-run API 与 SSE endpoint 复用。
+- `appendEvent` 需要覆盖 completed / failed 等终态事件，让 UI 和 audit trail 可以从同一条 event stream 派生状态。
+- `appendEvent` 对重复 `event.id` 必须幂等，避免 SSE 重连或重放造成状态重复累积。
+
+理由：
+
+- 在真实 agent loop 和 provider 接入前，需要一个可测试、可替换的本地状态层。
+- in-memory store 足够支撑 MVP 的 local single-user 模式，复杂持久化可以等核心 run flow 稳定后再引入。
+- 先把 event reducer 行为放到 runtime package，可以避免 UI 直接承担状态推导责任。
