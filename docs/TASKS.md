@@ -73,7 +73,8 @@
 - [x] 添加 model selector。
 - [x] 编写 Task 3.5 thinking mode toggle 范围与验收标准。
 - [x] 添加 thinking mode toggle。
-- [ ] 添加 `high` / `max` reasoning effort selector。
+- [x] 编写 Task 3.6 reasoning effort selector 范围与验收标准。
+- [x] 添加 `high` / `max` reasoning effort selector。
 - [ ] 将 streamed model output 写入 run events。
 - [ ] 在 UI 中清楚展示 provider errors。
 

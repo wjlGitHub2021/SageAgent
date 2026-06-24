@@ -182,3 +182,30 @@ Stage 3 按以下小 task 推进：
 - 不接入真实 DeepSeek 请求。
 - 不持久化 thinking preference。
 - 不调整 `high` / `max` reasoning effort selector；它在 Task 3.6 单独处理。
+
+## Task 3.6：Reasoning Effort Selector
+
+范围：
+
+- 将工作台 header 中的 reasoning effort control 固化为明确的双项 selector。
+- 仅暴露 DeepSeek V4 支持的 `reasoning_effort`：
+  - `high`
+  - `max`
+- 默认选中 `high`，对应 adapter 请求体 `reasoning_effort: "high"`。
+- `max` 对应 adapter 请求体 `reasoning_effort: "max"`。
+- selector 必须有明确的 accessible label，中文为 `推理强度`，English 为 `Reasoning effort`。
+- composer 的本地模拟 run message 必须继续反映当前 reasoning effort。
+
+验收：
+
+- 用户可以直接看到 `high` 与 `max` 两个选项，且选中状态清楚。
+- 切换到 `max` 后，Run 本地模拟消息包含 `/ max`。
+- 切回 `high` 后，Run 本地模拟消息包含 `/ high`。
+- desktop 与 mobile 下 reasoning selector 不溢出、不遮挡 model selector 或 thinking toggle。
+- `rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+
+暂不做：
+
+- 不接入真实 DeepSeek 请求。
+- 不持久化 reasoning preference。
+- 不新增除 `high` / `max` 以外的档位。

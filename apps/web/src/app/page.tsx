@@ -33,6 +33,7 @@ const copy = {
     thinking: "推理",
     enabled: "开启",
     disabled: "关闭",
+    reasoningEffort: "推理强度",
     agentTimeline: "Agent 时间线",
     toolCalls: "工具调用",
     approval: "审批",
@@ -83,6 +84,7 @@ const copy = {
     thinking: "Thinking",
     enabled: "Enabled",
     disabled: "Disabled",
+    reasoningEffort: "Reasoning effort",
     agentTimeline: "Agent Timeline",
     toolCalls: "Tool Calls",
     approval: "Approval",
@@ -763,14 +765,20 @@ export default function Home() {
                   {t.disabled}
                 </button>
               </div>
-              <div className="segmented" role="group" aria-label="reasoning effort">
+              <div
+                className="segmented reasoning-selector"
+                role="group"
+                aria-label={t.reasoningEffort}
+              >
                 <button
+                  aria-pressed={reasoningEffort === "high"}
                   className={reasoningEffort === "high" ? "selected" : ""}
                   onClick={() => setReasoningEffort("high")}
                 >
                   high
                 </button>
                 <button
+                  aria-pressed={reasoningEffort === "max"}
                   className={reasoningEffort === "max" ? "selected" : ""}
                   onClick={() => setReasoningEffort("max")}
                 >

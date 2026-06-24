@@ -280,6 +280,11 @@ code {
   white-space: nowrap;
 }
 
+.reasoning-selector button {
+  min-width: 48px;
+  white-space: nowrap;
+}
+
 .thread-item {
   display: flex;
   min-height: 50px;
