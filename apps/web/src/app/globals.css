@@ -1,0 +1,519 @@
+@import "tailwindcss";
+
+:root {
+  --app-bg: #f4f5f7;
+  --panel-bg: #ffffff;
+  --panel-muted: #f8f9fb;
+  --text-main: #17181c;
+  --text-muted: #6b7280;
+  --border: #dfe3ea;
+  --border-strong: #c9d0da;
+  --accent: #2563eb;
+  --accent-soft: #e7efff;
+  --success-soft: #e9f8f0;
+  --shadow-soft: 0 1px 2px rgba(22, 28, 45, 0.06);
+}
+
+@theme inline {
+  --color-background: var(--app-bg);
+  --color-foreground: var(--text-main);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--app-bg);
+}
+
+body {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--text-main);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+code {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo,
+    Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.app-shell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(280px, 340px);
+  gap: 1px;
+  background: var(--border);
+}
+
+.sidebar,
+.workspace,
+.inspector {
+  min-width: 0;
+  background: var(--app-bg);
+}
+
+.sidebar,
+.inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+}
+
+.workspace {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  padding: 18px;
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.brand-mark {
+  display: grid;
+  height: 32px;
+  width: 32px;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: #111827;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.brand-name,
+.brand-subtitle,
+.section-label,
+.message-role,
+.run-row p,
+.timeline-row p,
+.approval-box p {
+  margin: 0;
+}
+
+.brand-row > div:last-child,
+.workspace-header > div:first-child,
+.message > div:last-child,
+.composer > div,
+.run-row > div,
+.timeline-row > div {
+  min-width: 0;
+}
+
+.workspace-header h1,
+.workspace-header p,
+.message-body,
+.composer span,
+.thread-item span,
+.thread-item small,
+.run-row p,
+.run-row small,
+.timeline-row p,
+.timeline-row small,
+.approval-box small,
+.tool-row code {
+  overflow-wrap: anywhere;
+}
+
+.brand-name {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.brand-subtitle,
+.section-label,
+.run-row small,
+.timeline-row small,
+.message-body,
+.approval-box small,
+.artifact-row small,
+.composer span {
+  color: var(--text-muted);
+}
+
+.brand-subtitle,
+.run-row small,
+.timeline-row small,
+.artifact-row small,
+.approval-box small {
+  font-size: 11px;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-soft);
+}
+
+.panel-header {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding: 0 10px;
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ghost-button,
+.select-button,
+.toggle-button,
+.segmented button,
+.composer button,
+.approval-actions button {
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.ghost-button {
+  min-height: 24px;
+  padding: 0 8px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.thread-item {
+  display: flex;
+  min-height: 50px;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  padding: 8px;
+  text-align: left;
+}
+
+.thread-item span {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.thread-item small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.thread-item.active {
+  border-color: #c7d7fe;
+  background: var(--accent-soft);
+}
+
+.run-row,
+.timeline-row,
+.tool-row,
+.artifact-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.run-row p,
+.timeline-row p,
+.artifact-row span {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+  padding: 16px;
+  box-shadow: var(--shadow-soft);
+}
+
+.section-label {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.workspace-header h1 {
+  margin: 5px 0 6px;
+  font-size: 24px;
+  font-weight: 760;
+  letter-spacing: 0;
+  line-height: 1.15;
+}
+
+.workspace-header p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.model-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 260px;
+  max-width: 100%;
+}
+
+.select-button,
+.toggle-button,
+.segmented button {
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.toggle-button.active,
+.segmented .selected {
+  border-color: #9ab8ff;
+  background: var(--accent-soft);
+  color: #1d4ed8;
+}
+
+.segmented {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: #fff;
+}
+
+.segmented button {
+  border: 0;
+  border-radius: 0;
+}
+
+.conversation {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+}
+
+.message {
+  display: flex;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+  padding: 12px;
+  box-shadow: var(--shadow-soft);
+}
+
+.message-avatar {
+  display: grid;
+  height: 28px;
+  width: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+  border-radius: 7px;
+  background: #eef2f7;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.message-role {
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.message-body {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.composer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--panel-bg);
+  padding: 12px;
+  box-shadow: var(--shadow-soft);
+}
+
+.composer p {
+  margin: 0 0 3px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.composer span {
+  font-size: 12px;
+}
+
+.composer button {
+  min-height: 34px;
+  min-width: 72px;
+  border-color: #1d4ed8;
+  background: #2563eb;
+  color: #fff;
+}
+
+.timeline,
+.approval-box {
+  padding: 10px;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tool-row,
+.artifact-row {
+  justify-content: space-between;
+  border-radius: 7px;
+  background: var(--panel-muted);
+  padding: 8px;
+}
+
+.tool-row code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.tool-row span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.approval-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-left: 3px solid #f59e0b;
+  background: #fff8eb;
+}
+
+.approval-box p {
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.approval-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.approval-actions button {
+  min-height: 30px;
+  padding: 0 10px;
+}
+
+@media (max-width: 1080px) {
+  .app-shell {
+    grid-template-columns: minmax(190px, 230px) minmax(0, 1fr);
+  }
+
+  .inspector {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-height: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+  }
+
+  .sidebar,
+  .workspace,
+  .inspector {
+    min-height: auto;
+  }
+
+  .workspace {
+    padding: 12px;
+  }
+
+  .workspace-header,
+  .composer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .model-controls {
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
+  .workspace-header h1 {
+    font-size: 20px;
+    line-height: 1.22;
+  }
+
+  .select-button,
+  .toggle-button,
+  .segmented button {
+    min-height: 31px;
+    padding: 0 9px;
+    font-size: 11px;
+  }
+
+  .inspector {
+    display: flex;
+  }
+}

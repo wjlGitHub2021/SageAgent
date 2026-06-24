@@ -34,14 +34,14 @@
 
 - [x] 锁定 Stage 1 技术选型与验收标准。
 - [x] 选择 package manager 和 workspace layout。
-- [ ] Scaffold `apps/web`。
-- [ ] 添加 TypeScript configuration。
-- [ ] 选择 UI styling approach。
-- [ ] 建立 Codex desktop-inspired app shell。
-- [ ] 添加 threads、runs、events、tools、approvals、artifacts 静态 seed data。
-- [ ] 添加 `.env.example`。
-- [ ] 验证 desktop layout。
-- [ ] 验证 mobile layout。
+- [x] Scaffold `apps/web`。
+- [x] 添加 TypeScript configuration。
+- [x] 选择 UI styling approach。
+- [x] 建立 Codex desktop-inspired app shell。
+- [x] 添加 threads、runs、events、tools、approvals、artifacts 静态 seed data。
+- [x] 添加 `.env.example`。
+- [x] 验证 desktop layout。
+- [x] 验证 mobile layout。
 
 ## Stage 2：Run System 与 Event Flow
 
