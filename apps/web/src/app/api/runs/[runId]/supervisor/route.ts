@@ -4,7 +4,7 @@ import { isTerminalRunStatus } from "@sage/runtime";
 import { getRuntimeStore, getTelemetryLogger } from "@/lib/runtime-store";
 import {
   appendSupervisorFailureEvent,
-  runSupervisorDeepSeekOnce,
+  streamSupervisorDeepSeekEvents,
 } from "@/lib/supervisor-runner";
 
 export const runtime = "nodejs";
@@ -71,55 +71,156 @@ export async function POST(_request: Request, context: RouteContext) {
   });
 
   const configResult = loadDeepSeekProviderConfig();
-  const result = configResult.ok
-    ? await runSupervisorDeepSeekOnce({
-        store,
-        runId: run.id,
-        config: configResult.config,
-      })
-    : appendSupervisorFailureEvent({
-        store,
-        runId: run.id,
-        safeMessage: `provider_error: invalid_config. ${configResult.issues
-          .map((issue) => issue.code)
-          .join(", ")}`,
-      });
+  if (!configResult.ok) {
+    const result = appendSupervisorFailureEvent({
+      store,
+      runId: run.id,
+      safeMessage: `provider_error: invalid_config. ${configResult.issues
+        .map((issue) => issue.code)
+        .join(", ")}`,
+    });
+    telemetry.record({
+      name: "api.runs.supervisor.failed",
+      level: "warn",
+      source: "api",
+      message: "Supervisor-only DeepSeek run failed before provider call.",
+      runId: run.id,
+      threadId: run.threadId,
+      metadata: {
+        ok: false,
+        eventCount: result.events.length,
+        error: result.ok ? null : result.safeMessage,
+      },
+    });
 
-  telemetry.record({
-    name: result.ok
-      ? "api.runs.supervisor.completed"
-      : "api.runs.supervisor.failed",
-    level: result.ok ? "info" : "warn",
-    source: "api",
-    message: result.ok
-      ? "Supervisor-only DeepSeek run completed."
-      : "Supervisor-only DeepSeek run failed with a safe provider error.",
-    runId: run.id,
-    threadId: run.threadId,
-    metadata: {
-      ok: result.ok,
-      eventCount: result.events.length,
-      error: result.ok ? null : result.safeMessage,
+    return createRunEventStreamResponse(result.events);
+  }
+
+  const encoder = new TextEncoder();
+  const body = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let eventCount = 0;
+      let finalError: string | null = null;
+      let clientCancelled = false;
+      try {
+        const stream = streamSupervisorDeepSeekEvents({
+          store,
+          runId: run.id,
+          config: configResult.config,
+        });
+        for await (const event of stream) {
+          eventCount += 1;
+          if (event.type === "run.failed") {
+            finalError = event.payload.error;
+          }
+          controller.enqueue(encoder.encode(encodeRunEvent(event)));
+        }
+      } catch (error) {
+        if (isClientStreamAbort(error)) {
+          clientCancelled = true;
+          return;
+        }
+
+        const result = appendSupervisorFailureEvent({
+          store,
+          runId: run.id,
+          safeMessage: "provider_error: unknown_stream_error.",
+        });
+        for (const event of result.events) {
+          eventCount += 1;
+          if (event.type === "run.failed") finalError = event.payload.error;
+          controller.enqueue(encoder.encode(encodeRunEvent(event)));
+        }
+      } finally {
+        telemetry.record({
+          name: clientCancelled
+            ? "api.runs.supervisor.client_cancelled"
+            : finalError
+            ? "api.runs.supervisor.failed"
+            : "api.runs.supervisor.completed",
+          level: clientCancelled || finalError ? "warn" : "info",
+          source: "api",
+          message: clientCancelled
+            ? "Supervisor stream response was cancelled by the client."
+            : finalError
+            ? "Supervisor streaming DeepSeek run failed."
+            : "Supervisor streaming DeepSeek run completed.",
+          runId: run.id,
+          threadId: run.threadId,
+          metadata: {
+            ok: !clientCancelled && finalError === null,
+            clientCancelled,
+            eventCount,
+            error: finalError,
+          },
+        });
+        try {
+          controller.close();
+        } catch {
+          // The client may have gone away after the final event was written.
+        }
+      }
+    },
+    cancel() {
+      telemetry.record({
+        name: "api.runs.supervisor.client_cancelled",
+        level: "warn",
+        source: "api",
+        message: "Supervisor stream response was cancelled by the client.",
+        runId: run.id,
+        threadId: run.threadId,
+        metadata: {
+          runStatus: store.getRun(run.id)?.status ?? "unknown",
+        },
+      });
     },
   });
 
-  return NextResponse.json(
-    {
-      ok: result.ok,
-      events: result.events,
-      message: result.ok ? result.message : null,
-      error: result.ok
-        ? null
-        : {
-            code: result.code,
-            message: result.safeMessage,
-          },
-      snapshot: store.getSnapshot(),
-    },
-    { status: 201 },
-  );
+  return new Response(body, {
+    status: 201,
+    headers: runEventStreamHeaders(),
+  });
 }
 
 function jsonError(code: string, message: string, status: number) {
   return NextResponse.json({ error: { code, message } }, { status });
+}
+
+function createRunEventStreamResponse(events: readonly unknown[]): Response {
+  return new Response(events.map((event) => encodeRunEvent(event)).join(""), {
+    status: 201,
+    headers: runEventStreamHeaders(),
+  });
+}
+
+function encodeRunEvent(event: unknown): string {
+  const sequence =
+    typeof event === "object" &&
+    event !== null &&
+    "sequence" in event &&
+    typeof event.sequence === "number"
+      ? event.sequence
+      : 0;
+
+  return [
+    `id: ${sequence}`,
+    "event: run-event",
+    `data: ${JSON.stringify(event)}`,
+    "",
+    "",
+  ].join("\n");
+}
+
+function runEventStreamHeaders(): HeadersInit {
+  return {
+    "cache-control": "no-cache, no-transform",
+    connection: "keep-alive",
+    "content-type": "text/event-stream; charset=utf-8",
+    "x-accel-buffering": "no",
+  };
+}
+
+function isClientStreamAbort(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return /abort|cancel|closed|controller/i.test(error.message);
 }

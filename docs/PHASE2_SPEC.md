@@ -93,15 +93,22 @@ Phase 2 采用渐进闭环：
 
 范围：
 
-- 将 DeepSeek streaming response 增量解析为 `message.delta` events。
-- 完成时写入 `message.completed` 和 `run.completed`。
-- 前端按 events 增量更新 message 内容。
+- 在 `@sage/deepseek` 中新增 streaming Chat Completions helper，发送 `stream: true` 并解析 DeepSeek data-only SSE。
+- `POST /api/runs/:runId/supervisor` 默认返回 `text/event-stream`，把后端生成的 Sage `RunEvent` 逐条转发给前端，同时 append 到 runtime store。
+- DeepSeek `content` delta 转换为 Sage `message.delta`；`reasoning_content` 暂不显示在 UI，只作为后续思考可视化扩展点。
+- 完成时写入并转发 `message.completed` 和 `run.completed`。
+- 中途失败时写入并转发 `run.failed`，保留已经收到并写入的 `message.delta`。
+- 前端 composer 边读 SSE 边应用 events，conversation 中同一条 Supervisor 消息按 `message.delta` 增量更新。
+- 非 streaming JSON 模式不再作为 composer 默认路径，但 runner 保留可测试的 non-streaming helper，便于回归与后续 fallback。
 
 验收：
 
 - 用户能看到输出逐步出现。
 - message delta 不重复、不乱序。
 - 中途失败能保留已收到内容并显示失败状态。
+- 未配置 API key 时仍不发真实 DeepSeek 请求，直接 stream `run.status_changed` 与 `run.failed` 事件。
+- provider error 继续不泄露完整 API key、authorization 或 token。
+- 测试覆盖 streaming 成功、stream line 解析失败、HTTP/network failure、前端 event reducer 的 delta 应用。
 
 ## Task 2.4：Read-only File Tool
 

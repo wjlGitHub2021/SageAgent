@@ -1,10 +1,12 @@
 import {
   createDeepSeekChatCompletion,
+  streamDeepSeekChatCompletion,
   type DeepSeekAdapterIssue,
   type DeepSeekAdapterResult,
   type DeepSeekChatCompletionInput,
   type DeepSeekChatCompletionOutput,
   type DeepSeekProviderConfig,
+  type DeepSeekStreamParseEvent,
 } from "@sage/deepseek";
 import type { RuntimeStore } from "@sage/runtime";
 import type {
@@ -30,6 +32,11 @@ export type SupervisorProvider = (
   config: DeepSeekProviderConfig,
   input: DeepSeekChatCompletionInput,
 ) => Promise<DeepSeekAdapterResult<DeepSeekChatCompletionOutput>>;
+
+export type SupervisorStreamProvider = (
+  config: DeepSeekProviderConfig,
+  input: DeepSeekChatCompletionInput,
+) => AsyncIterable<DeepSeekAdapterResult<DeepSeekStreamParseEvent>>;
 
 export type SupervisorRunResult =
   | {
@@ -59,6 +66,15 @@ export interface AppendSupervisorFailureInput {
   readonly store: RuntimeStore;
   readonly runId: EntityId;
   readonly safeMessage: string;
+  readonly now?: Clock;
+  readonly createId?: IdFactory;
+}
+
+export interface StreamSupervisorDeepSeekInput {
+  readonly store: RuntimeStore;
+  readonly runId: EntityId;
+  readonly config: DeepSeekProviderConfig;
+  readonly provider?: SupervisorStreamProvider;
   readonly now?: Clock;
   readonly createId?: IdFactory;
 }
@@ -180,6 +196,151 @@ export async function runSupervisorDeepSeekOnce({
     run: completedRun,
     message,
     events: [startEvent, ...events],
+  };
+}
+
+export async function* streamSupervisorDeepSeekEvents({
+  store,
+  runId,
+  config,
+  provider = streamDeepSeekChatCompletion,
+  now = defaultNow,
+  createId = defaultCreateId,
+}: StreamSupervisorDeepSeekInput): AsyncGenerator<RunEvent, SupervisorRunResult> {
+  const run = store.getRun(runId);
+  if (!run) {
+    return missingRunResult();
+  }
+
+  const startEvent = createRunStartedEvent({
+    run,
+    createdAt: now(),
+    sequence: nextRunSequence(store, run.id),
+    createId,
+  });
+  store.appendEvent(startEvent);
+  yield startEvent;
+
+  const messageId = createId("message");
+  const chunks: string[] = [];
+
+  for await (const result of provider(config, {
+    messages: createSupervisorMessages(run.goal),
+    model: run.settings.model,
+    thinkingEnabled: run.settings.thinkingEnabled,
+    reasoningEffort: run.settings.reasoningEffort,
+  })) {
+    if (!result.ok) {
+      const failure = appendSupervisorFailure({
+        store,
+        runId: run.id,
+        safeMessage: formatSafeProviderIssue(result.issue),
+        now,
+        createId,
+        alreadyAppendedEvents: [startEvent],
+      });
+      const failedEvent = failure.events.at(-1);
+      if (failedEvent) yield failedEvent;
+      return {
+        ...failure,
+        events: store.getEventsByRun(run.id),
+      };
+    }
+
+    if (result.value.type === "done") break;
+
+    const delta = result.value.contentDelta;
+    if (delta.length === 0) continue;
+
+    chunks.push(delta);
+    const event: RunEvent = {
+      id: createId("event"),
+      runId: run.id,
+      type: "message.delta",
+      sequence: nextRunSequence(store, run.id),
+      createdAt: now(),
+      payload: {
+        messageId,
+        role: "agent",
+        agent: "supervisor",
+        delta,
+      },
+    };
+    store.appendEvent(event);
+    yield event;
+  }
+
+  const content = chunks.join("");
+  if (content.trim().length === 0) {
+    const failure = appendSupervisorFailure({
+      store,
+      runId: run.id,
+      safeMessage: formatSafeProviderIssue({
+        code: "invalid_response",
+        message: "DeepSeek streaming response did not include assistant content.",
+      }),
+      now,
+      createId,
+      alreadyAppendedEvents: [startEvent],
+    });
+    const failedEvent = failure.events.at(-1);
+    if (failedEvent) yield failedEvent;
+    return {
+      ...failure,
+      events: store.getEventsByRun(run.id),
+    };
+  }
+
+  const completedAt = now();
+  const message: Message = {
+    id: messageId,
+    threadId: run.threadId,
+    runId: run.id,
+    role: "agent",
+    agent: "supervisor",
+    content,
+    createdAt: completedAt,
+  };
+  const completedRun: Run = {
+    ...run,
+    status: "completed",
+    activeAgent: null,
+    updatedAt: completedAt,
+    completedAt,
+  };
+  const completedEvents: RunEvent[] = [
+    {
+      id: createId("event"),
+      runId: run.id,
+      type: "message.completed",
+      sequence: nextRunSequence(store, run.id),
+      createdAt: completedAt,
+      payload: {
+        message,
+      },
+    },
+    {
+      id: createId("event"),
+      runId: run.id,
+      type: "run.completed",
+      sequence: nextRunSequence(store, run.id) + 1,
+      createdAt: completedAt,
+      payload: {
+        run: completedRun,
+      },
+    },
+  ];
+
+  for (const event of completedEvents) {
+    store.appendEvent(event);
+    yield event;
+  }
+
+  return {
+    ok: true,
+    run: completedRun,
+    message,
+    events: store.getEventsByRun(run.id),
   };
 }
 

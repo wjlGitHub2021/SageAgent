@@ -19,6 +19,8 @@ type Locale = "zh" | "en";
 type Message = {
   role: string;
   runId: string;
+  messageId?: string;
+  eventIds?: readonly string[];
   body: Record<Locale, string>;
 };
 
@@ -130,9 +132,9 @@ const copy = {
     composerInput: "任务输入",
     composerPlaceholder: "描述你希望 Sage Agent 完成的任务...",
     composerHint:
-      "点击运行会创建真实后端 run，并调用 DeepSeek Supervisor；未配置 API key 会生成可审计的 provider error。",
+      "点击运行会创建真实后端 run，并流式调用 DeepSeek Supervisor；未配置 API key 会生成可审计的 provider error。",
     composerEmptyHint: "请输入任务目标后再运行。",
-    composerRunningHint: "正在创建后端 run 并调用 DeepSeek Supervisor，请稍候。",
+    composerRunningHint: "正在创建后端 run 并流式接收 DeepSeek 输出，请稍候。",
     composerCancelledHint:
       "本次本地等待已取消；如果 provider 请求已经发出，后端可能仍会完成并留下事件。",
     composerFailedHint: "运行失败",
@@ -217,10 +219,10 @@ const copy = {
     composerInput: "Task input",
     composerPlaceholder: "Describe what you want Sage Agent to do...",
     composerHint:
-      "Click Run to create a real backend run and call the DeepSeek Supervisor. Missing API keys create auditable provider errors.",
+      "Click Run to create a real backend run and stream the DeepSeek Supervisor. Missing API keys create auditable provider errors.",
     composerEmptyHint: "Enter a task goal before running.",
     composerRunningHint:
-      "Creating a backend run and calling the DeepSeek Supervisor. Please wait.",
+      "Creating a backend run and streaming DeepSeek output. Please wait.",
     composerCancelledHint:
       "Local waiting was cancelled; if the provider request had already started, the backend may still finish and keep events.",
     composerFailedHint: "Run failed",
@@ -783,23 +785,13 @@ export default function Home() {
         },
         controller.signal,
       );
-      const supervisor = await createApiSupervisorRun(
-        created.run.id,
-        controller.signal,
-      );
-      const fetchedEvents = await fetchRunEvents(created.run.id, controller.signal);
 
       setThreadItems((current) => appendThreadItem(current, created.thread));
-      setRunItems((current) =>
-        updateRunItemFromEvents(
-          appendRunItem(current, created.run),
-          fetchedEvents,
-        ),
-      );
+      setRunItems((current) => appendRunItem(current, created.run));
       setActiveThreadId(created.thread.id);
       setActiveRunId(created.run.id);
       setRunEvents((current) =>
-        mergeRunEvents(current, [...created.events, ...fetchedEvents]),
+        mergeRunEvents(current, created.events),
       );
       setMessages((current) => [
         ...current,
@@ -811,8 +803,20 @@ export default function Home() {
             en: goal,
           },
         },
-        ...messagesFromRunEvents(fetchedEvents, created.run.id),
       ]);
+
+      const supervisor = await streamApiSupervisorRun(
+        created.run.id,
+        controller.signal,
+        (event) => {
+          setRunEvents((current) => mergeRunEvents(current, [event]));
+          setRunItems((current) => updateRunItemFromEvents(current, [event]));
+          setMessages((current) =>
+            applyRunEventToMessages(current, event, created.run.id),
+          );
+        },
+      );
+
       if (!supervisor.ok) {
         setComposerError(supervisor.error?.message ?? "provider_failed");
       } else {
@@ -1417,9 +1421,10 @@ async function createApiRun(
   return parseJsonResponse<CreateRunResponse>(response, "create_run_failed");
 }
 
-async function createApiSupervisorRun(
+async function streamApiSupervisorRun(
   runId: string,
   signal: AbortSignal,
+  onEvent: (event: RunEvent) => void,
 ): Promise<SupervisorRunResponse> {
   const response = await fetch(`/api/runs/${encodeURIComponent(runId)}/supervisor`, {
     method: "POST",
@@ -1430,31 +1435,72 @@ async function createApiSupervisorRun(
     signal,
   });
 
-  return parseJsonResponse<SupervisorRunResponse>(
-    response,
-    "supervisor_run_failed",
-  );
-}
-
-async function fetchRunEvents(
-  runId: string,
-  signal: AbortSignal,
-): Promise<RunEvent[]> {
-  const response = await fetch(
-    `/api/runs/${encodeURIComponent(runId)}/events`,
-    {
-      headers: {
-        Accept: "text/event-stream",
-      },
-      signal,
-    },
-  );
-
   if (!response.ok) {
-    throw new Error(`events_failed_${response.status}`);
+    throw new Error(`supervisor_run_failed_${response.status}`);
   }
 
-  return parseRunEventsSse(await response.text());
+  const events = await readRunEventsSse(response, onEvent);
+  const failedEvent = events.findLast(
+    (event): event is Extract<RunEvent, { type: "run.failed" }> =>
+      event.type === "run.failed",
+  );
+
+  return {
+    ok: failedEvent === undefined,
+    events,
+    error: failedEvent
+      ? {
+          code: "provider_failed",
+          message: failedEvent.payload.error,
+        }
+      : null,
+  };
+}
+
+async function readRunEventsSse(
+  response: Response,
+  onEvent: (event: RunEvent) => void,
+): Promise<RunEvent[]> {
+  if (!response.body) {
+    const events = parseRunEventsSse(await response.text());
+    for (const event of events) onEvent(event);
+    return events;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const events: RunEvent[] = [];
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const blocks = buffer.split(/\r?\n\r?\n+/);
+      buffer = blocks.pop() ?? "";
+
+      for (const block of blocks) {
+        const event = parseRunEventSseBlock(block);
+        if (!event) continue;
+
+        events.push(event);
+        onEvent(event);
+      }
+    }
+
+    buffer += decoder.decode();
+    const event = parseRunEventSseBlock(buffer);
+    if (event) {
+      events.push(event);
+      onEvent(event);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return events;
 }
 
 async function parseJsonResponse<ResponseBody>(
@@ -1487,19 +1533,25 @@ function parseRunEventsSse(payload: string): RunEvent[] {
   const blocks = payload.split(/\n\n+/);
 
   for (const block of blocks) {
-    const dataLine = block
-      .split("\n")
-      .find((line) => line.startsWith("data: "));
-    if (!dataLine) continue;
-
-    try {
-      events.push(JSON.parse(dataLine.slice("data: ".length)) as RunEvent);
-    } catch {
-      // Ignore malformed SSE blocks; the API contract is validated server-side.
-    }
+    const event = parseRunEventSseBlock(block);
+    if (event) events.push(event);
   }
 
   return events;
+}
+
+function parseRunEventSseBlock(block: string): RunEvent | null {
+  const dataLine = block
+    .split("\n")
+    .find((line) => line.startsWith("data: "));
+  if (!dataLine) return null;
+
+  try {
+    return JSON.parse(dataLine.slice("data: ".length)) as RunEvent;
+  } catch {
+    // Ignore malformed SSE blocks; the API contract is validated server-side.
+    return null;
+  }
 }
 
 function appendThreadItem(
@@ -1593,28 +1645,114 @@ function mergeRunEvents(
   );
 }
 
-function messagesFromRunEvents(
-  events: readonly RunEvent[],
+function applyRunEventToMessages(
+  current: readonly Message[],
+  event: RunEvent,
   runId: string,
 ): Message[] {
-  return events
-    .filter(
-      (event): event is Extract<RunEvent, { type: "message.completed" }> =>
-        event.type === "message.completed",
-    )
-    .map((event) => {
-      const role = event.payload.message.agent
-        ? agentLabels[event.payload.message.agent]
-        : "System";
-      return {
+  if (event.runId !== runId) return [...current];
+
+  if (event.type === "message.delta") {
+    return applyMessageDelta(current, event, runId);
+  }
+
+  if (event.type === "message.completed") {
+    return applyMessageCompleted(current, event, runId);
+  }
+
+  return [...current];
+}
+
+function applyMessageDelta(
+  current: readonly Message[],
+  event: Extract<RunEvent, { type: "message.delta" }>,
+  runId: string,
+): Message[] {
+  const role = event.payload.agent
+    ? agentLabels[event.payload.agent]
+    : "System";
+  const existingIndex = current.findIndex(
+    (message) =>
+      message.runId === runId && message.messageId === event.payload.messageId,
+  );
+
+  if (existingIndex === -1) {
+    return [
+      ...current,
+      {
         role,
         runId,
+        messageId: event.payload.messageId,
+        eventIds: [event.id],
         body: {
-          zh: event.payload.message.content,
-          en: event.payload.message.content,
+          zh: event.payload.delta,
+          en: event.payload.delta,
         },
-      };
-    });
+      },
+    ];
+  }
+
+  return current.map((message, index) =>
+    index === existingIndex
+      ? message.eventIds?.includes(event.id)
+        ? message
+        : {
+            ...message,
+            eventIds: [...(message.eventIds ?? []), event.id],
+            body: {
+              zh: `${message.body.zh}${event.payload.delta}`,
+              en: `${message.body.en}${event.payload.delta}`,
+            },
+          }
+      : message,
+  );
+}
+
+function applyMessageCompleted(
+  current: readonly Message[],
+  event: Extract<RunEvent, { type: "message.completed" }>,
+  runId: string,
+): Message[] {
+  const role = event.payload.message.agent
+    ? agentLabels[event.payload.message.agent]
+    : "System";
+  const content = event.payload.message.content;
+  const existingIndex = current.findIndex(
+    (message) =>
+      message.runId === runId && message.messageId === event.payload.message.id,
+  );
+
+  if (existingIndex === -1) {
+    return [
+      ...current,
+      {
+        role,
+        runId,
+        messageId: event.payload.message.id,
+        eventIds: [event.id],
+        body: {
+          zh: content,
+          en: content,
+        },
+      },
+    ];
+  }
+
+  return current.map((message, index) =>
+    index === existingIndex
+      ? {
+          ...message,
+          role,
+          eventIds: message.eventIds?.includes(event.id)
+            ? message.eventIds
+            : [...(message.eventIds ?? []), event.id],
+          body: {
+            zh: content,
+            en: content,
+          },
+        }
+      : message,
+  );
 }
 
 function deriveTitle(goal: string): string {

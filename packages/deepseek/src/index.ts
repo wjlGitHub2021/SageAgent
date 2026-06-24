@@ -23,7 +23,9 @@ export {
   DEEPSEEK_CHAT_COMPLETIONS_PATH,
   createDeepSeekChatCompletion,
   parseDeepSeekChatCompletionResponse,
+  parseDeepSeekStreamBody,
   parseDeepSeekStreamLine,
+  streamDeepSeekChatCompletion,
   type DeepSeekAdapterErrorCode,
   type DeepSeekAdapterIssue,
   type DeepSeekAdapterResult,
@@ -35,5 +37,7 @@ export {
   type DeepSeekChatRole,
   type DeepSeekFetch,
   type DeepSeekFetchResponse,
+  type DeepSeekStreamFetch,
+  type DeepSeekStreamFetchResponse,
   type DeepSeekStreamParseEvent,
 } from "./chat-completions.js";

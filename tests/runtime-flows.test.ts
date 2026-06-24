@@ -19,7 +19,9 @@ import type { Run, RunEvent, Thread } from "@sage/shared";
 import {
   appendSupervisorFailureEvent,
   runSupervisorDeepSeekOnce,
+  streamSupervisorDeepSeekEvents,
   type SupervisorProvider,
+  type SupervisorStreamProvider,
 } from "../apps/web/src/lib/supervisor-runner";
 
 const createdAt = "2026-06-24T01:00:00.000Z";
@@ -602,6 +604,180 @@ describe("runtime flows", () => {
     expect(result.safeMessage).not.toContain("sk-secret-token");
     expect(result.safeMessage).not.toContain("sk-naked-secret-token");
     expect(result.safeMessage).toContain("[redacted]");
+  });
+
+  it("streams Supervisor DeepSeek deltas into run events", async () => {
+    const store = createMemoryRuntimeStore(createEmptyRuntimeSnapshot());
+    store.upsertThread(thread);
+    store.appendEvent({
+      id: "event-run-created-for-streaming",
+      runId: run.id,
+      type: "run.created",
+      sequence: 1,
+      createdAt,
+      payload: { run: { ...run, status: "queued", activeAgent: null } },
+    });
+
+    const provider: SupervisorStreamProvider = async function* () {
+      yield {
+        ok: true,
+        value: {
+          type: "delta",
+          id: "chatcmpl-stream",
+          model: "deepseek-v4-flash",
+          index: 0,
+          role: "assistant",
+          contentDelta: "你",
+          reasoningDelta: "hidden",
+          finishReason: null,
+        },
+      };
+      yield {
+        ok: true,
+        value: {
+          type: "delta",
+          id: "chatcmpl-stream",
+          model: "deepseek-v4-flash",
+          index: 0,
+          role: null,
+          contentDelta: "",
+          reasoningDelta: "ignored",
+          finishReason: null,
+        },
+      };
+      yield {
+        ok: true,
+        value: {
+          type: "delta",
+          id: "chatcmpl-stream",
+          model: "deepseek-v4-flash",
+          index: 0,
+          role: null,
+          contentDelta: "好",
+          reasoningDelta: null,
+          finishReason: null,
+        },
+      };
+      yield { ok: true, value: { type: "done" } };
+    };
+
+    const stream = streamSupervisorDeepSeekEvents({
+      store,
+      runId: run.id,
+      config: {
+        apiKey: "sk-test",
+        baseUrl: "https://api.deepseek.com",
+        defaultModel: "deepseek-v4-flash",
+        defaultReasoningEffort: "high",
+        thinkingEnabled: true,
+      },
+      provider,
+      now: createClock([
+        "2026-06-24T01:01:01.000Z",
+        "2026-06-24T01:01:02.000Z",
+        "2026-06-24T01:01:03.000Z",
+        "2026-06-24T01:01:04.000Z",
+      ]),
+      createId: createIdFactory(),
+    });
+
+    const events = [];
+    for await (const event of stream) events.push(event);
+
+    expect(events.map((event) => event.type)).toEqual([
+      "run.status_changed",
+      "message.delta",
+      "message.delta",
+      "message.completed",
+      "run.completed",
+    ]);
+    const deltas = events.filter(
+      (event): event is Extract<RunEvent, { type: "message.delta" }> =>
+        event.type === "message.delta",
+    );
+    expect(deltas.map((event) => event.payload.delta)).toEqual(["你", "好"]);
+    expect(new Set(deltas.map((event) => event.payload.messageId)).size).toBe(1);
+    const completed = events.find(
+      (event): event is Extract<RunEvent, { type: "message.completed" }> =>
+        event.type === "message.completed",
+    );
+    expect(completed?.payload.message.content).toBe("你好");
+    expect(store.getRun(run.id)).toMatchObject({
+      status: "completed",
+      activeAgent: null,
+    });
+  });
+
+  it("keeps partial streaming deltas when provider fails mid-stream", async () => {
+    const store = createMemoryRuntimeStore(createEmptyRuntimeSnapshot());
+    store.upsertThread(thread);
+    store.appendEvent({
+      id: "event-run-created-for-streaming-failure",
+      runId: run.id,
+      type: "run.created",
+      sequence: 1,
+      createdAt,
+      payload: { run: { ...run, status: "queued", activeAgent: null } },
+    });
+
+    const provider: SupervisorStreamProvider = async function* () {
+      yield {
+        ok: true,
+        value: {
+          type: "delta",
+          id: "chatcmpl-stream",
+          model: "deepseek-v4-flash",
+          index: 0,
+          role: "assistant",
+          contentDelta: "partial",
+          reasoningDelta: null,
+          finishReason: null,
+        },
+      };
+      yield {
+        ok: false,
+        issue: {
+          code: "invalid_stream_line",
+          message: "bad line with sk-secret-token",
+        },
+      };
+    };
+
+    const events = [];
+    for await (const event of streamSupervisorDeepSeekEvents({
+      store,
+      runId: run.id,
+      config: {
+        apiKey: "sk-test",
+        baseUrl: "https://api.deepseek.com",
+        defaultModel: "deepseek-v4-flash",
+        defaultReasoningEffort: "high",
+        thinkingEnabled: true,
+      },
+      provider,
+      now: createClock([
+        "2026-06-24T01:02:01.000Z",
+        "2026-06-24T01:02:02.000Z",
+        "2026-06-24T01:02:03.000Z",
+      ]),
+      createId: createIdFactory(),
+    })) {
+      events.push(event);
+    }
+
+    expect(events.map((event) => event.type)).toEqual([
+      "run.status_changed",
+      "message.delta",
+      "run.failed",
+    ]);
+    expect(events.some((event) => event.type === "message.completed")).toBe(false);
+    const failed = events.find(
+      (event): event is Extract<RunEvent, { type: "run.failed" }> =>
+        event.type === "run.failed",
+    );
+    expect(failed?.payload.error).toContain("invalid_stream_line");
+    expect(failed?.payload.error).not.toContain("sk-secret-token");
+    expect(store.getMessagesByRun(run.id)[0]?.content).toBe("partial");
   });
 });
 

@@ -4,9 +4,11 @@ import {
   createDeepSeekChatCompletion,
   loadDeepSeekProviderConfig,
   parseDeepSeekChatCompletionResponse,
+  parseDeepSeekStreamBody,
   parseDeepSeekStreamLine,
   redactDeepSeekApiKey,
   requireDeepSeekApiKey,
+  streamDeepSeekChatCompletion,
 } from "@sage/deepseek";
 
 describe("DeepSeek provider", () => {
@@ -151,4 +153,166 @@ describe("DeepSeek provider", () => {
       issue: { code: "invalid_stream_line" },
     });
   });
+
+  it("prepares streaming chat requests and parses data-only SSE", async () => {
+    const result = streamDeepSeekChatCompletion(
+      {
+        apiKey: "sk-test",
+        baseUrl: "https://api.deepseek.com",
+        defaultModel: "deepseek-v4-flash",
+        defaultReasoningEffort: "high",
+        thinkingEnabled: true,
+      },
+      {
+        messages: [{ role: "user", content: "Hello" }],
+        model: "deepseek-v4-pro",
+        thinkingEnabled: true,
+        reasoningEffort: "max",
+      },
+      async (url, init) => {
+        expect(url).toBe("https://api.deepseek.com/chat/completions");
+        expect(init.headers.Authorization).toBe("Bearer sk-test");
+        expect(JSON.parse(init.body)).toMatchObject({
+          model: "deepseek-v4-pro",
+          stream: true,
+          thinking: { type: "enabled" },
+          reasoning_effort: "max",
+        });
+
+        return {
+          ok: true,
+          status: 200,
+          body: createTextStream([
+            'data: {"id":"1","model":"deepseek-v4-pro","choices":[{"index":0,"delta":{"role":"assistant","content":"Hel","reasoning_content":"R1"},"finish_reason":null}]}\n',
+            '\ndata: {"id":"1","model":"deepseek-v4-pro","choices":[{"index":0,"delta":{"content":"lo"},"finish_reason":null}]}\n\n',
+            "data: [DONE]\n\n",
+          ]),
+        };
+      },
+    );
+
+    const events = [];
+    for await (const event of result) events.push(event);
+
+    expect(events).toEqual([
+      {
+        ok: true,
+        value: {
+          type: "delta",
+          id: "1",
+          model: "deepseek-v4-pro",
+          index: 0,
+          role: "assistant",
+          contentDelta: "Hel",
+          reasoningDelta: "R1",
+          finishReason: null,
+        },
+      },
+      {
+        ok: true,
+        value: {
+          type: "delta",
+          id: "1",
+          model: "deepseek-v4-pro",
+          index: 0,
+          role: null,
+          contentDelta: "lo",
+          reasoningDelta: null,
+          finishReason: null,
+        },
+      },
+      {
+        ok: true,
+        value: { type: "done" },
+      },
+    ]);
+  });
+
+  it("surfaces streaming HTTP, network, body, and parse failures", async () => {
+    const config = {
+      apiKey: "sk-test",
+      baseUrl: "https://api.deepseek.com",
+      defaultModel: "deepseek-v4-flash" as const,
+      defaultReasoningEffort: "high" as const,
+      thinkingEnabled: true,
+    };
+    const input = {
+      messages: [{ role: "user" as const, content: "Hello" }],
+    };
+
+    const httpEvents = [];
+    for await (const event of streamDeepSeekChatCompletion(
+      config,
+      input,
+      async () => ({ ok: false, status: 429, statusText: "Too Many", body: null }),
+    )) {
+      httpEvents.push(event);
+    }
+    expect(httpEvents[0]).toMatchObject({
+      ok: false,
+      issue: { code: "http_error", status: 429 },
+    });
+
+    const networkEvents = [];
+    for await (const event of streamDeepSeekChatCompletion(config, input, async () => {
+      throw new Error("network");
+    })) {
+      networkEvents.push(event);
+    }
+    expect(networkEvents[0]).toMatchObject({
+      ok: false,
+      issue: { code: "network_error" },
+    });
+
+    const bodyEvents = [];
+    for await (const event of streamDeepSeekChatCompletion(
+      config,
+      input,
+      async () => ({ ok: true, status: 200, body: null }),
+    )) {
+      bodyEvents.push(event);
+    }
+    expect(bodyEvents[0]).toMatchObject({
+      ok: false,
+      issue: { code: "invalid_response" },
+    });
+
+    const parseEvents = [];
+    for await (const event of parseDeepSeekStreamBody(
+      createTextStream(["data: not-json\n\n"]),
+    )) {
+      parseEvents.push(event);
+    }
+    expect(parseEvents[0]).toMatchObject({
+      ok: false,
+      issue: { code: "invalid_stream_line" },
+    });
+
+    const readFailureEvents = [];
+    for await (const event of parseDeepSeekStreamBody(createFailingStream())) {
+      readFailureEvents.push(event);
+    }
+    expect(readFailureEvents[0]).toMatchObject({
+      ok: false,
+      issue: { code: "network_error" },
+    });
+  });
 });
+
+function createTextStream(chunks: readonly string[]): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+      controller.close();
+    },
+  });
+}
+
+function createFailingStream(): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    pull() {
+      throw new Error("stream read failed");
+    },
+  });
+}

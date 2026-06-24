@@ -264,6 +264,14 @@ Phase 2.2 起，composer 调用真实 Supervisor route：
 - 前端再通过 `GET /api/runs/:runId/events` 拉取该 run 的事件并更新 conversation、timeline、audit 和 provider error 面板。
 - Task 2.2 是非 streaming；真实增量输出属于 Task 2.3。
 
+Phase 2.3 起，Supervisor route 的默认响应升级为 live SSE：
+
+- route 仍是 `POST /api/runs/:runId/supervisor`，但响应 `content-type` 为 `text/event-stream`。
+- 后端调用 DeepSeek `stream: true`，把每个 content chunk 写入 `message.delta` event。
+- 每个 Sage event 先 append 到 runtime store，再通过 HTTP stream 转发给前端。
+- 前端边读 SSE 边应用 events；`message.delta` 创建或追加当前 Supervisor message，`message.completed` 固化最终内容。
+- 失败事件也通过同一条 stream 返回，确保 UI 和 runtime audit 不断链。
+
 ## Multi-Agent Model
 
 MVP 使用 supervisor-led workflow。

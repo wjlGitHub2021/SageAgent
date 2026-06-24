@@ -113,7 +113,26 @@ export interface DeepSeekFetchResponse {
   json(): Promise<unknown>;
 }
 
+export type DeepSeekStreamFetch = (
+  input: string,
+  init: {
+    readonly method: "POST";
+    readonly headers: DeepSeekPreparedChatCompletionRequest["init"]["headers"];
+    readonly body: string;
+  },
+) => Promise<DeepSeekStreamFetchResponse>;
+
+export interface DeepSeekStreamFetchResponse {
+  readonly ok: boolean;
+  readonly status: number;
+  readonly statusText?: string;
+  readonly body: ReadableStream<Uint8Array> | null;
+}
+
 type JsonRecord = Record<string, unknown>;
+type DeepSeekStreamReadResult =
+  | { readonly done: true; readonly value?: Uint8Array }
+  | { readonly done: false; readonly value: Uint8Array };
 
 function prepareDeepSeekChatCompletionRequest(
   config: DeepSeekProviderConfig,
@@ -211,6 +230,64 @@ export async function createDeepSeekChatCompletion(
   return parseDeepSeekChatCompletionResponse(payload);
 }
 
+export async function* streamDeepSeekChatCompletion(
+  config: DeepSeekProviderConfig,
+  input: DeepSeekChatCompletionInput,
+  fetcher: DeepSeekStreamFetch = defaultDeepSeekStreamFetch,
+): AsyncGenerator<DeepSeekAdapterResult<DeepSeekStreamParseEvent>, void> {
+  const request = prepareDeepSeekChatCompletionRequest(config, {
+    ...input,
+    stream: true,
+  });
+  if (!request.ok) {
+    yield request;
+    return;
+  }
+
+  let response: DeepSeekStreamFetchResponse;
+  try {
+    response = await fetcher(request.value.url, request.value.init);
+  } catch {
+    yield {
+      ok: false,
+      issue: {
+        code: "network_error",
+        message: "DeepSeek request failed before receiving a response.",
+      },
+    };
+    return;
+  }
+
+  if (!response.ok) {
+    yield {
+      ok: false,
+      issue: {
+        code: "http_error",
+        message: createHttpErrorMessage(response.status, response.statusText),
+        status: response.status,
+      },
+    };
+    return;
+  }
+
+  if (!response.body) {
+    yield {
+      ok: false,
+      issue: {
+        code: "invalid_response",
+        message: "DeepSeek streaming response did not include a body.",
+      },
+    };
+    return;
+  }
+
+  for await (const result of parseDeepSeekStreamBody(response.body)) {
+    yield result;
+    if (result.ok && result.value.type === "done") return;
+    if (!result.ok) return;
+  }
+}
+
 export function parseDeepSeekChatCompletionResponse(
   payload: unknown,
 ): DeepSeekAdapterResult<DeepSeekChatCompletionOutput> {
@@ -295,6 +372,84 @@ export function parseDeepSeekStreamLine(
   }
 
   return parseDeepSeekStreamPayload(payload);
+}
+
+export async function* parseDeepSeekStreamBody(
+  body: ReadableStream<Uint8Array>,
+): AsyncGenerator<DeepSeekAdapterResult<DeepSeekStreamParseEvent>, void> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const readResult = await readStreamChunk(reader);
+      if (!readResult.ok) {
+        yield readResult;
+        return;
+      }
+
+      const { done, value } = readResult.value;
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        const parsed = parseDeepSeekStreamLine(line);
+        if (!parsed.ok) {
+          yield parsed;
+          return;
+        }
+        if (parsed.value === null) continue;
+
+        yield {
+          ok: true,
+          value: parsed.value,
+        };
+        if (parsed.value.type === "done") return;
+      }
+    }
+
+    buffer += decoder.decode();
+    const tailLines = buffer.split(/\r?\n/);
+    for (const line of tailLines) {
+      const parsed = parseDeepSeekStreamLine(line);
+      if (!parsed.ok) {
+        yield parsed;
+        return;
+      }
+      if (parsed.value === null) continue;
+
+      yield {
+        ok: true,
+        value: parsed.value,
+      };
+      if (parsed.value.type === "done") return;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+async function readStreamChunk(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+): Promise<DeepSeekAdapterResult<DeepSeekStreamReadResult>> {
+  try {
+    return {
+      ok: true,
+      value: await reader.read(),
+    };
+  } catch {
+    return {
+      ok: false,
+      issue: {
+        code: "network_error",
+        message: "DeepSeek streaming response failed while reading the body.",
+      },
+    };
+  }
 }
 
 function parseDeepSeekStreamPayload(
@@ -399,6 +554,17 @@ function defaultDeepSeekFetch(
   input: string,
   init: Parameters<DeepSeekFetch>[1],
 ): Promise<DeepSeekFetchResponse> {
+  if (typeof fetch === "undefined") {
+    return Promise.reject(new Error("fetch is not available."));
+  }
+
+  return fetch(input, init);
+}
+
+function defaultDeepSeekStreamFetch(
+  input: string,
+  init: Parameters<DeepSeekStreamFetch>[1],
+): Promise<DeepSeekStreamFetchResponse> {
   if (typeof fetch === "undefined") {
     return Promise.reject(new Error("fetch is not available."));
   }

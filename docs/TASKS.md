@@ -83,6 +83,8 @@
 
 ## Stage 4：Multi-Agent MVP
 
+说明：本节记录的是 Stage 4 已完成的本地类型、纯函数、模拟编排与文档基础；真实 runtime 中的 supervisor-led multi-agent run 仍以 Phase 2 清单为准。
+
 - [x] 编写 `docs/STAGE4_SPEC.md`，锁定 Stage 4 分块策略与 Task 4.1 验收标准。
 - [x] 添加 Supervisor agent。
 - [x] 添加 Researcher agent。
@@ -95,6 +97,8 @@
 - [x] 在 final summary 前添加 reviewer pass。
 
 ## Stage 5：商业化质量加固
+
+说明：本节记录的是 Stage 5 已完成的本地质量基础；真实 provider、read-only tool、多 agent run 的商业化验收仍以 Phase 2 及后续 release checklist 为准。
 
 - [x] 编写 `docs/STAGE5_SPEC.md`，锁定 Stage 5 分块策略与 Task 5.1 验收标准。
 - [x] 完善 error states、empty states、loading states。
@@ -111,6 +115,6 @@
 - [x] 编写 `docs/PHASE2_SPEC.md`，锁定 Phase 2 分块策略与 Task 2.1 验收标准。
 - [x] 将 composer 接入 create-run / stream-output / events API。
 - [x] 接入 Supervisor-only DeepSeek 调用。
-- [ ] 将 DeepSeek streamed output 转换为 run events。
+- [x] 将 DeepSeek streamed output 转换为 run events。
 - [ ] 添加 read-only file tool。
 - [ ] 扩展到 supervisor-led multi-agent run。
