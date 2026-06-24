@@ -17,6 +17,13 @@ export {
   type FinalArtifactSummary,
 } from "./artifact-flow.js";
 export {
+  createFinalSummaryGate,
+  type FinalSummaryBlocked,
+  type FinalSummaryGateInput,
+  type FinalSummaryGateResult,
+  type FinalSummaryReady,
+} from "./final-summary.js";
+export {
   createMemoryRuntimeStore,
   isTerminalRunStatus,
   type RuntimeStore,

@@ -276,3 +276,29 @@ Stage 4 仍采用 Read + Draft 权限模型：
 - 不创建真实 `artifact.created` event。
 - 不写入文件系统。
 - 不接 UI artifacts panel。
+
+## Task 4.9：Reviewer Pass Before Final Summary
+
+范围：
+
+- 在 `@sage/runtime` 中添加最小 final summary gate。
+- 提供纯函数 `createFinalSummaryGate(input)`。
+- gate 必须读取 reviewer report / reviewer decision，在 final summary 前判断是否允许继续。
+- reviewer decision 为 `pass` 时返回 `ok: true`，并提供 summary-ready metadata。
+- reviewer decision 为 `needs_changes` 时返回 `ok: false`，并包含 findings、missingChecks 和结构化阻断原因。
+- 当前 task 不生成最终消息、不写 run event、不写 artifact、不改变 runtime store。
+
+验收：
+
+- reviewer `pass` 可以进入 final summary。
+- reviewer `needs_changes` 阻断 final summary，并保留 findings / missing checks。
+- 缺失 reviewer report 必须结构化失败。
+- helper 必须是纯函数，不调用 provider、工具、文件系统或 store。
+- root `typecheck`、`lint`、`build` 通过。
+
+暂不做：
+
+- 不生成真实 final summary 文本。
+- 不创建 `message.completed` event。
+- 不创建 `run.completed` event。
+- 不接 UI。

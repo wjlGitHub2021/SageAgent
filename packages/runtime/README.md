@@ -11,5 +11,6 @@ Sage Agent 的 runtime package。
 - `READ_DRAFT_TOOL_DEFINITIONS`：Stage 4 Read + Draft tool registry，定义只读和草稿工具的 agent 权限与 approval 分类。
 - `createApprovalRequest` / `resolveApproval`：Stage 4 最小 approval flow helper，生成和处理 side-effect approval 对象，但不执行动作。
 - `createFinalArtifact`：Stage 4 最小 final artifact helper，生成最终 artifact 对象和摘要，但不写入 store 或文件系统。
+- `createFinalSummaryGate`：Stage 4 final summary 前置 gate，要求 reviewer pass 后才允许进入最终总结。
 
 当前不包含真实 agent loop、API handler、SSE endpoint、数据库持久化、工具执行器、approved action execution 或 DeepSeek provider 调用。
