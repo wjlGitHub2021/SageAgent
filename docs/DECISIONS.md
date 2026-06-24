@@ -206,3 +206,24 @@ Stage 2 先在 `@sage/runtime` 中实现 local single-user 的 in-memory runtime
 - 在真实 agent loop 和 provider 接入前，需要一个可测试、可替换的本地状态层。
 - in-memory store 足够支撑 MVP 的 local single-user 模式，复杂持久化可以等核心 run flow 稳定后再引入。
 - 先把 event reducer 行为放到 runtime package，可以避免 UI 直接承担状态推导责任。
+
+## DEC-0012：DeepSeek Provider Configuration First
+
+状态：accepted
+
+决策：
+
+Stage 3 先实现 `@sage/deepseek` provider configuration，再实现真实 HTTP adapter。
+
+要求：
+
+- 配置读取与校验独立于真实请求，避免 API key 或网络问题阻塞本地开发。
+- 缺失 `DEEPSEEK_API_KEY` 在配置阶段只记录为未配置，不抛出阻塞错误。
+- model 和 reasoning effort 复用 `@sage/shared` 的 DeepSeek 类型与常量。
+- provider package 不直接更新 UI；后续 adapter 输出必须进入 Run Events。
+
+理由：
+
+- provider 边界先稳定，后续 adapter、error handling、streaming event 转换才有可靠输入。
+- API key 是敏感信息，配置层必须避免泄露。
+- 单 provider 策略可以保持 MVP 简洁，减少过早抽象。

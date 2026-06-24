@@ -62,7 +62,8 @@
 
 ## Stage 3：DeepSeek V4 Provider
 
-- [ ] 添加 provider configuration。
+- [x] 编写 `docs/STAGE3_SPEC.md`，锁定 Stage 3 分块策略与 Task 3.1 验收标准。
+- [x] 添加 provider configuration。
 - [ ] 添加 API key environment handling。
 - [ ] 实现 DeepSeek V4 adapter。
 - [ ] 添加 model selector。
