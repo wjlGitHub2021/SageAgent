@@ -94,3 +94,31 @@ Stage 4 仍采用 Read + Draft 权限模型：
 - 不实现联网 research。
 - 不实现 orchestrator delegation flow。
 - 不接 UI。
+
+## Task 4.3：Builder Agent
+
+范围：
+
+- 实现 `builderAgent` definition。
+- Builder 的职责是基于目标和 Researcher brief 生成实现草稿、patch plan 或 artifact 草稿。
+- 提供纯函数 `createBuilderDraft(input)`，根据目标、上下文摘要和约束生成结构化 draft。
+- `createBuilderDraft` 不调用 LLM、不读写文件、不执行工具、不联网，只返回结构化 draft。
+- Builder 只拥有 `read_context` 和 `draft_artifact` 权限；不允许写文件、运行 shell、发起外部副作用请求。
+- Builder 不直接 handoff 给其他 agent；后续 reviewer pass 由 Supervisor / orchestrator 决定。
+
+验收：
+
+- `builderAgent.role` 为 `builder`。
+- `builderAgent.allowedActions` 不包含写文件、shell、external request 等 risky action 权限。
+- `createBuilderDraft` 对非空 goal 返回稳定结构，至少包含 goal、summary、implementationNotes、constraints、patchPlan、artifactDrafts、safetyNotes。
+- `createBuilderDraft` 对空 goal 返回结构化 `invalid_goal` 错误。
+- 输入的 context notes / constraints 需要 trim、过滤空字符串、去重。
+- root `typecheck`、`lint`、`build` 通过。
+
+暂不做：
+
+- 不生成真实 patch 文件。
+- 不写入工作区文件。
+- 不实现 approval flow。
+- 不调用真实 LLM。
+- 不接 UI。

@@ -75,6 +75,48 @@ export type ResearcherBriefResult =
       readonly issue: ResearcherBriefIssue;
     };
 
+export interface BuilderDraftInput {
+  readonly goal: string;
+  readonly contextNotes?: readonly string[];
+  readonly constraints?: readonly string[];
+}
+
+export interface BuilderPatchPlanItem {
+  readonly target: string;
+  readonly intent: string;
+}
+
+export interface BuilderArtifactDraft {
+  readonly title: string;
+  readonly kind: "plan" | "patch" | "document" | "summary";
+  readonly purpose: string;
+}
+
+export interface BuilderDraft {
+  readonly goal: string;
+  readonly summary: string;
+  readonly implementationNotes: readonly string[];
+  readonly constraints: readonly string[];
+  readonly patchPlan: readonly BuilderPatchPlanItem[];
+  readonly artifactDrafts: readonly BuilderArtifactDraft[];
+  readonly safetyNotes: readonly string[];
+}
+
+export interface BuilderDraftIssue {
+  readonly code: "invalid_goal";
+  readonly message: string;
+}
+
+export type BuilderDraftResult =
+  | {
+      readonly ok: true;
+      readonly draft: BuilderDraft;
+    }
+  | {
+      readonly ok: false;
+      readonly issue: BuilderDraftIssue;
+    };
+
 export const supervisorAgent: AgentDefinition = {
   role: "supervisor",
   displayName: "Supervisor",
@@ -89,6 +131,15 @@ export const researcherAgent: AgentDefinition = {
   displayName: "Researcher",
   mission:
     "Gather local project context, summarize constraints, and prepare a clear brief for downstream draft work.",
+  allowedActions: ["read_context", "draft_artifact"],
+  handoffTargets: [],
+};
+
+export const builderAgent: AgentDefinition = {
+  role: "builder",
+  displayName: "Builder",
+  mission:
+    "Turn approved context into implementation drafts, patch plans, and artifact drafts without applying side effects.",
   allowedActions: ["read_context", "draft_artifact"],
   handoffTargets: [],
 };
@@ -190,6 +241,77 @@ export function createResearcherBrief(
         contextTargets.length === 0
           ? "Ask Supervisor for target files or derive them through the approved orchestrator context flow."
           : "Use the listed context targets as the first-pass reading queue.",
+      ],
+    },
+  };
+}
+
+export function createBuilderDraft(
+  input: BuilderDraftInput,
+): BuilderDraftResult {
+  const normalizedGoal = input.goal.trim();
+  if (normalizedGoal.length === 0) {
+    return {
+      ok: false,
+      issue: {
+        code: "invalid_goal",
+        message: "Builder draft requires a non-empty goal.",
+      },
+    };
+  }
+
+  const contextNotes = normalizeList(input.contextNotes);
+  const constraints = normalizeList(input.constraints);
+
+  return {
+    ok: true,
+    draft: {
+      goal: normalizedGoal,
+      summary:
+        "Builder should produce a minimal implementation draft and patch plan while staying inside Read + Draft permissions.",
+      implementationNotes: [
+        ...contextNotes,
+        "Keep the draft scoped to the current task and defer unrelated refactors.",
+        constraints.length === 0
+          ? "Confirm task constraints with Supervisor before proposing side-effecting work."
+          : "Apply the listed constraints before drafting any patch plan.",
+      ],
+      constraints,
+      patchPlan: [
+        {
+          target: "docs",
+          intent:
+            "Update the relevant task specification, acceptance criteria, and task checklist before implementation.",
+        },
+        {
+          target: "implementation",
+          intent:
+            "Draft the smallest code or artifact change that satisfies the current task boundary.",
+        },
+        {
+          target: "qa",
+          intent:
+            "Prepare verification notes for typecheck, lint, build, behavior checks, and independent review.",
+        },
+      ],
+      artifactDrafts: [
+        {
+          title: "Implementation plan",
+          kind: "plan",
+          purpose:
+            "Explain the intended file changes and expected behavior before any write approval is requested.",
+        },
+        {
+          title: "QA summary",
+          kind: "summary",
+          purpose:
+            "Capture verification commands, review findings, and any bugs that must be tracked.",
+        },
+      ],
+      safetyNotes: [
+        "Do not write files, run shell commands, or make external requests from the builder draft step.",
+        "Any proposed file write must become an approval request before execution.",
+        "Reviewer should inspect the draft before Supervisor produces the final summary.",
       ],
     },
   };
