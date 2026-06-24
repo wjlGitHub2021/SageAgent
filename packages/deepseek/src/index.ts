@@ -19,3 +19,21 @@ export {
   type DeepSeekApiKeyReadyState,
   type DeepSeekApiKeyResult,
 } from "./api-key.js";
+export {
+  DEEPSEEK_CHAT_COMPLETIONS_PATH,
+  createDeepSeekChatCompletion,
+  parseDeepSeekChatCompletionResponse,
+  parseDeepSeekStreamLine,
+  type DeepSeekAdapterErrorCode,
+  type DeepSeekAdapterIssue,
+  type DeepSeekAdapterResult,
+  type DeepSeekChatCompletionChoice,
+  type DeepSeekChatCompletionInput,
+  type DeepSeekChatCompletionOutput,
+  type DeepSeekChatCompletionRequestBody,
+  type DeepSeekChatMessage,
+  type DeepSeekChatRole,
+  type DeepSeekFetch,
+  type DeepSeekFetchResponse,
+  type DeepSeekStreamParseEvent,
+} from "./chat-completions.js";

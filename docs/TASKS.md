@@ -67,7 +67,8 @@
 - [x] 添加 provider configuration。
 - [x] 编写 Task 3.2 API key environment handling 范围与验收标准。
 - [x] 添加 API key environment handling。
-- [ ] 实现 DeepSeek V4 adapter。
+- [x] 编写 Task 3.3 DeepSeek V4 adapter 范围与验收标准。
+- [x] 实现 DeepSeek V4 adapter。
 - [ ] 添加 model selector。
 - [ ] 添加 thinking mode toggle。
 - [ ] 添加 `high` / `max` reasoning effort selector。

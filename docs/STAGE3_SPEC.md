@@ -89,3 +89,41 @@ Stage 3 按以下小 task 推进：
 - 不读取 `.env` 文件本身，只消费传入 env 或 `process.env`。
 - 不实现 adapter。
 - 不把 readiness 状态接入 UI。
+
+## Task 3.3：DeepSeek V4 Adapter
+
+范围：
+
+- 在 `@sage/deepseek` 中实现 DeepSeek V4 Chat Completions adapter。
+- 生成 OpenAI-compatible `POST /chat/completions` 请求：
+  - `model`
+  - `messages`
+  - `stream`
+  - `thinking: { type: "enabled" | "disabled" }`
+  - `reasoning_effort: "high" | "max"`
+- 真实发送前必须调用 `requireDeepSeekApiKey`，缺失 key 返回结构化 `missing_api_key` 错误。
+- 支持可注入 `fetch`，便于 QA 使用 fake fetch 验证请求，不发真实外部请求。
+- non-stream adapter 调用固定发送 `stream: false`，公开 input 暂不暴露 `stream` 开关；streamed output 写入 run events 在 Task 3.7 单独实现。
+- 提供 non-stream response parser，用于提取 assistant content、reasoning content、finish reason 和原始 id/model。
+- 提供 streaming SSE line parser，支持：
+  - 空行与非 `data:` 行忽略。
+  - `data: [DONE]` 转换为 done event。
+  - JSON chunk 转换为 delta event。
+  - 非法 JSON 返回结构化 parse error。
+- 不记录、不返回完整 API key；测试与错误输出不得包含真实 key。
+
+验收：
+
+- `packages/deepseek` 独立 typecheck 通过。
+- root `typecheck`、`lint`、`build` 通过。
+- fake fetch 能验证 URL、method、headers 和 body shape，不触发真实 DeepSeek 请求。
+- missing API key、HTTP error、invalid response、invalid SSE JSON 都返回结构化错误。
+- adapter 默认使用 config 中的 model、thinking enabled 和 reasoning effort，同时允许单次请求覆盖。
+
+暂不做：
+
+- 不接入 UI composer。
+- 不把 streamed output 写入 run events。
+- 不开放会返回完整 `Authorization` header 的 request builder；请求细节只允许在注入的 fake fetch 内验证。
+- 不实现 retry、timeout、abort controller 或 rate limit。
+- 不实现 tool calling、JSON mode、file upload 或其它 DeepSeek 高级参数。
