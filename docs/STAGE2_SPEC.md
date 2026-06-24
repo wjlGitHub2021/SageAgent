@@ -105,3 +105,28 @@ Stage 2 按以下小 task 推进：
 - 不把 Product Shell 的 composer 接到该 API。
 - 不实现 run event streaming。
 - 不持久化到数据库或文件。
+
+## Task 2.4：SSE Event Endpoint
+
+范围：
+
+- 在 `apps/web` 中添加 `GET /api/runs/[runId]/events`。
+- endpoint 使用 `@sage/runtime` 的 local in-memory store 读取 run events。
+- 使用 `text/event-stream` 响应，事件名为 `run-event`，data 为单个 `RunEvent` JSON。
+- 支持 `after` query param，只返回 `sequence > after` 的 events。
+- 当前实现为 snapshot-style SSE：发送已有 events 后关闭连接，不做长连接订阅、心跳、重试或后台 agent streaming。
+
+验收：
+
+- 存在 run 时返回 `200` 和 SSE 格式内容。
+- 不存在 run 时返回 `404` JSON error。
+- 非数字 `after` 返回 `400`。
+- 超出 safe integer 范围的 `after` 返回 `400`。
+- `after` 能过滤旧 events。
+- 不接 DeepSeek、不启动 agent loop、不实现持续订阅。
+
+暂不做：
+
+- 不实现 browser EventSource 长连接保持。
+- 不实现 live event bus subscription。
+- 不把 UI timeline 接到该 endpoint。
