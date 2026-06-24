@@ -7,7 +7,7 @@ import {
   type RunCreatedEvent,
   type Thread,
 } from "@sage/shared";
-import { getRuntimeStore } from "@/lib/runtime-store";
+import { getRuntimeStore, getTelemetryLogger } from "@/lib/runtime-store";
 
 export const runtime = "nodejs";
 
@@ -26,13 +26,33 @@ const DEFAULT_SETTINGS: DeepSeekSettings = {
 };
 
 export async function POST(request: Request) {
+  const telemetry = getTelemetryLogger();
   const body = await readJsonBody(request);
   if (!body.ok) {
+    telemetry.record({
+      name: "api.runs.create.rejected",
+      level: "warn",
+      source: "api",
+      message: "Create run request rejected before normalization.",
+      metadata: {
+        code: "invalid_json",
+      },
+    });
     return jsonError("invalid_json", "Request body must be valid JSON.", 400);
   }
 
   const input = normalizeCreateRunRequest(body.value);
   if (!input.ok) {
+    telemetry.record({
+      name: "api.runs.create.rejected",
+      level: "warn",
+      source: "api",
+      message: "Create run request failed validation.",
+      metadata: {
+        code: input.code,
+        status: input.status,
+      },
+    });
     return jsonError(input.code, input.message, input.status);
   }
 
@@ -44,6 +64,16 @@ export async function POST(request: Request) {
       : store.getThread(input.threadId);
 
   if (!thread) {
+    telemetry.record({
+      name: "api.runs.create.rejected",
+      level: "warn",
+      source: "api",
+      message: "Create run request referenced a missing thread.",
+      metadata: {
+        code: "thread_not_found",
+        status: 404,
+      },
+    });
     return jsonError("thread_not_found", "Thread was not found.", 404);
   }
 
@@ -61,6 +91,21 @@ export async function POST(request: Request) {
   const event = createRunCreatedEvent(run, nextRunSequence(store, run.id), now);
 
   store.appendEvent(event);
+  telemetry.record({
+    name: "api.runs.create.completed",
+    source: "api",
+    message: "Run created and initial event appended.",
+    runId: run.id,
+    threadId: thread.id,
+    metadata: {
+      eventType: event.type,
+      runStatus: run.status,
+      model: run.settings.model,
+      reasoningEffort: run.settings.reasoningEffort,
+      thinkingEnabled: run.settings.thinkingEnabled,
+      createdThread: input.threadId === null,
+    },
+  });
 
   return NextResponse.json(
     {

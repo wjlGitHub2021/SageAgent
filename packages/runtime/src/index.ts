@@ -29,6 +29,18 @@ export {
   type RuntimeStore,
 } from "./memory-store.js";
 export {
+  TELEMETRY_REDACTED_VALUE,
+  createLocalTelemetryLogger,
+  sanitizeTelemetryMetadata,
+  type RecordTelemetryEventInput,
+  type TelemetryEvent,
+  type TelemetryEventFilter,
+  type TelemetryLevel,
+  type TelemetryLogger,
+  type TelemetryLoggerOptions,
+  type TelemetrySource,
+} from "./telemetry.js";
+export {
   createDelegationFlow,
   type DelegationFlow,
   type DelegationFlowInput,

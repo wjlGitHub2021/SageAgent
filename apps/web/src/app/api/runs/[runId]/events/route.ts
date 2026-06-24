@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { RunEvent } from "@sage/shared";
-import { getRuntimeStore } from "@/lib/runtime-store";
+import { getRuntimeStore, getTelemetryLogger } from "@/lib/runtime-store";
 
 export const runtime = "nodejs";
 
@@ -13,18 +13,53 @@ type RouteContext = {
 export async function GET(request: Request, context: RouteContext) {
   const { runId } = await context.params;
   const store = getRuntimeStore();
+  const telemetry = getTelemetryLogger();
   const run = store.getRun(runId);
 
   if (!run) {
+    telemetry.record({
+      name: "api.runs.events.rejected",
+      level: "warn",
+      source: "api",
+      message: "Run events request referenced a missing run.",
+      runId,
+      metadata: {
+        code: "run_not_found",
+        status: 404,
+      },
+    });
     return jsonError("run_not_found", "Run was not found.", 404);
   }
 
   const after = parseAfterSequence(new URL(request.url).searchParams);
   if (!after.ok) {
+    telemetry.record({
+      name: "api.runs.events.rejected",
+      level: "warn",
+      source: "api",
+      message: "Run events request failed validation.",
+      runId,
+      threadId: run.threadId,
+      metadata: {
+        code: after.code,
+        status: 400,
+      },
+    });
     return jsonError(after.code, after.message, 400);
   }
 
   const events = store.getEventsByRun(runId, after.value);
+  telemetry.record({
+    name: "api.runs.events.completed",
+    source: "api",
+    message: "Run events request returned an SSE payload.",
+    runId,
+    threadId: run.threadId,
+    metadata: {
+      after: after.value ?? null,
+      eventCount: events.length,
+    },
+  });
 
   return new Response(encodeRunEvents(events), {
     headers: {

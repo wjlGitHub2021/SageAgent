@@ -12,5 +12,6 @@ Sage Agent 的 runtime package。
 - `createApprovalRequest` / `resolveApproval`：Stage 4 最小 approval flow helper，生成和处理 side-effect approval 对象，但不执行动作。
 - `createFinalArtifact`：Stage 4 最小 final artifact helper，生成最终 artifact 对象和摘要，但不写入 store 或文件系统。
 - `createFinalSummaryGate`：Stage 4 final summary 前置 gate，要求 reviewer pass 后才允许进入最终总结。
+- `createLocalTelemetryLogger`：Stage 5 最小本地 telemetry / logging helper，仅在当前进程内记录诊断事件，并对敏感 metadata key 做脱敏。
 
-当前不包含真实 agent loop、API handler、SSE endpoint、数据库持久化、工具执行器、approved action execution 或 DeepSeek provider 调用。
+当前不包含真实 agent loop、API handler、SSE endpoint、数据库持久化、文件日志、远程 telemetry、工具执行器、approved action execution 或 DeepSeek provider 调用。

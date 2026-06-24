@@ -8,9 +8,12 @@ import {
   createFinalArtifactSummary,
   createFinalSummaryGate,
   createMemoryRuntimeStore,
+  createLocalTelemetryLogger,
   requiresApprovalForAction,
   requiresToolApproval,
   resolveApproval,
+  sanitizeTelemetryMetadata,
+  TELEMETRY_REDACTED_VALUE,
 } from "@sage/runtime";
 import type { Run, RunEvent, Thread } from "@sage/shared";
 
@@ -224,6 +227,97 @@ describe("runtime flows", () => {
         reviewerDecision: "pass",
         summary: "Ready",
       },
+    });
+  });
+
+  it("records local telemetry with ordering, filtering, trimming, and redaction", () => {
+    const logger = createLocalTelemetryLogger({ maxEvents: 2 });
+
+    const firstEvent = logger.record({
+      id: " telemetry-1 ",
+      name: " api.request.started ",
+      source: "api",
+      message: " Request started ",
+      runId: " run-a ",
+      metadata: {
+        status: 202,
+        apiKey: "sk-secret",
+        nested: {
+          authorization: "Bearer token",
+          safe: "visible",
+        },
+      },
+      createdAt: "2026-06-24T01:00:05.000Z",
+    });
+    expect(firstEvent.metadata).toMatchObject({
+      apiKey: TELEMETRY_REDACTED_VALUE,
+      nested: {
+        authorization: TELEMETRY_REDACTED_VALUE,
+        safe: "visible",
+      },
+    });
+    logger.record({
+      name: "api.request.completed",
+      source: "api",
+      message: "Request completed",
+      runId: "run-a",
+      metadata: {
+        eventCount: 1,
+      },
+      createdAt: "2026-06-24T01:00:06.000Z",
+    });
+    logger.record({
+      name: "provider.request.failed",
+      level: "error",
+      source: "provider",
+      message: "Provider request failed",
+      runId: "run-b",
+      metadata: {
+        token: "private",
+      },
+      createdAt: "2026-06-24T01:00:07.000Z",
+    });
+
+    expect(logger.getEvents().map((event) => event.name)).toEqual([
+      "api.request.completed",
+      "provider.request.failed",
+    ]);
+    expect(logger.getEvents({ source: "api" })).toHaveLength(1);
+    expect(logger.getEvents({ level: "error" })[0]).toMatchObject({
+      name: "provider.request.failed",
+      metadata: {
+        token: TELEMETRY_REDACTED_VALUE,
+      },
+    });
+
+    const [storedEvent] = logger.getEvents({ source: "provider" });
+    if (storedEvent) {
+      (storedEvent.metadata as Record<string, unknown>).token = "mutated";
+    }
+    expect(logger.getEvents({ source: "provider" })[0]?.metadata).toMatchObject({
+      token: TELEMETRY_REDACTED_VALUE,
+    });
+  });
+
+  it("sanitizes telemetry metadata recursively", () => {
+    expect(
+      sanitizeTelemetryMetadata({
+        safe: "value",
+        apiKey: "sk-secret",
+        authorization: "Bearer abc",
+        credential: "private",
+        password: "secret",
+        secret: "secret",
+        list: [{ token: "abc" }, "ok"],
+      }),
+    ).toEqual({
+      safe: "value",
+      apiKey: TELEMETRY_REDACTED_VALUE,
+      authorization: TELEMETRY_REDACTED_VALUE,
+      credential: TELEMETRY_REDACTED_VALUE,
+      password: TELEMETRY_REDACTED_VALUE,
+      secret: TELEMETRY_REDACTED_VALUE,
+      list: [{ token: TELEMETRY_REDACTED_VALUE }, "ok"],
     });
   });
 });

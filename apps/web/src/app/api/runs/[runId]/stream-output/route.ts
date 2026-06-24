@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { AGENT_ROLES, type AgentRole, type Message } from "@sage/shared";
-import { getRuntimeStore } from "@/lib/runtime-store";
+import { getRuntimeStore, getTelemetryLogger } from "@/lib/runtime-store";
 
 export const runtime = "nodejs";
 
@@ -23,19 +23,55 @@ type NormalizedStreamOutputRequest = {
 export async function POST(request: Request, context: RouteContext) {
   const { runId } = await context.params;
   const store = getRuntimeStore();
+  const telemetry = getTelemetryLogger();
   const run = store.getRun(runId);
 
   if (!run) {
+    telemetry.record({
+      name: "api.runs.stream_output.rejected",
+      level: "warn",
+      source: "api",
+      message: "Stream output request referenced a missing run.",
+      runId,
+      metadata: {
+        code: "run_not_found",
+        status: 404,
+      },
+    });
     return jsonError("run_not_found", "Run was not found.", 404);
   }
 
   const body = await readJsonBody(request);
   if (!body.ok) {
+    telemetry.record({
+      name: "api.runs.stream_output.rejected",
+      level: "warn",
+      source: "api",
+      message: "Stream output request body was invalid JSON.",
+      runId,
+      threadId: run.threadId,
+      metadata: {
+        code: "invalid_json",
+        status: 400,
+      },
+    });
     return jsonError("invalid_json", "Request body must be valid JSON.", 400);
   }
 
   const input = normalizeStreamOutputRequest(body.value);
   if (!input.ok) {
+    telemetry.record({
+      name: "api.runs.stream_output.rejected",
+      level: "warn",
+      source: "api",
+      message: "Stream output request failed validation.",
+      runId,
+      threadId: run.threadId,
+      metadata: {
+        code: input.code,
+        status: 400,
+      },
+    });
     return jsonError(input.code, input.message, 400);
   }
 
@@ -52,6 +88,18 @@ export async function POST(request: Request, context: RouteContext) {
   for (const event of events) {
     store.appendEvent(event);
   }
+  telemetry.record({
+    name: "api.runs.stream_output.completed",
+    source: "api",
+    message: "Stream output events appended to the run.",
+    runId: run.id,
+    threadId: run.threadId,
+    metadata: {
+      agent: input.value.agent,
+      chunkCount: input.value.chunks.length,
+      eventCount: events.length,
+    },
+  });
 
   return NextResponse.json(
     {

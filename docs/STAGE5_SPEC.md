@@ -158,3 +158,27 @@ Stage 5 必须继续遵守：
 - 不把低优先级改进项强行升格为 P0/P1。
 - 不为了清空 BUG 文档而删除真实问题。
 - 不执行完整手动 QA checklist；完整人工验收另行按 `docs/QA_CHECKLIST.md` 运行。
+
+## Task 5.7：最小本地 Telemetry / Logging
+
+范围：
+
+- 在 `@sage/runtime` 添加本地 in-memory telemetry logger，用于记录 API / runtime 边界的最小诊断事件。
+- telemetry event 至少包含 id、sequence、name、level、source、message、runId、threadId、metadata、createdAt。
+- metadata 必须做敏感 key 脱敏，避免记录 API key、authorization、token、secret、password 等值。
+- 在 `apps/web` 的 create-run、run events SSE、stream output API 边界记录本地 telemetry 事件。
+- telemetry 只保存在本地进程内，不写磁盘、不发外部请求、不引入第三方 telemetry 服务。
+
+验收：
+
+- `@sage/runtime` 导出 telemetry logger 和 metadata sanitization helper。
+- API 入口成功和拒绝路径都能记录本地 telemetry 事件。
+- 单元测试覆盖事件顺序、过滤、最大数量裁剪和敏感 metadata 脱敏。
+- `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+
+暂不做：
+
+- 不接 OpenTelemetry、Sentry、Logtail 或任何远程日志服务。
+- 不做文件日志、数据库日志或跨进程持久化。
+- 不在 UI 中展示 telemetry 面板。
+- 不记录完整 prompt、model response、API key 或用户私密内容。
