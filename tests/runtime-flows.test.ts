@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import * as fs from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
 
 import {
   canAgentUseTool,
@@ -9,12 +12,14 @@ import {
   createFinalSummaryGate,
   createMemoryRuntimeStore,
   createLocalTelemetryLogger,
+  readProjectFileTool,
   requiresApprovalForAction,
   requiresToolApproval,
   resolveApproval,
   sanitizeTelemetryMetadata,
   TELEMETRY_REDACTED_VALUE,
 } from "@sage/runtime";
+import type { ReadProjectFileRunner } from "../apps/web/src/lib/supervisor-runner";
 import type { Run, RunEvent, Thread } from "@sage/shared";
 import {
   appendSupervisorFailureEvent,
@@ -207,9 +212,141 @@ describe("runtime flows", () => {
 
   it("keeps Read + Draft tools inside the no-approval boundary", () => {
     expect(canAgentUseTool("researcher", "read_project_file")).toBe(true);
+    expect(canAgentUseTool("supervisor", "read_project_file")).toBe(false);
     expect(canAgentUseTool("reviewer", "draft_patch")).toBe(false);
     expect(requiresToolApproval("draft_patch")).toBe(false);
     expect(requiresToolApproval("unknown_tool")).toBe(true);
+  });
+
+  it("reads allowed project text files through the read-only tool", async () => {
+    const result = await readProjectFileTool({
+      workspaceRoot: process.cwd(),
+      relativePath: "README.md",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.relativePath).toBe("README.md");
+    expect(result.content).toContain("Sage Agent");
+    expect(result.bytes).toBeGreaterThan(0);
+  });
+
+  it("rejects path traversal and absolute workspace escapes", async () => {
+    await expect(
+      readProjectFileTool({
+        workspaceRoot: process.cwd(),
+        relativePath: "../DailySage/README.md",
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      issue: { code: "path_outside_workspace" },
+    });
+
+    await expect(
+      readProjectFileTool({
+        workspaceRoot: process.cwd(),
+        relativePath: "/etc/passwd",
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      issue: { code: "absolute_path_not_allowed" },
+    });
+  });
+
+  it("rejects sensitive and generated paths without requiring approval", async () => {
+    await expect(
+      readProjectFileTool({
+        workspaceRoot: process.cwd(),
+        relativePath: ".env",
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      issue: { code: "blocked_path" },
+    });
+
+    await expect(
+      readProjectFileTool({
+        workspaceRoot: process.cwd(),
+        relativePath: ".ENV.local",
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      issue: { code: "blocked_path" },
+    });
+
+    await expect(
+      readProjectFileTool({
+        workspaceRoot: process.cwd(),
+        relativePath: "node_modules/.pnpm",
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      issue: { code: "blocked_path" },
+    });
+
+    expect(requiresToolApproval("read_project_file")).toBe(false);
+  });
+
+  it("rejects symlinks that resolve to blocked project paths", async () => {
+    const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "sage-read-tool-"));
+    try {
+      await fs.writeFile(path.join(workspaceRoot, ".env"), "SECRET=private");
+      await fs.symlink(path.join(workspaceRoot, ".env"), path.join(workspaceRoot, "safe-link.txt"));
+
+      await expect(
+        readProjectFileTool({
+          workspaceRoot,
+          relativePath: "safe-link.txt",
+        }),
+      ).resolves.toMatchObject({
+        ok: false,
+        issue: { code: "blocked_path" },
+      });
+    } finally {
+      await fs.rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects directories, oversized files, and binary files", async () => {
+    const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "sage-read-tool-"));
+    try {
+      await fs.mkdir(path.join(workspaceRoot, "docs"));
+      await fs.writeFile(path.join(workspaceRoot, "large.txt"), "x".repeat(32));
+      await fs.writeFile(path.join(workspaceRoot, "binary.dat"), Buffer.from([1, 2, 0, 3]));
+
+      await expect(
+        readProjectFileTool({
+          workspaceRoot,
+          relativePath: "docs",
+        }),
+      ).resolves.toMatchObject({
+        ok: false,
+        issue: { code: "not_file" },
+      });
+
+      await expect(
+        readProjectFileTool({
+          workspaceRoot,
+          relativePath: "large.txt",
+          maxBytes: 16,
+        }),
+      ).resolves.toMatchObject({
+        ok: false,
+        issue: { code: "file_too_large" },
+      });
+
+      await expect(
+        readProjectFileTool({
+          workspaceRoot,
+          relativePath: "binary.dat",
+        }),
+      ).resolves.toMatchObject({
+        ok: false,
+        issue: { code: "binary_file" },
+      });
+    } finally {
+      await fs.rm(workspaceRoot, { recursive: true, force: true });
+    }
   });
 
   it("validates artifacts and blocks final summary until reviewer passes", () => {
@@ -706,6 +843,191 @@ describe("runtime flows", () => {
       status: "completed",
       activeAgent: null,
     });
+  });
+
+  it("streams read-only file tool events before Supervisor model output", async () => {
+    const store = createMemoryRuntimeStore(createEmptyRuntimeSnapshot());
+    const fileRun: Run = {
+      ...run,
+      goal: "请读取 `docs/SPEC.md` 并总结重点",
+    };
+    store.upsertThread(thread);
+    store.appendEvent({
+      id: "event-run-created-for-file-context",
+      runId: fileRun.id,
+      type: "run.created",
+      sequence: 1,
+      createdAt,
+      payload: { run: { ...fileRun, status: "queued", activeAgent: null } },
+    });
+
+    let providerInput: Parameters<SupervisorStreamProvider>[1] | null = null;
+    const provider: SupervisorStreamProvider = async function* (_config, input) {
+      providerInput = input;
+      yield {
+        ok: true,
+        value: {
+          type: "delta",
+          id: "chatcmpl-file",
+          model: "deepseek-v4-flash",
+          index: 0,
+          role: "assistant",
+          contentDelta: "已读取规格。",
+          reasoningDelta: null,
+          finishReason: null,
+        },
+      };
+      yield { ok: true, value: { type: "done" } };
+    };
+    const readProjectFile: ReadProjectFileRunner = async (input) => ({
+      ok: true,
+      relativePath: input.relativePath,
+      bytes: 18,
+      content: "SPEC file content.",
+    });
+
+    const events = [];
+    for await (const event of streamSupervisorDeepSeekEvents({
+      store,
+      runId: fileRun.id,
+      config: {
+        apiKey: "sk-test",
+        baseUrl: "https://api.deepseek.com",
+        defaultModel: "deepseek-v4-flash",
+        defaultReasoningEffort: "high",
+        thinkingEnabled: true,
+      },
+      provider,
+      workspaceRoot: process.cwd(),
+      readProjectFile,
+      now: createClock([
+        "2026-06-24T01:03:01.000Z",
+        "2026-06-24T01:03:02.000Z",
+        "2026-06-24T01:03:03.000Z",
+        "2026-06-24T01:03:04.000Z",
+        "2026-06-24T01:03:05.000Z",
+      ]),
+      createId: createIdFactory(),
+    })) {
+      events.push(event);
+    }
+
+    expect(events.map((event) => event.type)).toEqual([
+      "run.status_changed",
+      "tool.started",
+      "tool.completed",
+      "message.delta",
+      "message.completed",
+      "run.completed",
+    ]);
+    const toolCompleted = events.find(
+      (event): event is Extract<RunEvent, { type: "tool.completed" }> =>
+        event.type === "tool.completed",
+    );
+    expect(toolCompleted?.payload.toolCall).toMatchObject({
+      agent: "researcher",
+      toolName: "read_project_file",
+      status: "completed",
+      args: {
+        relativePath: "docs/SPEC.md",
+      },
+    });
+    expect(providerInput?.messages[1]?.content).toContain("docs/SPEC.md");
+    expect(providerInput?.messages[1]?.content).toContain("SPEC file content.");
+    expect(store.getToolCallsByRun(fileRun.id)[0]?.status).toBe("completed");
+  });
+
+  it("records read-only file tool failures without blocking Supervisor output", async () => {
+    const store = createMemoryRuntimeStore(createEmptyRuntimeSnapshot());
+    const fileRun: Run = {
+      ...run,
+      goal: "请读取 `.env` 看看配置",
+    };
+    store.upsertThread(thread);
+    store.appendEvent({
+      id: "event-run-created-for-file-failure",
+      runId: fileRun.id,
+      type: "run.created",
+      sequence: 1,
+      createdAt,
+      payload: { run: { ...fileRun, status: "queued", activeAgent: null } },
+    });
+
+    let providerInput: Parameters<SupervisorStreamProvider>[1] | null = null;
+    const provider: SupervisorStreamProvider = async function* (_config, input) {
+      providerInput = input;
+      yield {
+        ok: true,
+        value: {
+          type: "delta",
+          id: "chatcmpl-file-failure",
+          model: "deepseek-v4-flash",
+          index: 0,
+          role: "assistant",
+          contentDelta: "不能读取敏感配置文件。",
+          reasoningDelta: null,
+          finishReason: null,
+        },
+      };
+      yield { ok: true, value: { type: "done" } };
+    };
+    const readProjectFile: ReadProjectFileRunner = async () => ({
+      ok: false,
+      issue: {
+        code: "blocked_path",
+        message: "Path is blocked by the Sage read-only file policy.",
+        relativePath: ".env",
+      },
+    });
+
+    const events = [];
+    for await (const event of streamSupervisorDeepSeekEvents({
+      store,
+      runId: fileRun.id,
+      config: {
+        apiKey: "sk-test",
+        baseUrl: "https://api.deepseek.com",
+        defaultModel: "deepseek-v4-flash",
+        defaultReasoningEffort: "high",
+        thinkingEnabled: true,
+      },
+      provider,
+      workspaceRoot: process.cwd(),
+      readProjectFile,
+      now: createClock([
+        "2026-06-24T01:04:01.000Z",
+        "2026-06-24T01:04:02.000Z",
+        "2026-06-24T01:04:03.000Z",
+        "2026-06-24T01:04:04.000Z",
+        "2026-06-24T01:04:05.000Z",
+      ]),
+      createId: createIdFactory(),
+    })) {
+      events.push(event);
+    }
+
+    expect(events.map((event) => event.type)).toEqual([
+      "run.status_changed",
+      "tool.started",
+      "tool.failed",
+      "message.delta",
+      "message.completed",
+      "run.completed",
+    ]);
+    const toolFailed = events.find(
+      (event): event is Extract<RunEvent, { type: "tool.failed" }> =>
+        event.type === "tool.failed",
+    );
+    expect(toolFailed?.payload.toolCall).toMatchObject({
+      agent: "researcher",
+      toolName: "read_project_file",
+      status: "failed",
+      error:
+        "blocked_path: Path is blocked by the Sage read-only file policy.",
+    });
+    expect(providerInput?.messages[1]?.content).toContain("read_failed");
+    expect(providerInput?.messages[1]?.content).toContain("blocked_path");
+    expect(store.getApprovalsByRun(fileRun.id)).toEqual([]);
   });
 
   it("keeps partial streaming deltas when provider fails mid-stream", async () => {

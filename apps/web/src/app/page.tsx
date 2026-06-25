@@ -117,6 +117,8 @@ const copy = {
     toolStarted: "开始工具调用",
     toolCompleted: "完成工具调用",
     toolFailed: "工具调用失败",
+    toolPath: "路径",
+    toolError: "错误",
     approvalRequested: "请求审批",
     approvalResolved: "审批已处理",
     artifactCreated: "生成产物",
@@ -201,6 +203,8 @@ const copy = {
     toolStarted: "Started tool call",
     toolCompleted: "Completed tool call",
     toolFailed: "Tool call failed",
+    toolPath: "Path",
+    toolError: "Error",
     approvalRequested: "Requested approval",
     approvalResolved: "Approval resolved",
     artifactCreated: "Created artifact",
@@ -603,6 +607,8 @@ type ToolCallRow = {
   tool: string;
   agent: string;
   status: string;
+  path: string | null;
+  error: string | null;
 };
 
 type ApprovalPanelState = {
@@ -1193,7 +1199,19 @@ export default function Home() {
               ) : (
                 activeToolCalls.map((call) => (
                   <div className="tool-row" key={call.id}>
-                    <code>{call.tool}</code>
+                    <div>
+                      <code>{call.tool}</code>
+                      {call.path ? (
+                        <small>
+                          {t.toolPath}: {call.path}
+                        </small>
+                      ) : null}
+                      {call.error ? (
+                        <small>
+                          {t.toolError}: {call.error}
+                        </small>
+                      ) : null}
+                    </div>
                     <span>
                       {call.agent} · {call.status}
                     </span>
@@ -1806,7 +1824,21 @@ function getToolCallRows(
       tool: call.toolName,
       agent: agentLabels[call.agent],
       status: call.status,
+      path: readToolPath(call),
+      error: call.error,
     }));
+}
+
+function readToolPath(call: ToolCall): string | null {
+  const pathFromArgs = call.args.relativePath;
+  if (typeof pathFromArgs === "string") return pathFromArgs;
+
+  if (isPlainRecord(call.result)) {
+    const pathFromResult = call.result.relativePath;
+    if (typeof pathFromResult === "string") return pathFromResult;
+  }
+
+  return null;
 }
 
 function getActiveApproval(

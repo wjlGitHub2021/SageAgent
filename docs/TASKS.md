@@ -116,5 +116,6 @@
 - [x] 将 composer 接入 create-run / stream-output / events API。
 - [x] 接入 Supervisor-only DeepSeek 调用。
 - [x] 将 DeepSeek streamed output 转换为 run events。
-- [ ] 添加 read-only file tool。
+- [x] 文档化 read-only file tool 的触发方式、安全边界、事件顺序和验收标准。
+- [x] 添加 read-only file tool。
 - [ ] 扩展到 supervisor-led multi-agent run。

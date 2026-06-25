@@ -272,6 +272,16 @@ Phase 2.3 起，Supervisor route 的默认响应升级为 live SSE：
 - 前端边读 SSE 边应用 events；`message.delta` 创建或追加当前 Supervisor message，`message.completed` 固化最终内容。
 - 失败事件也通过同一条 stream 返回，确保 UI 和 runtime audit 不断链。
 
+Phase 2.4 起，Supervisor route 在调用 DeepSeek 前执行最小只读文件 context pass：
+
+- 当用户目标中明确提到项目相对路径，例如 `README.md`、`docs/SPEC.md`、`packages/runtime/src/tools.ts`，后端使用 `read_project_file` 工具尝试读取这些路径。
+- workspace root 默认从 monorepo root 推导；部署或特殊启动方式可用 `SAGE_WORKSPACE_ROOT` 显式固定。
+- 每次工具调用都写入 `tool.started`，成功写入 `tool.completed`，失败写入 `tool.failed`。
+- 工具只允许读取 workspace root 内的文本文件；路径必须标准化并确认没有越界。
+- 工具拒绝 `.env`、`.git/`、`node_modules/`、`.next/`、`dist/`、`build/`、`coverage/`、`tmp/`、`playwright-report/`、`test-results/`、目录、二进制文件和超过读取上限的文件。
+- 成功读取的文件片段会作为额外 context 传入 Supervisor prompt；失败原因也作为安全 context 传入，便于 Supervisor 用用户语言解释限制。
+- 只读工具不触发 approval；写文件、shell 和外部副作用仍必须 approval。
+
 ## Multi-Agent Model
 
 MVP 使用 supervisor-led workflow。
@@ -340,7 +350,7 @@ MVP 默认模式：Read + Draft。
 
 无需 approval：
 
-- Read project files。
+- Read allowed project text files through `read_project_file`。
 - Inspect project metadata。
 - Draft plans。
 - Draft patches。

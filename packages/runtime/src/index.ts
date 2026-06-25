@@ -29,6 +29,15 @@ export {
   type RuntimeStore,
 } from "./memory-store.js";
 export {
+  DEFAULT_READ_PROJECT_FILE_MAX_BYTES,
+  readProjectFileTool,
+  type ReadProjectFileFailure,
+  type ReadProjectFileIssueCode,
+  type ReadProjectFileResult,
+  type ReadProjectFileSuccess,
+  type ReadProjectFileToolInput,
+} from "./read-project-file-tool.js";
+export {
   TELEMETRY_REDACTED_VALUE,
   createLocalTelemetryLogger,
   sanitizeTelemetryMetadata,

@@ -114,15 +114,35 @@ Phase 2 采用渐进闭环：
 
 范围：
 
-- 增加只读项目文件工具。
-- 工具调用必须产生日志化 `tool.started` / `tool.completed` / `tool.failed` events。
-- 工具只能读取项目范围内允许路径，不做写入或 shell。
+- 增加只读项目文件工具 `read_project_file`，用于把明确指定的项目文本文件作为 Supervisor 上下文。
+- Phase 2.4 只支持显式路径触发，例如用户输入“读取 `docs/SPEC.md` 并总结”或“分析 `README.md`”。暂不做全仓库自动搜索或 LLM 自主选择任意文件。
+- 工具调用必须产生日志化 `tool.started` / `tool.completed` / `tool.failed` events；事件进入同一条 run stream，并在 UI tool calls / timeline / audit 中可见。
+- 只允许读取项目根目录内的文本文件。路径必须先标准化、resolve，再确认仍位于 workspace root 内。
+- 禁止路径穿越、绝对路径越界、目录读取、隐藏敏感文件、依赖/构建产物目录和二进制/过大文件：
+  - 拒绝 `.env`、`.env.*`、`.git/`、`node_modules/`、`.next/`、`dist/`、`build/`、`coverage/`、`tmp/`、`playwright-report/`、`test-results/`。
+  - 默认最大读取 `64 KiB`；超过上限返回结构化安全错误，不读取全文。
+  - 检测到 NUL byte 或明显二进制内容时拒绝。
+- 工具结果只把安全摘要和文本片段放入 `ToolCall.result`，不得泄露被拒绝敏感文件内容。
+- 读取成功时，将文件内容片段作为额外 context 传给 DeepSeek；读取失败时仍继续 Supervisor 回复，让模型说明无法读取的安全原因。
+- 不写文件、不执行 shell、不发起外部副作用请求、不触发 approval。
 
 验收：
 
 - 用户可要求分析指定项目文件。
 - UI tool calls 面板可见工具名、agent、状态。
 - 越界路径被拒绝并写入安全错误。
+- `.env`、目录、过大文件、二进制文件被拒绝且不产生 approval。
+- 成功读取时的事件顺序包含 `run.status_changed` -> `tool.started` -> `tool.completed` -> `message.delta` -> `message.completed` -> `run.completed`。
+- 读取失败时的事件顺序包含 `tool.started` -> `tool.failed`，随后仍可进入 Supervisor 模型回复或 provider failure。
+- 测试覆盖成功读取、路径穿越、绝对路径越界、敏感路径拒绝、runner tool events 和 streaming 上下文注入。
+
+暂不做：
+
+- 不做 Settings 页面中的文件权限配置。
+- 不做目录列表、glob 搜索、代码索引或语义检索。
+- 不做 LLM tool calling schema；路径提取先由后端 deterministic parser 处理明确路径。
+- 不让工具读取 workspace root 外的文件，即使用户显式给出绝对路径。
+- 不读取图片、PDF、Office 文档或其它二进制资产。
 
 ## Task 2.5：Supervisor-led Multi-Agent Run
 
@@ -147,5 +167,6 @@ Phase 2 默认使用 `.env` 配置 DeepSeek：
 - `DEEPSEEK_DEFAULT_MODEL`
 - `DEEPSEEK_DEFAULT_REASONING_EFFORT`
 - `DEEPSEEK_THINKING_ENABLED`
+- `SAGE_WORKSPACE_ROOT`：可选；用于固定 read-only file tool 的 workspace root。默认从 monorepo root 推导，本地开发建议显式设置为 `/Users/wangjinlong/DailySage`。
 
 Phase 2 不提供 API key 输入 UI。前端后续只显示“已配置/未配置”状态，避免过早引入敏感信息存储、加密和清除策略。

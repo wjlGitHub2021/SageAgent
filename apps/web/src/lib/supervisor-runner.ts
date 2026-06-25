@@ -8,22 +8,35 @@ import {
   type DeepSeekProviderConfig,
   type DeepSeekStreamParseEvent,
 } from "@sage/deepseek";
-import type { RuntimeStore } from "@sage/runtime";
+import {
+  DEFAULT_READ_PROJECT_FILE_MAX_BYTES,
+  readProjectFileTool,
+  type ReadProjectFileResult,
+  type ReadProjectFileToolInput,
+  type RuntimeStore,
+} from "@sage/runtime";
 import type {
   EntityId,
+  JsonObject,
   Message,
   Run,
   RunEvent,
   RunFailedEvent,
+  ToolCall,
 } from "@sage/shared";
 
 const SUPERVISOR_SYSTEM_PROMPT = [
   "You are Sage Agent Supervisor.",
   "Respond concisely in the user's language.",
-  "Phase 2.2 supports model-only responses.",
-  "Do not claim that you read files, wrote files, ran shell commands, or used tools.",
-  "If the user asks for an action that needs project file access or side effects, explain the limitation and provide a safe plan or draft.",
+  "Phase 2.4 supports audited read-only project file context when provided.",
+  "Only claim file access for files included in the read-only context.",
+  "Do not claim that you wrote files, ran shell commands, made external side-effect requests, or used tools that are not represented in the context.",
+  "If the user asks for an action that needs side effects, explain the approval boundary and provide a safe plan or draft.",
 ].join(" ");
+
+const READ_PROJECT_FILE_TOOL_NAME = "read_project_file";
+const READ_PROJECT_FILE_AGENT = "researcher";
+const MAX_CONTEXT_FILE_COUNT = 3;
 
 type Clock = () => string;
 type IdFactory = (prefix: string) => EntityId;
@@ -37,6 +50,10 @@ export type SupervisorStreamProvider = (
   config: DeepSeekProviderConfig,
   input: DeepSeekChatCompletionInput,
 ) => AsyncIterable<DeepSeekAdapterResult<DeepSeekStreamParseEvent>>;
+
+export type ReadProjectFileRunner = (
+  input: ReadProjectFileToolInput,
+) => Promise<ReadProjectFileResult>;
 
 export type SupervisorRunResult =
   | {
@@ -58,6 +75,9 @@ export interface RunSupervisorDeepSeekInput {
   readonly runId: EntityId;
   readonly config: DeepSeekProviderConfig;
   readonly provider?: SupervisorProvider;
+  readonly workspaceRoot?: string | null;
+  readonly readProjectFile?: ReadProjectFileRunner;
+  readonly maxFileBytes?: number;
   readonly now?: Clock;
   readonly createId?: IdFactory;
 }
@@ -75,6 +95,9 @@ export interface StreamSupervisorDeepSeekInput {
   readonly runId: EntityId;
   readonly config: DeepSeekProviderConfig;
   readonly provider?: SupervisorStreamProvider;
+  readonly workspaceRoot?: string | null;
+  readonly readProjectFile?: ReadProjectFileRunner;
+  readonly maxFileBytes?: number;
   readonly now?: Clock;
   readonly createId?: IdFactory;
 }
@@ -84,6 +107,9 @@ export async function runSupervisorDeepSeekOnce({
   runId,
   config,
   provider = createDeepSeekChatCompletion,
+  workspaceRoot = null,
+  readProjectFile = readProjectFileTool,
+  maxFileBytes = DEFAULT_READ_PROJECT_FILE_MAX_BYTES,
   now = defaultNow,
   createId = defaultCreateId,
 }: RunSupervisorDeepSeekInput): Promise<SupervisorRunResult> {
@@ -101,8 +127,18 @@ export async function runSupervisorDeepSeekOnce({
   });
   store.appendEvent(startEvent);
 
+  const fileContextPass = await appendReadProjectFileContextPass({
+    store,
+    run,
+    workspaceRoot,
+    readProjectFile,
+    maxFileBytes,
+    now,
+    createId,
+  });
+
   const result = await provider(config, {
-    messages: createSupervisorMessages(run.goal),
+    messages: createSupervisorMessages(run.goal, fileContextPass.contexts),
     model: run.settings.model,
     thinkingEnabled: run.settings.thinkingEnabled,
     reasoningEffort: run.settings.reasoningEffort,
@@ -115,7 +151,7 @@ export async function runSupervisorDeepSeekOnce({
       safeMessage: formatSafeProviderIssue(result.issue),
       now,
       createId,
-      alreadyAppendedEvents: [startEvent],
+      alreadyAppendedEvents: [startEvent, ...fileContextPass.events],
     });
   }
 
@@ -130,7 +166,7 @@ export async function runSupervisorDeepSeekOnce({
       }),
       now,
       createId,
-      alreadyAppendedEvents: [startEvent],
+      alreadyAppendedEvents: [startEvent, ...fileContextPass.events],
     });
   }
 
@@ -195,7 +231,7 @@ export async function runSupervisorDeepSeekOnce({
     ok: true,
     run: completedRun,
     message,
-    events: [startEvent, ...events],
+    events: [startEvent, ...fileContextPass.events, ...events],
   };
 }
 
@@ -204,6 +240,9 @@ export async function* streamSupervisorDeepSeekEvents({
   runId,
   config,
   provider = streamDeepSeekChatCompletion,
+  workspaceRoot = null,
+  readProjectFile = readProjectFileTool,
+  maxFileBytes = DEFAULT_READ_PROJECT_FILE_MAX_BYTES,
   now = defaultNow,
   createId = defaultCreateId,
 }: StreamSupervisorDeepSeekInput): AsyncGenerator<RunEvent, SupervisorRunResult> {
@@ -221,11 +260,22 @@ export async function* streamSupervisorDeepSeekEvents({
   store.appendEvent(startEvent);
   yield startEvent;
 
+  const fileContextPass = await appendReadProjectFileContextPass({
+    store,
+    run,
+    workspaceRoot,
+    readProjectFile,
+    maxFileBytes,
+    now,
+    createId,
+  });
+  for (const event of fileContextPass.events) yield event;
+
   const messageId = createId("message");
   const chunks: string[] = [];
 
   for await (const result of provider(config, {
-    messages: createSupervisorMessages(run.goal),
+    messages: createSupervisorMessages(run.goal, fileContextPass.contexts),
     model: run.settings.model,
     thinkingEnabled: run.settings.thinkingEnabled,
     reasoningEffort: run.settings.reasoningEffort,
@@ -237,7 +287,7 @@ export async function* streamSupervisorDeepSeekEvents({
         safeMessage: formatSafeProviderIssue(result.issue),
         now,
         createId,
-        alreadyAppendedEvents: [startEvent],
+        alreadyAppendedEvents: [startEvent, ...fileContextPass.events],
       });
       const failedEvent = failure.events.at(-1);
       if (failedEvent) yield failedEvent;
@@ -281,7 +331,7 @@ export async function* streamSupervisorDeepSeekEvents({
       }),
       now,
       createId,
-      alreadyAppendedEvents: [startEvent],
+      alreadyAppendedEvents: [startEvent, ...fileContextPass.events],
     });
     const failedEvent = failure.events.at(-1);
     if (failedEvent) yield failedEvent;
@@ -377,6 +427,252 @@ export function appendSupervisorFailureEvent({
   });
 }
 
+type ReadProjectFileContext =
+  | {
+      readonly ok: true;
+      readonly relativePath: string;
+      readonly bytes: number;
+      readonly content: string;
+    }
+  | {
+      readonly ok: false;
+      readonly relativePath: string;
+      readonly code: string;
+      readonly message: string;
+    };
+
+interface ReadProjectFileContextPass {
+  readonly events: readonly RunEvent[];
+  readonly contexts: readonly ReadProjectFileContext[];
+}
+
+async function appendReadProjectFileContextPass({
+  store,
+  run,
+  workspaceRoot,
+  readProjectFile,
+  maxFileBytes,
+  now,
+  createId,
+}: {
+  readonly store: RuntimeStore;
+  readonly run: Run;
+  readonly workspaceRoot: string | null;
+  readonly readProjectFile: ReadProjectFileRunner;
+  readonly maxFileBytes: number;
+  readonly now: Clock;
+  readonly createId: IdFactory;
+}): Promise<ReadProjectFileContextPass> {
+  const requestedPaths = extractExplicitProjectPaths(run.goal).slice(
+    0,
+    MAX_CONTEXT_FILE_COUNT,
+  );
+  if (requestedPaths.length === 0 || workspaceRoot === null) {
+    return { events: [], contexts: [] };
+  }
+
+  const events: RunEvent[] = [];
+  const contexts: ReadProjectFileContext[] = [];
+
+  for (const relativePath of requestedPaths) {
+    const startedAt = now();
+    const toolCallId = createId("tool");
+    const baseToolCall: ToolCall = {
+      id: toolCallId,
+      runId: run.id,
+      stepId: createId("step"),
+      agent: READ_PROJECT_FILE_AGENT,
+      toolName: READ_PROJECT_FILE_TOOL_NAME,
+      args: {
+        relativePath,
+        maxBytes: maxFileBytes,
+      },
+      status: "running",
+      result: null,
+      error: null,
+      startedAt,
+      completedAt: null,
+    };
+    const startedEvent: RunEvent = {
+      id: createId("event"),
+      runId: run.id,
+      type: "tool.started",
+      sequence: nextRunSequence(store, run.id),
+      createdAt: startedAt,
+      payload: {
+        toolCall: baseToolCall,
+      },
+    };
+    store.appendEvent(startedEvent);
+    events.push(startedEvent);
+
+    const result = await readProjectFile({
+      workspaceRoot,
+      relativePath,
+      maxBytes: maxFileBytes,
+    });
+    const completedAt = now();
+
+    if (result.ok) {
+      contexts.push({
+        ok: true,
+        relativePath: result.relativePath,
+        bytes: result.bytes,
+        content: result.content,
+      });
+
+      const completedEvent: RunEvent = {
+        id: createId("event"),
+        runId: run.id,
+        type: "tool.completed",
+        sequence: nextRunSequence(store, run.id),
+        createdAt: completedAt,
+        payload: {
+          toolCall: {
+            ...baseToolCall,
+            args: {
+              relativePath: result.relativePath,
+              maxBytes: maxFileBytes,
+            },
+            status: "completed",
+            result: createReadProjectFileToolResult(result),
+            completedAt,
+          },
+        },
+      };
+      store.appendEvent(completedEvent);
+      events.push(completedEvent);
+      continue;
+    }
+
+    const safeError = `${result.issue.code}: ${result.issue.message}`;
+    contexts.push({
+      ok: false,
+      relativePath: result.issue.relativePath ?? relativePath,
+      code: result.issue.code,
+      message: result.issue.message,
+    });
+    const failedEvent: RunEvent = {
+      id: createId("event"),
+      runId: run.id,
+      type: "tool.failed",
+      sequence: nextRunSequence(store, run.id),
+      createdAt: completedAt,
+      payload: {
+        toolCall: {
+          ...baseToolCall,
+          status: "failed",
+          result: {
+            relativePath: result.issue.relativePath ?? relativePath,
+            code: result.issue.code,
+          },
+          error: safeError,
+          completedAt,
+        },
+      },
+    };
+    store.appendEvent(failedEvent);
+    events.push(failedEvent);
+  }
+
+  return { events, contexts };
+}
+
+function createReadProjectFileToolResult(
+  result: Extract<ReadProjectFileResult, { readonly ok: true }>,
+): JsonObject {
+  return {
+    relativePath: result.relativePath,
+    bytes: result.bytes,
+    contentPreview: truncateForToolResult(result.content),
+  };
+}
+
+function createReadProjectFileContextMessage(
+  contexts: readonly ReadProjectFileContext[],
+): string | null {
+  if (contexts.length === 0) return null;
+
+  const blocks = contexts.map((context, index) => {
+    if (context.ok) {
+      return [
+        `File ${index + 1}: ${context.relativePath}`,
+        `Status: read_success`,
+        `Bytes: ${context.bytes}`,
+        `ContentJson: ${JSON.stringify(truncateForToolResult(context.content))}`,
+      ].join("\n");
+    }
+
+    return [
+      `File ${index + 1}: ${context.relativePath}`,
+      `Status: read_failed`,
+      `Reason: ${context.code}`,
+      `Message: ${context.message}`,
+    ].join("\n");
+  });
+
+  return [
+    "Read-only project file context follows.",
+    "Use only successful file contents as evidence.",
+    "For failed reads, explain the safety boundary without inventing file contents.",
+    ...blocks,
+  ].join("\n\n");
+}
+
+function extractExplicitProjectPaths(goal: string): string[] {
+  const paths = new Set<string>();
+
+  collectDelimitedPaths(goal, /`([^`\r\n]+)`/g, paths);
+  collectDelimitedPaths(goal, /["'“”‘’]([^"'“”‘’\r\n]+)["'“”‘’]/g, paths);
+
+  for (const token of goal.match(/[^\s，。！？；：、()[\]{}<>]+/gu) ?? []) {
+    addPathCandidate(token, paths);
+  }
+
+  return [...paths];
+}
+
+function collectDelimitedPaths(
+  value: string,
+  pattern: RegExp,
+  paths: Set<string>,
+): void {
+  for (const match of value.matchAll(pattern)) {
+    addPathCandidate(match[1] ?? "", paths);
+  }
+}
+
+function addPathCandidate(value: string, paths: Set<string>): void {
+  const candidate = sanitizeExtractedPath(value);
+  if (!looksLikeExplicitProjectPath(candidate)) return;
+  paths.add(candidate);
+}
+
+function sanitizeExtractedPath(value: string): string {
+  return value
+    .trim()
+    .replace(/^[`"'“”‘’({[]+/, "")
+    .replace(/[`"'“”‘’)}\],.;:!?，。！？；：]+$/, "");
+}
+
+function looksLikeExplicitProjectPath(value: string): boolean {
+  if (value.length === 0 || value.length > 240) return false;
+  if (value.includes("://") || value.includes("*") || value.endsWith("/")) {
+    return false;
+  }
+  if (value === ".env" || value.startsWith(".env.")) return true;
+  if (value.includes("/")) return true;
+
+  const basename = value.split("/").at(-1) ?? value;
+  return /^[A-Za-z0-9_.-]+\.[A-Za-z0-9]+$/.test(basename);
+}
+
+function truncateForToolResult(content: string): string {
+  const limit = 4096;
+  if (content.length <= limit) return content;
+  return `${content.slice(0, limit)}\n[truncated]`;
+}
+
 function appendSupervisorFailure({
   store,
   runId,
@@ -458,17 +754,31 @@ function createRunStartedEvent({
 
 function createSupervisorMessages(
   goal: string,
+  fileContexts: readonly ReadProjectFileContext[] = [],
 ): DeepSeekChatCompletionInput["messages"] {
-  return [
+  const messages: DeepSeekChatCompletionInput["messages"][number][] = [
     {
       role: "system",
       content: SUPERVISOR_SYSTEM_PROMPT,
     },
+  ];
+
+  const contextMessage = createReadProjectFileContextMessage(fileContexts);
+  if (contextMessage !== null) {
+    messages.push({
+      role: "system",
+      content: contextMessage,
+    });
+  }
+
+  messages.push(
     {
       role: "user",
       content: goal,
     },
-  ];
+  );
+
+  return messages;
 }
 
 function readAssistantContent(

@@ -23,6 +23,7 @@
     "@sage/shared": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "^20",
     "typescript": "^5"
   }
 }

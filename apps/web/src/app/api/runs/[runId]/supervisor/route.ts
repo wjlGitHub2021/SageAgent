@@ -1,3 +1,4 @@
+import * as path from "node:path";
 import { NextResponse } from "next/server";
 import { loadDeepSeekProviderConfig } from "@sage/deepseek";
 import { isTerminalRunStatus } from "@sage/runtime";
@@ -107,6 +108,7 @@ export async function POST(_request: Request, context: RouteContext) {
           store,
           runId: run.id,
           config: configResult.config,
+          workspaceRoot: WORKSPACE_ROOT,
         });
         for await (const event of stream) {
           eventCount += 1;
@@ -223,4 +225,14 @@ function runEventStreamHeaders(): HeadersInit {
 function isClientStreamAbort(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   return /abort|cancel|closed|controller/i.test(error.message);
+}
+
+const WORKSPACE_ROOT = normalizeWorkspaceRoot(
+  process.env.SAGE_WORKSPACE_ROOT ??
+    process.env.INIT_CWD ??
+    path.resolve(process.cwd(), "..", ".."),
+);
+
+function normalizeWorkspaceRoot(value: string): string {
+  return path.resolve(value);
 }
