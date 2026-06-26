@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   AgentRole,
   Approval,
@@ -21,6 +21,13 @@ import {
   readStoredPreferences,
   writeStoredPreferences,
 } from "@/lib/preferences";
+import type {
+  DeepSeekConnectionTestCode,
+  DeepSeekConnectionTestResult,
+  DeepSeekProviderConnectionTestResponse,
+  DeepSeekProviderStatusResponse,
+  DeepSeekProviderStatusSummary,
+} from "@/lib/deepseek-provider-status";
 
 type Message = {
   role: string;
@@ -89,7 +96,43 @@ const copy = {
     thinkingEnabledSetting: "Thinking 开关",
     generalSettingsDetail: "界面语言会作为非敏感偏好保存在本地浏览器。",
     providerSettingsDetail:
-      "模型、thinking 和推理强度会作为非敏感偏好持久化；API key 和连接测试后续接入。",
+      "模型、thinking 和推理强度会作为非敏感偏好持久化；API key 只从后端安全状态读取。",
+    providerConfigStatus: "配置状态",
+    providerStatusLoading: "正在读取 DeepSeek 配置状态...",
+    providerStatusFailed: "无法读取 DeepSeek 配置状态。",
+    refreshProviderStatus: "刷新状态",
+    testProviderConnection: "测试连接",
+    testingProviderConnection: "测试中",
+    apiKeyReadiness: "API key",
+    apiKeyConfigured: "已配置",
+    apiKeyMissing: "未配置",
+    baseUrl: "Base URL",
+    providerDefaultModel: "Provider 默认模型",
+    providerThinking: "Provider Thinking",
+    providerReasoningEffort: "Provider 推理强度",
+    providerConfigValid: "有效",
+    providerConfigInvalid: "无效",
+    providerIssues: "配置问题",
+    noProviderIssues: "暂无配置问题",
+    recentConnectionTest: "最近连接测试",
+    connectionNotTested: "尚未测试连接",
+    connectionTestOk: "连接测试成功",
+    connectionTestMissingApiKey: "缺少 API key",
+    connectionTestHttpError: "DeepSeek 返回 HTTP 错误",
+    connectionTestNetworkError: "无法连接 DeepSeek",
+    connectionTestInvalidResponse: "DeepSeek 返回无效响应",
+    connectionTestInvalidConfig: "DeepSeek 配置无效",
+    connectionTestNextStepOk: "无需操作。",
+    connectionTestNextStepMissingApiKey:
+      "在服务端环境配置 DEEPSEEK_API_KEY 并重启 dev server。",
+    connectionTestNextStepHttpError:
+      "检查 API key、账号权限和 Provider Base URL。",
+    connectionTestNextStepNetworkError:
+      "检查网络访问、Base URL 和本地代理设置。",
+    connectionTestNextStepInvalidResponse:
+      "稍后重试，或确认 Base URL 指向 DeepSeek 兼容接口。",
+    connectionTestNextStepInvalidConfig:
+      "修复 DeepSeek 环境变量配置后再测试。",
     workspaceSettingsDetail:
       "当前工作区以本地单用户模式运行，不在本任务接入 router 或数据库。",
     safetySettingsDetail:
@@ -200,7 +243,43 @@ const copy = {
     generalSettingsDetail:
       "Interface language is stored locally as a non-sensitive preference.",
     providerSettingsDetail:
-      "Model, thinking, and reasoning effort are persisted as non-sensitive preferences. API key storage and connection tests come later.",
+      "Model, thinking, and reasoning effort are persisted as non-sensitive preferences. API key status is read from the backend only.",
+    providerConfigStatus: "Config status",
+    providerStatusLoading: "Reading DeepSeek configuration status...",
+    providerStatusFailed: "Could not read DeepSeek configuration status.",
+    refreshProviderStatus: "Refresh status",
+    testProviderConnection: "Test connection",
+    testingProviderConnection: "Testing",
+    apiKeyReadiness: "API key",
+    apiKeyConfigured: "Configured",
+    apiKeyMissing: "Not configured",
+    baseUrl: "Base URL",
+    providerDefaultModel: "Provider default model",
+    providerThinking: "Provider Thinking",
+    providerReasoningEffort: "Provider reasoning effort",
+    providerConfigValid: "Valid",
+    providerConfigInvalid: "Invalid",
+    providerIssues: "Config issues",
+    noProviderIssues: "No config issues",
+    recentConnectionTest: "Recent connection test",
+    connectionNotTested: "Connection has not been tested",
+    connectionTestOk: "Connection test succeeded",
+    connectionTestMissingApiKey: "Missing API key",
+    connectionTestHttpError: "DeepSeek returned an HTTP error",
+    connectionTestNetworkError: "Could not reach DeepSeek",
+    connectionTestInvalidResponse: "DeepSeek returned an invalid response",
+    connectionTestInvalidConfig: "DeepSeek configuration is invalid",
+    connectionTestNextStepOk: "No action needed.",
+    connectionTestNextStepMissingApiKey:
+      "Set DEEPSEEK_API_KEY in the server environment and restart the dev server.",
+    connectionTestNextStepHttpError:
+      "Check the API key, account access, and provider base URL.",
+    connectionTestNextStepNetworkError:
+      "Check network access, base URL, and local proxy settings.",
+    connectionTestNextStepInvalidResponse:
+      "Retry later or verify that the base URL points to a DeepSeek-compatible API.",
+    connectionTestNextStepInvalidConfig:
+      "Fix DeepSeek environment variables before testing again.",
     workspaceSettingsDetail:
       "The workspace runs in local single-user mode. This task does not add routing or a database.",
     safetySettingsDetail:
@@ -763,6 +842,46 @@ function getComposerStatusText({
   return t.composerHint;
 }
 
+function getConnectionTestLabel(
+  code: DeepSeekConnectionTestCode,
+  t: (typeof copy)[Locale],
+): string {
+  switch (code) {
+    case "ok":
+      return t.connectionTestOk;
+    case "missing_api_key":
+      return t.connectionTestMissingApiKey;
+    case "http_error":
+      return t.connectionTestHttpError;
+    case "network_error":
+      return t.connectionTestNetworkError;
+    case "invalid_response":
+      return t.connectionTestInvalidResponse;
+    case "invalid_config":
+      return t.connectionTestInvalidConfig;
+  }
+}
+
+function getConnectionTestNextStep(
+  code: DeepSeekConnectionTestCode,
+  t: (typeof copy)[Locale],
+): string {
+  switch (code) {
+    case "ok":
+      return t.connectionTestNextStepOk;
+    case "missing_api_key":
+      return t.connectionTestNextStepMissingApiKey;
+    case "http_error":
+      return t.connectionTestNextStepHttpError;
+    case "network_error":
+      return t.connectionTestNextStepNetworkError;
+    case "invalid_response":
+      return t.connectionTestNextStepInvalidResponse;
+    case "invalid_config":
+      return t.connectionTestNextStepInvalidConfig;
+  }
+}
+
 export default function Home() {
   const [preferences, setPreferences] = useState<Preferences>(DEFAULT_PREFERENCES);
   const [hasLoadedStoredPreferences, setHasLoadedStoredPreferences] =
@@ -779,6 +898,15 @@ export default function Home() {
   const [composerInput, setComposerInput] = useState("");
   const [composerError, setComposerError] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [providerStatus, setProviderStatus] =
+    useState<DeepSeekProviderStatusSummary | null>(null);
+  const [providerStatusError, setProviderStatusError] = useState<string | null>(
+    null,
+  );
+  const [isProviderStatusLoading, setIsProviderStatusLoading] = useState(false);
+  const [lastProviderTestResult, setLastProviderTestResult] =
+    useState<DeepSeekConnectionTestResult | null>(null);
+  const [isProviderTesting, setIsProviderTesting] = useState(false);
   const [messages, setMessages] = useState<Message[]>(baseMessages);
   const [runEvents, setRunEvents] = useState<RunEvent[]>(seedRunEvents);
   const [isRunBusy, setIsRunBusy] = useState(false);
@@ -800,11 +928,61 @@ export default function Home() {
     }
   }, [hasLoadedStoredPreferences, preferences]);
 
+  const loadProviderStatus = useCallback(async (signal?: AbortSignal) => {
+    setIsProviderStatusLoading(true);
+    setProviderStatusError(null);
+
+    try {
+      const response = await fetchDeepSeekProviderStatus(signal);
+      setProviderStatus(response.status);
+    } catch (error) {
+      if (!isAbortError(error)) {
+        setProviderStatusError(toSafeErrorMessage(error));
+      }
+    } finally {
+      if (!signal?.aborted) {
+        setIsProviderStatusLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isSettingsOpen) return;
+
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        void loadProviderStatus(controller.signal);
+      }
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, [isSettingsOpen, loadProviderStatus]);
+
   function updatePreferences(nextPreferences: Partial<Preferences>) {
     setPreferences((current) => ({
       ...current,
       ...nextPreferences,
     }));
+  }
+
+  async function handleProviderConnectionTest() {
+    if (isProviderTesting) return;
+
+    setIsProviderTesting(true);
+    setProviderStatusError(null);
+
+    try {
+      const response = await testDeepSeekProviderConnectionApi();
+      setProviderStatus(response.status);
+      setLastProviderTestResult(response.result);
+    } catch (error) {
+      setProviderStatusError(toSafeErrorMessage(error));
+    } finally {
+      setIsProviderTesting(false);
+    }
   }
 
   const activeThread = threadItems.find((thread) => thread.id === activeThreadId);
@@ -1432,6 +1610,125 @@ export default function Home() {
                       ))}
                     </div>
                   </div>
+                  <div className="provider-status-panel" aria-live="polite">
+                    <div className="provider-status-header">
+                      <div>
+                        <p>{t.providerConfigStatus}</p>
+                        <small>
+                          {isProviderStatusLoading
+                            ? t.providerStatusLoading
+                            : providerStatus?.configStatus === "valid"
+                              ? t.providerConfigValid
+                              : providerStatus?.configStatus === "invalid"
+                                ? t.providerConfigInvalid
+                                : t.notConfigured}
+                        </small>
+                      </div>
+                      <div className="provider-status-actions">
+                        <button
+                          className="ghost-button"
+                          disabled={isProviderStatusLoading}
+                          onClick={() => void loadProviderStatus()}
+                          type="button"
+                        >
+                          {t.refreshProviderStatus}
+                        </button>
+                        <button
+                          className="ghost-button"
+                          disabled={isProviderTesting}
+                          onClick={handleProviderConnectionTest}
+                          type="button"
+                        >
+                          {isProviderTesting
+                            ? t.testingProviderConnection
+                            : t.testProviderConnection}
+                        </button>
+                      </div>
+                    </div>
+
+                    {providerStatusError ? (
+                      <StateBlock
+                        title={t.providerStatusFailed}
+                        detail={providerStatusError}
+                        tone="danger"
+                      />
+                    ) : null}
+
+                    {providerStatus ? (
+                      <dl className="settings-summary provider-summary">
+                        <div>
+                          <dt>{t.apiKeyReadiness}</dt>
+                          <dd>
+                            {providerStatus.apiKeyReadiness === "configured"
+                              ? t.apiKeyConfigured
+                              : t.apiKeyMissing}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{t.baseUrl}</dt>
+                          <dd>{providerStatus.baseUrl ?? t.notConfigured}</dd>
+                        </div>
+                        <div>
+                          <dt>{t.providerDefaultModel}</dt>
+                          <dd>{providerStatus.defaultModel ?? t.notConfigured}</dd>
+                        </div>
+                        <div>
+                          <dt>{t.providerThinking}</dt>
+                          <dd>
+                            {providerStatus.thinkingEnabled === null
+                              ? t.notConfigured
+                              : providerStatus.thinkingEnabled
+                                ? t.enabled
+                                : t.disabled}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{t.providerReasoningEffort}</dt>
+                          <dd>
+                            {providerStatus.reasoningEffort ?? t.notConfigured}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{t.providerIssues}</dt>
+                          <dd>
+                            {providerStatus.issueCodes.length > 0
+                              ? providerStatus.issueCodes.join(", ")
+                              : t.noProviderIssues}
+                          </dd>
+                        </div>
+                      </dl>
+                    ) : (
+                      <StateBlock
+                        title={t.providerConfigStatus}
+                        detail={
+                          isProviderStatusLoading
+                            ? t.providerStatusLoading
+                            : t.notConfigured
+                        }
+                      />
+                    )}
+
+                    {lastProviderTestResult ? (
+                      <StateBlock
+                        title={`${t.recentConnectionTest}: ${getConnectionTestLabel(
+                          lastProviderTestResult.code,
+                          t,
+                        )}${lastProviderTestResult.status ? ` (${lastProviderTestResult.status})` : ""}`}
+                        detail={`${getConnectionTestNextStep(
+                          lastProviderTestResult.code,
+                          t,
+                        )} ${t.lastUpdated}: ${formatAuditTime(
+                          lastProviderTestResult.checkedAt,
+                        )}`}
+                        tone={lastProviderTestResult.ok ? "neutral" : "danger"}
+                      />
+                    ) : (
+                      <StateBlock
+                        title={t.recentConnectionTest}
+                        detail={t.connectionNotTested}
+                      />
+                    )}
+                  </div>
                 </div>
               </article>
 
@@ -1620,6 +1917,35 @@ async function createApiRun(
   });
 
   return parseJsonResponse<CreateRunResponse>(response, "create_run_failed");
+}
+
+async function fetchDeepSeekProviderStatus(
+  signal?: AbortSignal,
+): Promise<DeepSeekProviderStatusResponse> {
+  const response = await fetch("/api/settings/deepseek", {
+    method: "GET",
+    signal,
+  });
+
+  return parseJsonResponse<DeepSeekProviderStatusResponse>(
+    response,
+    "provider_status_failed",
+  );
+}
+
+async function testDeepSeekProviderConnectionApi(): Promise<DeepSeekProviderConnectionTestResponse> {
+  const response = await fetch("/api/settings/deepseek", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({}),
+  });
+
+  return parseJsonResponse<DeepSeekProviderConnectionTestResponse>(
+    response,
+    "provider_connection_test_failed",
+  );
 }
 
 async function streamApiSupervisorRun(

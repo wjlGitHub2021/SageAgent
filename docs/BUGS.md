@@ -96,3 +96,10 @@
 - 审计范围：`docs/BUGS.md`、`docs/TASKS.md`、`docs/PHASE3_SPEC.md`、`docs/SPEC.md`、`apps/web/src/app/page.tsx`、`apps/web/src/app/globals.css`。
 - 搜索线索：`open`、`blocked`、`P0`、`P1`、`TODO`、`FIXME`、`待优化`、`localStorage`、`sessionStorage`、`settings`、`API key`、`model`、`thinkingEnabled`、`reasoningEffort`。
 - 结论：当前没有未处理 P0/P1 bug；Task 3.2 需要把现有 header 中可编辑的 model / thinking / reasoning controls 收敛到 Settings，并添加只保存非敏感偏好的 browser-local persistence。
+
+### 2026-06-27 Task 3.3 启动前复核
+
+- 审计时间：2026-06-27 CST
+- 审计范围：`docs/BUGS.md`、`docs/TASKS.md`、`docs/PHASE3_SPEC.md`、`docs/SPEC.md`、`packages/deepseek/src/config.ts`、`packages/deepseek/src/api-key.ts`、`apps/web/src/app/api/runs/[runId]/supervisor/route.ts`、`apps/web/src/app/page.tsx`。
+- 搜索线索：`provider status`、`readiness`、`connection test`、`API key`、`missing_api_key`、`http_error`、`network_error`、`invalid_response`、`invalid_config`、`Authorization`、`token`、`secret`。
+- 结论：当前没有未处理 P0/P1 bug；Task 3.3 需要以后端安全摘要和结构化结果展示 DeepSeek provider 状态，并避免前端直接拿到完整凭据。

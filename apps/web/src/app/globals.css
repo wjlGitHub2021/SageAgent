@@ -946,6 +946,7 @@ code {
 
 .settings-dialog-grid {
   display: grid;
+  align-items: start;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   padding: 14px;
@@ -1049,6 +1050,50 @@ code {
   font-size: 12px;
   font-weight: 730;
   text-align: right;
+}
+
+.provider-status-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px;
+}
+
+.provider-status-header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.provider-status-header > div:first-child {
+  min-width: 0;
+}
+
+.provider-status-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.provider-status-actions .ghost-button {
+  min-height: 30px;
+}
+
+.provider-summary div {
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+}
+
+.provider-summary dd {
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 @media (max-width: 1080px) {
@@ -1228,6 +1273,24 @@ code {
 
   .settings-summary dd {
     text-align: left;
+  }
+
+  .provider-status-header {
+    flex-direction: column;
+  }
+
+  .provider-status-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .provider-status-actions .ghost-button {
+    min-width: 0;
+  }
+
+  .provider-summary div {
+    grid-template-columns: 1fr;
   }
 }
 

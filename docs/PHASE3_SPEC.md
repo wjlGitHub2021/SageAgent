@@ -126,12 +126,29 @@ Phase 3 不在一开始做：
 - 成功、缺 key、HTTP error、network error、invalid response 必须有可理解错误。
 - 所有错误信息必须脱敏，不泄露完整 API key、Authorization header、token、secret 或 password。
 
+实现约束：
+
+- 前端状态展示必须只读，读取来源为后端返回的 provider status / readiness / safe summary，不允许前端拼接完整凭据。
+- 连接测试走后端 route 或 server action，默认使用与真实 provider 连接相同的配置解析逻辑，但必须提供安全测试模式，避免把完整 API key 暴露给 UI。
+- 状态展示至少包含：
+  - API key readiness：`已配置` / `未配置`
+  - Base URL
+  - 默认模型
+  - Thinking
+  - Reasoning effort
+  - 最近一次连接测试结果
+- 连接测试输出必须是结构化的 safe result，例如 `ok` / `missing_api_key` / `http_error` / `network_error` / `invalid_response` / `invalid_config`，并带可读 next step。
+- 若 API key 未配置，连接测试必须直接返回安全失败，不发真实 DeepSeek 请求。
+- 若 API key 已配置但连接失败，结果必须脱敏，不能泄露完整 key 或 Authorization header。
+- 连接测试失败应写入可审计的 UI 状态，但不改变 run stream 的正常事件合同。
+
 验收：
 
 - 未配置 API key 时，测试连接不会发出真实 DeepSeek 请求。
 - 配置 API key 后，用户可以从 Settings 触发连接测试并看到结果。
 - provider 状态不会泄露完整凭据。
 - 自动化测试覆盖 config status、缺 key、错误脱敏和连接测试失败路径。
+- provider 状态与连接测试在 desktop/mobile 下可读，且不遮挡 existing Settings controls。
 
 ## Task 3.4：Workspace 与 Read-only Tool 设置说明
 
