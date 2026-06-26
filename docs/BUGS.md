@@ -89,3 +89,10 @@
 - 审计范围：`docs/BUGS.md`、`docs/TASKS.md`、`docs/PHASE3_SPEC.md`、`apps/web/src/app/page.tsx`、`apps/web/src/app/globals.css`。
 - 搜索线索：`open`、`blocked`、`P0`、`P1`、`TODO`、`FIXME`、`待优化`、`Settings`、`copy`、`i18n`、`language`。
 - 结论：当前没有未处理 P0/P1 bug；现有侧栏 language settings 是历史 Stage 1 能力，不满足 Phase 3 独立 Settings surface 目标，应在 Task 3.1 中作为功能骨架优化处理，不登记为 bug。
+
+### 2026-06-27 Task 3.2 启动前复核
+
+- 审计时间：2026-06-27 CST
+- 审计范围：`docs/BUGS.md`、`docs/TASKS.md`、`docs/PHASE3_SPEC.md`、`docs/SPEC.md`、`apps/web/src/app/page.tsx`、`apps/web/src/app/globals.css`。
+- 搜索线索：`open`、`blocked`、`P0`、`P1`、`TODO`、`FIXME`、`待优化`、`localStorage`、`sessionStorage`、`settings`、`API key`、`model`、`thinkingEnabled`、`reasoningEffort`。
+- 结论：当前没有未处理 P0/P1 bug；Task 3.2 需要把现有 header 中可编辑的 model / thinking / reasoning controls 收敛到 Settings，并添加只保存非敏感偏好的 browser-local persistence。

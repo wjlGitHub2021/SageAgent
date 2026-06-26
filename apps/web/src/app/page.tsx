@@ -1,20 +1,26 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   AgentRole,
   Approval,
   ApprovalStatus,
   Artifact,
-  DeepSeekModel,
   Run,
   RunEvent,
   Thread,
   ToolCall,
 } from "@sage/shared";
-import { DEEPSEEK_MODELS } from "@sage/shared";
-
-type Locale = "zh" | "en";
+import {
+  ALLOWED_MODELS,
+  ALLOWED_REASONING_EFFORTS,
+  DEFAULT_PREFERENCES,
+  type Locale,
+  type Preferences,
+  type ReasoningEffort,
+  readStoredPreferences,
+  writeStoredPreferences,
+} from "@/lib/preferences";
 
 type Message = {
   role: string;
@@ -58,9 +64,9 @@ type CreateRunPayload = {
   title: string;
   threadTitle: string;
   settings: {
-    model: DeepSeekModel;
+    model: Preferences["model"];
     thinkingEnabled: boolean;
-    reasoningEffort: "high" | "max";
+    reasoningEffort: ReasoningEffort;
   };
 };
 
@@ -72,16 +78,18 @@ const copy = {
     closeSettings: "关闭设置",
     settingsTitle: "设置",
     settingsSubtitle: "管理本地工作台的显示、Provider、工作区和安全边界。",
-    settingsEntryDetail: "语言与工作台配置",
+    settingsEntryDetail: "语言、模型与推理偏好",
     generalSettings: "通用",
     providerSettings: "Provider / DeepSeek",
     workspaceSettings: "工作区",
     safetySettings: "安全边界",
     currentConfiguration: "当前配置",
     displayLanguage: "显示语言",
-    generalSettingsDetail: "当前只提供界面语言切换；不会写入 localStorage。",
+    defaultModel: "默认模型",
+    thinkingEnabledSetting: "Thinking 开关",
+    generalSettingsDetail: "界面语言会作为非敏感偏好保存在本地浏览器。",
     providerSettingsDetail:
-      "一期 Provider 固定为 DeepSeek，API key 保存和连接测试后续接入。",
+      "模型、thinking 和推理强度会作为非敏感偏好持久化；API key 和连接测试后续接入。",
     workspaceSettingsDetail:
       "当前工作区以本地单用户模式运行，不在本任务接入 router 或数据库。",
     safetySettingsDetail:
@@ -180,17 +188,19 @@ const copy = {
     settingsTitle: "Settings",
     settingsSubtitle:
       "Manage local workbench display, provider, workspace, and safety boundaries.",
-    settingsEntryDetail: "Language and workbench configuration",
+    settingsEntryDetail: "Language, model, and reasoning preferences",
     generalSettings: "General",
     providerSettings: "Provider / DeepSeek",
     workspaceSettings: "Workspace",
     safetySettings: "Safety",
     currentConfiguration: "Current configuration",
     displayLanguage: "Display language",
+    defaultModel: "Default model",
+    thinkingEnabledSetting: "Thinking enabled",
     generalSettingsDetail:
-      "Only interface language is available now; localStorage is not used.",
+      "Interface language is stored locally as a non-sensitive preference.",
     providerSettingsDetail:
-      "The MVP uses DeepSeek as the fixed provider. API key storage and connection tests come later.",
+      "Model, thinking, and reasoning effort are persisted as non-sensitive preferences. API key storage and connection tests come later.",
     workspaceSettingsDetail:
       "The workspace runs in local single-user mode. This task does not add routing or a database.",
     safetySettingsDetail:
@@ -754,15 +764,18 @@ function getComposerStatusText({
 }
 
 export default function Home() {
-  const [locale, setLocale] = useState<Locale>("zh");
+  const [preferences, setPreferences] = useState<Preferences>(DEFAULT_PREFERENCES);
+  const [hasLoadedStoredPreferences, setHasLoadedStoredPreferences] =
+    useState(false);
+  const locale = preferences.locale;
+  const model = preferences.model;
+  const thinkingEnabled = preferences.thinkingEnabled;
+  const reasoningEffort = preferences.reasoningEffort;
   const t = copy[locale];
   const [threadItems, setThreadItems] = useState(initialThreads);
   const [activeThreadId, setActiveThreadId] = useState(initialThreads[0].id);
   const [runItems, setRunItems] = useState(initialRuns);
   const [activeRunId, setActiveRunId] = useState(initialRuns[0].id);
-  const [model, setModel] = useState<DeepSeekModel>("deepseek-v4-flash");
-  const [thinkingEnabled, setThinkingEnabled] = useState(true);
-  const [reasoningEffort, setReasoningEffort] = useState<"high" | "max">("high");
   const [composerInput, setComposerInput] = useState("");
   const [composerError, setComposerError] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -773,6 +786,26 @@ export default function Home() {
     "idle" | "cancelled"
   >("idle");
   const runRequestRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setPreferences(readStoredPreferences(window.localStorage));
+      setHasLoadedStoredPreferences(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (hasLoadedStoredPreferences) {
+      writeStoredPreferences(window.localStorage, preferences);
+    }
+  }, [hasLoadedStoredPreferences, preferences]);
+
+  function updatePreferences(nextPreferences: Partial<Preferences>) {
+    setPreferences((current) => ({
+      ...current,
+      ...nextPreferences,
+    }));
+  }
 
   const activeThread = threadItems.find((thread) => thread.id === activeThreadId);
   const activeRun = runItems.find((run) => run.id === activeRunId);
@@ -1002,29 +1035,6 @@ export default function Home() {
               </span>
               <span className="sr-only">{t.openSettings}</span>
             </button>
-            <div className="settings-language">
-              <span className="sr-only">{t.language}</span>
-              <span className="settings-language-label">{t.language}</span>
-              <div
-                className="segmented language-switch"
-                aria-label={t.language}
-              >
-                <button
-                  aria-pressed={locale === "zh"}
-                  className={locale === "zh" ? "selected" : ""}
-                  onClick={() => setLocale("zh")}
-                >
-                  中文
-                </button>
-                <button
-                  aria-pressed={locale === "en"}
-                  className={locale === "en" ? "selected" : ""}
-                  onClick={() => setLocale("en")}
-                >
-                  English
-                </button>
-              </div>
-            </div>
           </section>
 
           <Panel
@@ -1083,62 +1093,15 @@ export default function Home() {
             </div>
 
             <div className="model-controls" aria-label={t.modelSettings}>
-              <div
-                className="segmented model-selector"
-                role="group"
-                aria-label={t.model}
-              >
-                {DEEPSEEK_MODELS.map((modelOption) => (
-                  <button
-                    aria-pressed={model === modelOption}
-                    className={model === modelOption ? "selected" : ""}
-                    key={modelOption}
-                    onClick={() => setModel(modelOption)}
-                  >
-                    {modelOption}
-                  </button>
-                ))}
-              </div>
-              <div
-                className="segmented thinking-toggle"
-                role="group"
-                aria-label={t.thinking}
-              >
-                <button
-                  aria-pressed={thinkingEnabled}
-                  className={thinkingEnabled ? "selected" : ""}
-                  onClick={() => setThinkingEnabled(true)}
-                >
-                  {t.enabled}
-                </button>
-                <button
-                  aria-pressed={!thinkingEnabled}
-                  className={thinkingEnabled ? "" : "selected"}
-                  onClick={() => setThinkingEnabled(false)}
-                >
-                  {t.disabled}
-                </button>
-              </div>
-              <div
-                className="segmented reasoning-selector"
-                role="group"
-                aria-label={t.reasoningEffort}
-              >
-                <button
-                  aria-pressed={reasoningEffort === "high"}
-                  className={reasoningEffort === "high" ? "selected" : ""}
-                  onClick={() => setReasoningEffort("high")}
-                >
-                  high
-                </button>
-                <button
-                  aria-pressed={reasoningEffort === "max"}
-                  className={reasoningEffort === "max" ? "selected" : ""}
-                  onClick={() => setReasoningEffort("max")}
-                >
-                  max
-                </button>
-              </div>
+              <span className="config-chip">
+                {t.model}: {model}
+              </span>
+              <span className="config-chip">
+                {t.thinking}: {thinkingEnabled ? t.enabled : t.disabled}
+              </span>
+              <span className="config-chip">
+                {t.reasoningEffort}: {reasoningEffort}
+              </span>
             </div>
           </header>
 
@@ -1394,14 +1357,14 @@ export default function Home() {
                     <button
                       aria-pressed={locale === "zh"}
                       className={locale === "zh" ? "selected" : ""}
-                      onClick={() => setLocale("zh")}
+                      onClick={() => updatePreferences({ locale: "zh" })}
                     >
                       中文
                     </button>
                     <button
                       aria-pressed={locale === "en"}
                       className={locale === "en" ? "selected" : ""}
-                      onClick={() => setLocale("en")}
+                      onClick={() => updatePreferences({ locale: "en" })}
                     >
                       English
                     </button>
@@ -1414,20 +1377,62 @@ export default function Home() {
                   <p>{t.providerSettings}</p>
                   <small>{t.providerSettingsDetail}</small>
                 </div>
-                <dl className="settings-summary">
-                  <div>
-                    <dt>{t.model}</dt>
-                    <dd>{model}</dd>
+                <div className="settings-control-stack">
+                  <div className="settings-card-control">
+                    <span>{t.defaultModel}</span>
+                    <div className="segmented model-selector" aria-label={t.model}>
+                      {ALLOWED_MODELS.map((modelOption) => (
+                        <button
+                          aria-pressed={model === modelOption}
+                          className={model === modelOption ? "selected" : ""}
+                          key={modelOption}
+                          onClick={() => updatePreferences({ model: modelOption })}
+                        >
+                          {modelOption}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div>
-                    <dt>{t.thinking}</dt>
-                    <dd>{thinkingEnabled ? t.enabled : t.disabled}</dd>
+                  <div className="settings-card-control">
+                    <span>{t.thinkingEnabledSetting}</span>
+                    <div className="segmented thinking-toggle" aria-label={t.thinking}>
+                      <button
+                        aria-pressed={thinkingEnabled}
+                        className={thinkingEnabled ? "selected" : ""}
+                        onClick={() => updatePreferences({ thinkingEnabled: true })}
+                      >
+                        {t.enabled}
+                      </button>
+                      <button
+                        aria-pressed={!thinkingEnabled}
+                        className={thinkingEnabled ? "" : "selected"}
+                        onClick={() => updatePreferences({ thinkingEnabled: false })}
+                      >
+                        {t.disabled}
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <dt>{t.reasoningEffort}</dt>
-                    <dd>{reasoningEffort}</dd>
+                  <div className="settings-card-control">
+                    <span>{t.reasoningEffort}</span>
+                    <div
+                      className="segmented reasoning-selector"
+                      aria-label={t.reasoningEffort}
+                    >
+                      {ALLOWED_REASONING_EFFORTS.map((effortOption) => (
+                        <button
+                          aria-pressed={reasoningEffort === effortOption}
+                          className={reasoningEffort === effortOption ? "selected" : ""}
+                          key={effortOption}
+                          onClick={() =>
+                            updatePreferences({ reasoningEffort: effortOption })
+                          }
+                        >
+                          {effortOption}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </dl>
+                </div>
               </article>
 
               <article className="settings-card">

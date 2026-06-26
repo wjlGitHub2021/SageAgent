@@ -91,12 +91,26 @@ Phase 3 不在一开始做：
 - 本地偏好优先使用 browser-local persistence；具体方案必须避免保存敏感凭据。
 - create-run API 仍接收当前 settings，不改变 `DeepSeekSettings` 共享类型。
 
+实现约束：
+
+- 使用单一 localStorage key：`sage.preferences.v1`。
+- 持久化 schema 只允许：
+  - `locale`: `zh` / `en`
+  - `model`: `deepseek-v4-flash` / `deepseek-v4-pro`
+  - `thinkingEnabled`: boolean
+  - `reasoningEffort`: `high` / `max`
+- 读取 localStorage 时必须做白名单校验；非法、缺字段、损坏 JSON 或浏览器禁止 storage 时回退默认值，不阻塞页面渲染。
+- 写入 localStorage 只能发生在上述非敏感偏好变化时；不得写入 API key、base URL、workspace path、prompt、response、run events、tool args、approval payload 或 artifact 内容。
+- Settings 中的 General / Provider 分区应承载这些可配置项；工作台 header 保留只读配置摘要或轻量状态展示，避免配置入口继续散落在 header controls。
+- 新 run 创建时继续使用当前偏好生成 `settings` payload，不改变 API schema。
+
 验收：
 
 - 切换语言后刷新页面仍能保持偏好。
 - 默认模型 / thinking / reasoning effort 从 Settings 选择后，新 run 使用该配置。
 - UI 只暴露 `deepseek-v4-flash`、`deepseek-v4-pro`、`high`、`max`。
 - 不在本地存储中保存 API key。
+- localStorage 损坏或包含非法值时，页面仍能打开并回退默认偏好。
 
 ## Task 3.3：DeepSeek Provider 状态与连接测试
 
