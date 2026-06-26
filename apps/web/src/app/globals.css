@@ -249,14 +249,50 @@ code {
 
 .settings-strip {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
   gap: 10px;
-  min-height: 38px;
+  min-height: 82px;
   border: 1px solid transparent;
   border-radius: 8px;
   background: color-mix(in srgb, var(--panel-bg) 42%, var(--app-bg));
-  padding: 4px 2px 4px 6px;
+  padding: 6px;
+}
+
+.settings-entry {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  padding: 6px;
+  text-align: left;
+}
+
+.settings-entry:hover,
+.settings-entry:focus-visible {
+  border-color: #c7d7fe;
+  background: rgba(255, 255, 255, 0.7);
+  outline: none;
+}
+
+.settings-entry-icon {
+  display: grid;
+  height: 26px;
+  width: 26px;
+  flex: 0 0 26px;
+  place-items: center;
+  border: 1px solid rgba(201, 208, 218, 0.78);
+  border-radius: 7px;
+  background: #fff;
+  color: #334155;
+  font-size: 13px;
 }
 
 .settings-copy {
@@ -281,6 +317,27 @@ code {
   line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-language {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.settings-language-label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 720;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
@@ -819,6 +876,158 @@ code {
   padding: 0 10px;
 }
 
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.28);
+  padding: 24px;
+}
+
+.settings-dialog {
+  width: min(920px, 100%);
+  max-height: min(760px, calc(100vh - 48px));
+  overflow: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--panel-bg);
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.22);
+}
+
+.settings-dialog-header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  padding: 18px;
+}
+
+.settings-dialog-header > div {
+  min-width: 0;
+}
+
+.settings-dialog-header h2 {
+  margin: 5px 0 6px;
+  color: var(--text-main);
+  font-size: 24px;
+  font-weight: 760;
+  line-height: 1.15;
+}
+
+.settings-dialog-header p:not(.section-label) {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.settings-dialog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+
+.settings-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fff 0%, #fbfcfe 100%);
+  padding: 14px;
+  box-shadow: var(--shadow-soft);
+}
+
+.settings-card p,
+.settings-card small {
+  margin: 0;
+}
+
+.settings-card p {
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.settings-card small {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.settings-card-control {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-radius: 8px;
+  background: var(--panel-muted);
+  padding: 9px;
+}
+
+.settings-card-control > span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-summary {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.settings-summary div {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px;
+  background: var(--panel-muted);
+  padding: 8px 9px;
+}
+
+.settings-summary dt,
+.settings-summary dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-summary dt {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.settings-summary dd {
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 730;
+  text-align: right;
+}
+
 @media (max-width: 1080px) {
   .app-shell {
     grid-template-columns: minmax(190px, 230px) minmax(0, 1fr);
@@ -940,6 +1149,50 @@ code {
     position: sticky;
     bottom: 0;
     z-index: 1;
+  }
+
+  .settings-overlay {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .settings-dialog {
+    max-height: calc(100vh - 24px);
+  }
+
+  .settings-dialog-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .settings-dialog-header .ghost-button {
+    width: 100%;
+    min-height: 34px;
+  }
+
+  .settings-dialog-grid {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+
+  .settings-card-control {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-card-control .language-switch {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-summary div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .settings-summary dd {
+    text-align: left;
   }
 }
 

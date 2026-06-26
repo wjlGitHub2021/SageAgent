@@ -128,7 +128,7 @@
 说明：本节是当前 active phase；`Task 3.x` 指 Phase 3 Settings 与本地配置体系任务，不再引用历史 `docs/STAGE3_SPEC.md` 的 provider 任务编号。
 
 - [x] Task 3.0：补齐 Phase 3 规划文档、任务拆分、设置安全策略和 QA checklist。
-- [ ] Task 3.1：添加独立 Settings 入口与 Settings 页面 / 面板骨架。
+- [x] Task 3.1：添加独立 Settings 入口与 Settings 页面 / 面板骨架。
 - [ ] Task 3.2：将语言、默认模型、thinking、reasoning effort 集中到 Settings，并添加非敏感偏好持久化。
 - [ ] Task 3.3：展示 DeepSeek provider 配置状态，并添加安全连接测试。
 - [ ] Task 3.4：展示 workspace root 与 read-only file tool 安全边界说明。

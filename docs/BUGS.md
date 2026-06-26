@@ -82,3 +82,10 @@
 - 审计范围：`docs/BUGS.md`、`docs/TASKS.md`、`docs/PLAN.md`、`docs/SPEC.md`、`docs/PHASE2_SPEC.md`、Phase 3 设置体系规划。
 - 搜索线索：`open`、`blocked`、`in_progress`、`TODO`、`FIXME`、`Settings`、`API key`、`SAGE_WORKSPACE_ROOT`。
 - 结论：当前没有未处理 P0/P1 bug；Phase 2 中明确暂不做的 API key UI 与 Settings 权限配置已转入 `docs/PHASE3_SPEC.md` 规划，不作为 bug 登记。
+
+### 2026-06-27 Task 3.1 启动前复核
+
+- 审计时间：2026-06-27 CST
+- 审计范围：`docs/BUGS.md`、`docs/TASKS.md`、`docs/PHASE3_SPEC.md`、`apps/web/src/app/page.tsx`、`apps/web/src/app/globals.css`。
+- 搜索线索：`open`、`blocked`、`P0`、`P1`、`TODO`、`FIXME`、`待优化`、`Settings`、`copy`、`i18n`、`language`。
+- 结论：当前没有未处理 P0/P1 bug；现有侧栏 language settings 是历史 Stage 1 能力，不满足 Phase 3 独立 Settings surface 目标，应在 Task 3.1 中作为功能骨架优化处理，不登记为 bug。

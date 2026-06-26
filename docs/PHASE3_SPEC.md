@@ -66,12 +66,21 @@ Phase 3 不在一开始做：
 - 新增 UI 文案进入 copy 字典或后续 i18n 资源，不在组件中散落硬编码。
 - 暂不保存真实 API key，不做连接测试。
 
+实现约束：
+
+- 可复用现有 language selector，但入口必须表现为独立 Settings surface，而不是继续只停留在侧栏小设置条。
+- Settings 页面 / 面板允许先使用本地 React state 打开 / 关闭；Task 3.1 不引入 router、数据库或 localStorage。
+- Settings 分区只展示当前能力状态、说明和后续配置入口占位；实际偏好保存、API key 状态读取、连接测试和 workspace policy 细节分别留给 Task 3.2 / 3.3 / 3.4。
+- 保留工作台 header 中现有模型、thinking、reasoning controls，避免在骨架阶段破坏 create-run settings 输入链路。
+- Settings overlay / panel 打开和关闭不应重置当前 composer 输入、active run、timeline、tool calls、approvals 或 artifacts。
+
 验收：
 
 - 用户可以从主工作台清楚进入 Settings。
 - Settings 页面在中文/English 下关键标题、说明、按钮可切换。
 - Desktop / mobile 无明显溢出、遮挡或不可读文本。
 - 原有 run loop、composer、timeline 不被破坏。
+- 关闭 Settings 后，用户回到同一个 active run，现有 run 事件视图保持不变。
 
 ## Task 3.2：本地偏好设置与配置摘要
 

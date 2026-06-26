@@ -68,6 +68,27 @@ const copy = {
   zh: {
     localWorkbench: "本地工作台",
     settings: "设置",
+    openSettings: "打开设置",
+    closeSettings: "关闭设置",
+    settingsTitle: "设置",
+    settingsSubtitle: "管理本地工作台的显示、Provider、工作区和安全边界。",
+    settingsEntryDetail: "语言与工作台配置",
+    generalSettings: "通用",
+    providerSettings: "Provider / DeepSeek",
+    workspaceSettings: "工作区",
+    safetySettings: "安全边界",
+    currentConfiguration: "当前配置",
+    displayLanguage: "显示语言",
+    generalSettingsDetail: "当前只提供界面语言切换；不会写入 localStorage。",
+    providerSettingsDetail:
+      "一期 Provider 固定为 DeepSeek，API key 保存和连接测试后续接入。",
+    workspaceSettingsDetail:
+      "当前工作区以本地单用户模式运行，不在本任务接入 router 或数据库。",
+    safetySettingsDetail:
+      "默认 Read + Draft；写文件、shell 和外部副作用操作必须进入 approval。",
+    readDraftMode: "Read + Draft 模式",
+    localSingleUser: "本地单用户",
+    notConfigured: "暂未配置",
     language: "界面语言",
     new: "新建",
     threads: "会话",
@@ -154,6 +175,29 @@ const copy = {
   en: {
     localWorkbench: "Local workbench",
     settings: "Settings",
+    openSettings: "Open settings",
+    closeSettings: "Close settings",
+    settingsTitle: "Settings",
+    settingsSubtitle:
+      "Manage local workbench display, provider, workspace, and safety boundaries.",
+    settingsEntryDetail: "Language and workbench configuration",
+    generalSettings: "General",
+    providerSettings: "Provider / DeepSeek",
+    workspaceSettings: "Workspace",
+    safetySettings: "Safety",
+    currentConfiguration: "Current configuration",
+    displayLanguage: "Display language",
+    generalSettingsDetail:
+      "Only interface language is available now; localStorage is not used.",
+    providerSettingsDetail:
+      "The MVP uses DeepSeek as the fixed provider. API key storage and connection tests come later.",
+    workspaceSettingsDetail:
+      "The workspace runs in local single-user mode. This task does not add routing or a database.",
+    safetySettingsDetail:
+      "Default Read + Draft mode; file writes, shell, and external side effects require approval.",
+    readDraftMode: "Read + Draft mode",
+    localSingleUser: "Local single-user",
+    notConfigured: "Not configured",
     language: "Interface language",
     new: "New",
     threads: "Threads",
@@ -721,6 +765,7 @@ export default function Home() {
   const [reasoningEffort, setReasoningEffort] = useState<"high" | "max">("high");
   const [composerInput, setComposerInput] = useState("");
   const [composerError, setComposerError] = useState<string | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>(baseMessages);
   const [runEvents, setRunEvents] = useState<RunEvent[]>(seedRunEvents);
   const [isRunBusy, setIsRunBusy] = useState(false);
@@ -942,25 +987,43 @@ export default function Home() {
           </div>
 
           <section className="settings-strip" aria-label={t.settings}>
-            <div className="settings-copy">
-              <span>{t.settings}</span>
-              <p>{t.language}</p>
-            </div>
-            <div className="segmented language-switch" aria-label={t.language}>
-              <button
-                aria-pressed={locale === "zh"}
-                className={locale === "zh" ? "selected" : ""}
-                onClick={() => setLocale("zh")}
+            <button
+              aria-label={t.openSettings}
+              className="settings-entry"
+              onClick={() => setIsSettingsOpen(true)}
+              type="button"
+            >
+              <div className="settings-copy">
+                <span>{t.settings}</span>
+                <p>{t.settingsEntryDetail}</p>
+              </div>
+              <span className="settings-entry-icon" aria-hidden="true">
+                ⚙
+              </span>
+              <span className="sr-only">{t.openSettings}</span>
+            </button>
+            <div className="settings-language">
+              <span className="sr-only">{t.language}</span>
+              <span className="settings-language-label">{t.language}</span>
+              <div
+                className="segmented language-switch"
+                aria-label={t.language}
               >
-                中文
-              </button>
-              <button
-                aria-pressed={locale === "en"}
-                className={locale === "en" ? "selected" : ""}
-                onClick={() => setLocale("en")}
-              >
-                English
-              </button>
+                <button
+                  aria-pressed={locale === "zh"}
+                  className={locale === "zh" ? "selected" : ""}
+                  onClick={() => setLocale("zh")}
+                >
+                  中文
+                </button>
+                <button
+                  aria-pressed={locale === "en"}
+                  className={locale === "en" ? "selected" : ""}
+                  onClick={() => setLocale("en")}
+                >
+                  English
+                </button>
+              </div>
             </div>
           </section>
 
@@ -1289,6 +1352,121 @@ export default function Home() {
           </Panel>
         </aside>
       </div>
+      {isSettingsOpen ? (
+        <div
+          className="settings-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsSettingsOpen(false);
+            }
+          }}
+        >
+          <section
+            aria-labelledby="settings-dialog-title"
+            aria-modal="true"
+            className="settings-dialog"
+            role="dialog"
+          >
+            <header className="settings-dialog-header">
+              <div>
+                <p className="section-label">{t.currentConfiguration}</p>
+                <h2 id="settings-dialog-title">{t.settingsTitle}</h2>
+                <p>{t.settingsSubtitle}</p>
+              </div>
+              <button
+                className="ghost-button"
+                onClick={() => setIsSettingsOpen(false)}
+                type="button"
+              >
+                {t.closeSettings}
+              </button>
+            </header>
+
+            <div className="settings-dialog-grid">
+              <article className="settings-card">
+                <div>
+                  <p>{t.generalSettings}</p>
+                  <small>{t.generalSettingsDetail}</small>
+                </div>
+                <div className="settings-card-control">
+                  <span>{t.displayLanguage}</span>
+                  <div className="segmented language-switch" aria-label={t.language}>
+                    <button
+                      aria-pressed={locale === "zh"}
+                      className={locale === "zh" ? "selected" : ""}
+                      onClick={() => setLocale("zh")}
+                    >
+                      中文
+                    </button>
+                    <button
+                      aria-pressed={locale === "en"}
+                      className={locale === "en" ? "selected" : ""}
+                      onClick={() => setLocale("en")}
+                    >
+                      English
+                    </button>
+                  </div>
+                </div>
+              </article>
+
+              <article className="settings-card">
+                <div>
+                  <p>{t.providerSettings}</p>
+                  <small>{t.providerSettingsDetail}</small>
+                </div>
+                <dl className="settings-summary">
+                  <div>
+                    <dt>{t.model}</dt>
+                    <dd>{model}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.thinking}</dt>
+                    <dd>{thinkingEnabled ? t.enabled : t.disabled}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.reasoningEffort}</dt>
+                    <dd>{reasoningEffort}</dd>
+                  </div>
+                </dl>
+              </article>
+
+              <article className="settings-card">
+                <div>
+                  <p>{t.workspaceSettings}</p>
+                  <small>{t.workspaceSettingsDetail}</small>
+                </div>
+                <dl className="settings-summary">
+                  <div>
+                    <dt>{t.status}</dt>
+                    <dd>{t.localSingleUser}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.currentRun}</dt>
+                    <dd>{activeRun?.id ?? t.notConfigured}</dd>
+                  </div>
+                </dl>
+              </article>
+
+              <article className="settings-card">
+                <div>
+                  <p>{t.safetySettings}</p>
+                  <small>{t.safetySettingsDetail}</small>
+                </div>
+                <dl className="settings-summary">
+                  <div>
+                    <dt>{t.status}</dt>
+                    <dd>{t.readDraftMode}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.approvals}</dt>
+                    <dd>{activeAuditSummary.approvalCount}</dd>
+                  </div>
+                </dl>
+              </article>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }
