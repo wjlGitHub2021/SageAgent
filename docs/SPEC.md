@@ -358,6 +358,38 @@ UI options：
 
 UI 不暴露 MVP 未明确支持的 provider options。
 
+## Settings System
+
+Phase 3 起，Sage Agent 需要独立 Settings surface，而不是把配置控件散落在工作台各处。
+
+Settings 初始分区：
+
+- General / 通用：界面语言、偏好说明。
+- Provider / DeepSeek：API key 配置状态、base URL、默认模型、thinking、reasoning effort、连接测试。
+- Workspace / 工作区：当前 workspace root、只读文件工具范围。
+- Safety / 安全边界：Read + Draft 权限模型、approval 触发条件、敏感信息处理说明。
+
+Settings 入口要求：
+
+- 工作台中必须有清晰可发现的 Settings 入口。
+- Settings 页面 / 面板必须支持中文/English。
+- Desktop 和 mobile 下必须可读、可操作，不遮挡主 run 状态。
+- Settings 的配置变化不应破坏当前 run 的 event stream。
+
+本地偏好策略：
+
+- 可以在浏览器本地保存非敏感偏好：语言、默认模型、thinking、reasoning effort。
+- 不得在 localStorage、sessionStorage 或前端 state 中保存完整 API key。
+- API key 默认来自 server environment，例如 `.env` 中的 `DEEPSEEK_API_KEY`。
+- 前端只展示 API key 是否已配置，以及必要的脱敏状态。
+
+连接测试策略：
+
+- DeepSeek 连接测试必须通过后端 route。
+- 缺少 API key 时不得发起真实 DeepSeek 请求。
+- 错误信息必须复用 provider 脱敏规则，不泄露完整 API key、Authorization header、token、secret 或 password。
+- 连接测试结果应进入 Settings UI 的状态反馈；是否写入 run events 由后续实现 task 决定。
+
 ## Tool and Approval Model
 
 MVP 默认模式：Read + Draft。

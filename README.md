@@ -15,6 +15,12 @@ Sage Agent 是一个轻量级 Hermes-like agent 工作台。它希望呈现 Code
 - 使用 run-based 模型组织任务：Run、Step、ToolCall、Approval、Artifact、Event。
 - 先采用 Read + Draft 工具权限；写文件、shell、外部副作用操作都必须 approval。
 
+## 当前阶段
+
+- Phase 2 已完成：真实 run loop、DeepSeek streaming events、read-only file tool、supervisor-led multi-agent event flow 已接入。
+- Phase 3 已启动：聚焦独立 Settings surface、本地偏好、DeepSeek 配置状态、连接测试和 workspace 安全说明。
+- 当前仍是 local single-user MVP；runtime store 仍是进程内 memory store，暂不做 hosted multi-user、billing 或 tenant isolation。
+
 ## 计划架构
 
 ```text
@@ -56,6 +62,7 @@ packages/shared
 - [计划](docs/PLAN.md)
 - [规格](docs/SPEC.md)
 - [Phase 2 规格](docs/PHASE2_SPEC.md)
+- [Phase 3 规格](docs/PHASE3_SPEC.md)
 - [Stage 1 实施规格](docs/STAGE1_SPEC.md)
 - [任务](docs/TASKS.md)
 - [决策](docs/DECISIONS.md)

@@ -175,3 +175,5 @@ Phase 2 默认使用 `.env` 配置 DeepSeek：
 - `SAGE_WORKSPACE_ROOT`：可选；用于固定 read-only file tool 的 workspace root。默认从 monorepo root 推导，本地开发建议显式设置为 `/Users/wangjinlong/DailySage`。
 
 Phase 2 不提供 API key 输入 UI。前端后续只显示“已配置/未配置”状态，避免过早引入敏感信息存储、加密和清除策略。
+
+该能力从 Phase 3 起由独立 Settings surface 承接；详见 `docs/PHASE3_SPEC.md`。

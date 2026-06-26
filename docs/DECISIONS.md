@@ -248,3 +248,33 @@ Phase 2.2 的 Supervisor-only DeepSeek 调用先放在 `apps/web/src/lib/supervi
 - provider error 必须写入 `run.failed`，不能只返回 HTTP 500。
 - 错误信息必须脱敏，不输出完整 API key、Authorization header、token、secret 或 password。
 - 后续如果 provider/orchestrator 抽象稳定，再考虑把 runner 下沉到 `packages/runtime`。
+
+## DEC-0014：Phase 3 使用独立 Settings Surface
+
+状态：accepted
+
+决策：
+
+Phase 3 开始，Sage Agent 使用独立 Settings 入口与 Settings 页面 / 面板承载产品配置，而不是继续把语言、模型、provider、workspace 和安全说明散落在工作台主界面。
+
+Settings 初始承载：
+
+- General：界面语言和基础偏好。
+- Provider：DeepSeek API key 配置状态、base URL、默认模型、thinking、reasoning effort 和连接测试。
+- Workspace：workspace root 与 read-only file tool 权限说明。
+- Safety：Read + Draft 权限模型、approval 边界和敏感信息处理说明。
+
+约束：
+
+- 前端不得保存完整 API key。
+- API key 默认仍来自 server environment。
+- 非敏感偏好可以使用 browser-local persistence。
+- 连接测试必须由后端读取配置并返回脱敏结果。
+- Settings 文案必须进入双语 copy / i18n 资源。
+
+理由：
+
+- Phase 2 已完成真实 run loop，下一步需要让本地用户能理解和配置运行环境。
+- 独立 Settings 能降低工作台主界面的认知噪音。
+- API key 和 workspace 权限属于高信任配置，必须集中展示安全边界和状态。
+- 先做 local single-user Settings，可以为后续 hosted / multi-user 配置体系保留演进空间。

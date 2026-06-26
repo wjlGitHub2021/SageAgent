@@ -116,6 +116,19 @@ BUG 记录：
 | QA-DS-05 | base URL | 默认 `https://api.deepseek.com`，拒绝 insecure URL；可用 `rtk pnpm test -- tests/deepseek-provider.test.ts` 验证配置规则 |  |  |
 | QA-DS-06 | 无 API key 行为 | 无 key 时不发真实请求，提示安全可理解 |  |  |
 
+## 6.5 Phase 3 Settings
+
+| ID | 检查项 | 期望 | 状态 | 备注 |
+| --- | --- | --- | --- | --- |
+| QA-SET-01 | Settings 入口 | 工作台中有清晰可发现的 Settings 入口 |  |  |
+| QA-SET-02 | Settings 分区 | 至少展示 General、Provider、Workspace、Safety 分区 |  |  |
+| QA-SET-03 | 双语覆盖 | Settings 标题、说明、按钮、错误状态支持中文/English |  |  |
+| QA-SET-04 | 非敏感偏好持久化 | 语言、默认模型、thinking、reasoning effort 刷新后保持 |  |  |
+| QA-SET-05 | API key 安全 | 前端不显示、不存储完整 API key，只展示已配置/未配置或脱敏状态 |  |  |
+| QA-SET-06 | 连接测试 | 缺 key 不发真实请求；失败和成功都有清楚、脱敏反馈 |  |  |
+| QA-SET-07 | Workspace 说明 | workspace root 与 read-only file tool 允许/拒绝规则可见 |  |  |
+| QA-SET-08 | 响应式布局 | Settings 在 desktop/mobile 下可读、可操作、无横向溢出 |  |  |
+
 ## 7. BUG 记录与退出标准
 
 | ID | 检查项 | 期望 | 状态 | 备注 |

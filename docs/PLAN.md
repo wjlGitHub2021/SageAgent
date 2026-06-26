@@ -138,3 +138,26 @@ Phase 2.5 计划交付物：
 - 配置 DeepSeek API key 后可以获得真实模型回复。
 - 未配置或 provider 失败时有安全、可理解、可审计的错误展示。
 - Read + Draft 安全边界仍然成立。
+
+## Phase 3：产品化设置与本地配置体系
+
+目标：把 Phase 2 已跑通的真实 run loop，提升为可被本地用户稳定配置、理解和验证的产品化体验。Phase 3 聚焦独立 Settings surface、偏好持久化、provider 配置状态、连接测试和 workspace 安全说明。
+
+计划交付物：
+
+- 新增 `docs/PHASE3_SPEC.md`，锁定 Settings 与本地配置体系的范围、任务拆分和安全策略。
+- 添加独立 Settings 入口与 Settings 页面 / 面板骨架。
+- 将语言、默认模型、thinking、reasoning effort 集中到 Settings 管理，并保留工作台配置摘要。
+- 展示 DeepSeek API key 配置状态、base URL、默认模型和 provider readiness。
+- 添加安全的 DeepSeek 连接测试，不向前端暴露完整 API key。
+- 展示 workspace root 与 read-only file tool 的允许 / 拒绝规则。
+- 补齐 Settings 专项 QA 与自动化测试。
+
+退出标准：
+
+- 用户能从工作台清楚进入 Settings。
+- Settings 的中文/English、desktop/mobile、空状态和错误状态可用。
+- 非敏感偏好可本地持久化，敏感凭据不进入前端存储。
+- provider 配置状态和连接测试安全、脱敏、可审计。
+- workspace/read-only tool 安全边界可被用户理解。
+- `docs/TASKS.md`、`docs/BUGS.md`、`docs/QA_CHECKLIST.md` 与实现状态一致。
