@@ -1,5 +1,7 @@
 # Phase 3 规格：产品化设置与本地配置体系
 
+> 说明：本文档是当前 Phase 3 的 authoritative source。历史 `docs/STAGE3_SPEC.md` 记录的是已完成的 DeepSeek V4 Provider Stage，其 `Task 3.x` 编号仅用于历史追溯，不代表当前 Phase 3 任务。
+
 ## 目标
 
 Phase 3 的目标是把 Phase 2 已跑通的真实 run loop，提升为可被本地用户稳定配置、理解和验证的产品化体验。

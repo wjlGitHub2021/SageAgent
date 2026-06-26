@@ -1,5 +1,7 @@
 # Stage 3 实施规格
 
+> 说明：本文档记录的是已完成的历史 Stage 3（DeepSeek V4 Provider）实施规格，保留用于追溯 provider 接入过程。当前正在推进的 Phase 3（产品化设置与本地配置体系）以 `docs/PHASE3_SPEC.md` 和 `docs/TASKS.md` 的 Phase 3 章节为准；本文中的 `Task 3.x` 不再代表当前 Phase 3 的任务编号。
+
 ## 目标
 
 Stage 3 的目标是接入 DeepSeek V4 provider，并把模型输出转换为 Sage Agent 的 run events。Stage 3 必须延续 Stage 2 的 Run System，不允许让 provider 直接绕过 runtime/event flow 更新 UI。

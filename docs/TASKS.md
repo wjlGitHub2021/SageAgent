@@ -64,6 +64,8 @@
 
 ## Stage 3：DeepSeek V4 Provider
 
+说明：本节是已完成的历史 Stage 3 provider 任务记录；当前 Phase 3 任务以本文件下方 “Phase 3：产品化设置与本地配置体系” 章节和 `docs/PHASE3_SPEC.md` 为准。
+
 - [x] 编写 `docs/STAGE3_SPEC.md`，锁定 Stage 3 分块策略与 Task 3.1 验收标准。
 - [x] 添加 provider configuration。
 - [x] 编写 Task 3.2 API key environment handling 范围与验收标准。
@@ -122,6 +124,8 @@
 - [x] 扩展到 supervisor-led multi-agent run。
 
 ## Phase 3：产品化设置与本地配置体系
+
+说明：本节是当前 active phase；`Task 3.x` 指 Phase 3 Settings 与本地配置体系任务，不再引用历史 `docs/STAGE3_SPEC.md` 的 provider 任务编号。
 
 - [x] Task 3.0：补齐 Phase 3 规划文档、任务拆分、设置安全策略和 QA checklist。
 - [ ] Task 3.1：添加独立 Settings 入口与 Settings 页面 / 面板骨架。
