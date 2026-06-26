@@ -148,15 +148,20 @@ Phase 2 采用渐进闭环：
 
 范围：
 
-- 将真实 run 从 Supervisor-only 扩展为 Supervisor -> Researcher -> Builder -> Reviewer -> Supervisor summary。
-- 子 agent 输出通过 steps/messages/artifacts/events 可追踪。
-- Reviewer pass 仍是 final summary 前置条件。
+- 将真实 run 从 Supervisor-only 扩展为可审计的 Supervisor -> Researcher -> Builder -> Reviewer -> Supervisor summary 链路。
+- Phase 2.5 不做 free-form swarm，不做每个子 agent 独立 LLM 调用，不引入新的 provider；优先复用现有 `@sage/agents` 纯函数与 `@sage/runtime` event model。
+- 真实 run 要补齐 `step.started` / `step.completed` / 必要时 `step.failed`，并让 Researcher、Builder、Reviewer 的输出通过 step / tool / message / artifact / event 可追踪。
+- Researcher 负责 context brief，Builder 负责 draft，Reviewer 负责 review gate，Supervisor 负责最终 summary。
+- 子 agent 生命周期是一次性 task worker：每个 stage 完成后不保留长期会话状态。
+- Reviewer pass 仍是 final summary 前置条件；review 不通过时 final summary 必须说明阻塞原因。
 
 验收：
 
 - 一个任务能完整经过多 agent 阶段。
 - UI 能清楚显示每个 agent 的状态和产出。
 - Risky actions 仍不会绕过 approval。
+- 事件流中可以看到 multi-agent 的 step / message / artifact 轨迹，而不是单条 Supervisor 回复。
+- Phase 2.5 仍保持 Read + Draft 安全边界。
 
 ## API Key 策略
 

@@ -124,6 +124,13 @@
 - 添加 read-only file tool。
 - 逐步扩展到 Supervisor / Researcher / Builder / Reviewer 多 agent 编排。
 
+Phase 2.5 计划交付物：
+
+- 将 Supervisor / Researcher / Builder / Reviewer 的纯函数结果写入真实 run events。
+- 为 multi-agent stage 补齐 `step.started` / `step.completed` / `artifact.created` 的事件轨迹。
+- UI 展示 multi-agent timeline、messages、tool calls、artifacts 和 reviewer gate。
+- 保持 Reviewer 作为 final summary 的前置门禁。
+
 退出标准：
 
 - 用户可以在 UI 输入任务并触发真实后端 run。

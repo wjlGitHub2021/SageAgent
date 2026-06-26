@@ -15,10 +15,22 @@ import {
   type ReadProjectFileToolInput,
   type RuntimeStore,
 } from "@sage/runtime";
+import {
+  createBuilderDraft,
+  createResearcherBrief,
+  createReviewerReport,
+  createSupervisorPlan,
+  type BuilderDraft,
+  type ResearcherBrief,
+  type ReviewerReport,
+} from "@sage/agents";
 import type {
   EntityId,
   JsonObject,
+  Artifact,
   Message,
+  MessageRole,
+  Step,
   Run,
   RunEvent,
   RunFailedEvent,
@@ -137,8 +149,26 @@ export async function runSupervisorDeepSeekOnce({
     createId,
   });
 
+  const multiAgentPass = await runMultiAgentEventPass({
+    store,
+    run,
+    fileContextPass,
+    now,
+    createId,
+  });
+  if (!multiAgentPass.ok) {
+    return {
+      ...multiAgentPass.failure,
+      events: [startEvent, ...fileContextPass.events, ...multiAgentPass.events],
+    };
+  }
+
   const result = await provider(config, {
-    messages: createSupervisorMessages(run.goal, fileContextPass.contexts),
+    messages: createSupervisorMessages(
+      run.goal,
+      fileContextPass.contexts,
+      multiAgentPass.supervisorContext,
+    ),
     model: run.settings.model,
     thinkingEnabled: run.settings.thinkingEnabled,
     reasoningEffort: run.settings.reasoningEffort,
@@ -151,7 +181,11 @@ export async function runSupervisorDeepSeekOnce({
       safeMessage: formatSafeProviderIssue(result.issue),
       now,
       createId,
-      alreadyAppendedEvents: [startEvent, ...fileContextPass.events],
+      alreadyAppendedEvents: [
+        startEvent,
+        ...fileContextPass.events,
+        ...multiAgentPass.events,
+      ],
     });
   }
 
@@ -166,7 +200,11 @@ export async function runSupervisorDeepSeekOnce({
       }),
       now,
       createId,
-      alreadyAppendedEvents: [startEvent, ...fileContextPass.events],
+      alreadyAppendedEvents: [
+        startEvent,
+        ...fileContextPass.events,
+        ...multiAgentPass.events,
+      ],
     });
   }
 
@@ -231,7 +269,12 @@ export async function runSupervisorDeepSeekOnce({
     ok: true,
     run: completedRun,
     message,
-    events: [startEvent, ...fileContextPass.events, ...events],
+    events: [
+      startEvent,
+      ...fileContextPass.events,
+      ...multiAgentPass.events,
+      ...events,
+    ],
   };
 }
 
@@ -271,11 +314,28 @@ export async function* streamSupervisorDeepSeekEvents({
   });
   for (const event of fileContextPass.events) yield event;
 
+  const multiAgentPass = await runMultiAgentEventPass({
+    store,
+    run,
+    fileContextPass,
+    now,
+    createId,
+  });
+  if (!multiAgentPass.ok) {
+    for (const event of multiAgentPass.events) yield event;
+    return multiAgentPass.failure;
+  }
+  for (const event of multiAgentPass.events) yield event;
+
   const messageId = createId("message");
   const chunks: string[] = [];
 
   for await (const result of provider(config, {
-    messages: createSupervisorMessages(run.goal, fileContextPass.contexts),
+    messages: createSupervisorMessages(
+      run.goal,
+      fileContextPass.contexts,
+      multiAgentPass.supervisorContext,
+    ),
     model: run.settings.model,
     thinkingEnabled: run.settings.thinkingEnabled,
     reasoningEffort: run.settings.reasoningEffort,
@@ -287,7 +347,11 @@ export async function* streamSupervisorDeepSeekEvents({
         safeMessage: formatSafeProviderIssue(result.issue),
         now,
         createId,
-        alreadyAppendedEvents: [startEvent, ...fileContextPass.events],
+        alreadyAppendedEvents: [
+          startEvent,
+          ...fileContextPass.events,
+          ...multiAgentPass.events,
+        ],
       });
       const failedEvent = failure.events.at(-1);
       if (failedEvent) yield failedEvent;
@@ -331,7 +395,11 @@ export async function* streamSupervisorDeepSeekEvents({
       }),
       now,
       createId,
-      alreadyAppendedEvents: [startEvent, ...fileContextPass.events],
+      alreadyAppendedEvents: [
+        startEvent,
+        ...fileContextPass.events,
+        ...multiAgentPass.events,
+      ],
     });
     const failedEvent = failure.events.at(-1);
     if (failedEvent) yield failedEvent;
@@ -473,6 +541,26 @@ async function appendReadProjectFileContextPass({
 
   const events: RunEvent[] = [];
   const contexts: ReadProjectFileContext[] = [];
+  const contextStep = createStep({
+    id: createId("step"),
+    runId: run.id,
+    agent: READ_PROJECT_FILE_AGENT,
+    title: "Read explicit project files",
+    status: "running",
+    startedAt: now(),
+    input: {
+      requestedPaths: [...requestedPaths],
+      maxFileBytes,
+    },
+  });
+  const contextStepStartedEvent = createStepEvent(
+    "step.started",
+    contextStep,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(contextStepStartedEvent);
+  events.push(contextStepStartedEvent);
 
   for (const relativePath of requestedPaths) {
     const startedAt = now();
@@ -480,7 +568,7 @@ async function appendReadProjectFileContextPass({
     const baseToolCall: ToolCall = {
       id: toolCallId,
       runId: run.id,
-      stepId: createId("step"),
+      stepId: contextStep.id,
       agent: READ_PROJECT_FILE_AGENT,
       toolName: READ_PROJECT_FILE_TOOL_NAME,
       args: {
@@ -574,6 +662,37 @@ async function appendReadProjectFileContextPass({
     store.appendEvent(failedEvent);
     events.push(failedEvent);
   }
+
+  const completedStep = createStep({
+    ...contextStep,
+    status: "completed",
+    completedAt: now(),
+    output: {
+      files: contexts.map((context) =>
+        context.ok
+          ? {
+              relativePath: context.relativePath,
+              status: "read_success",
+              bytes: context.bytes,
+              code: null,
+            }
+          : {
+              relativePath: context.relativePath,
+              status: "read_failed",
+              bytes: null,
+              code: context.code,
+            },
+      ),
+    },
+  });
+  const contextStepCompletedEvent = createStepEvent(
+    "step.completed",
+    completedStep,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(contextStepCompletedEvent);
+  events.push(contextStepCompletedEvent);
 
   return { events, contexts };
 }
@@ -755,6 +874,7 @@ function createRunStartedEvent({
 function createSupervisorMessages(
   goal: string,
   fileContexts: readonly ReadProjectFileContext[] = [],
+  multiAgentContext: string | null = null,
 ): DeepSeekChatCompletionInput["messages"] {
   const messages: DeepSeekChatCompletionInput["messages"][number][] = [
     {
@@ -771,6 +891,13 @@ function createSupervisorMessages(
     });
   }
 
+  if (multiAgentContext !== null) {
+    messages.push({
+      role: "system",
+      content: multiAgentContext,
+    });
+  }
+
   messages.push(
     {
       role: "user",
@@ -779,6 +906,725 @@ function createSupervisorMessages(
   );
 
   return messages;
+}
+
+type MultiAgentEventPass =
+  | {
+      readonly ok: true;
+      readonly events: readonly RunEvent[];
+      readonly supervisorContext: string;
+    }
+  | {
+      readonly ok: false;
+      readonly events: readonly RunEvent[];
+      readonly supervisorContext: string;
+      readonly failure: Extract<SupervisorRunResult, { readonly ok: false }>;
+    };
+
+async function runMultiAgentEventPass({
+  store,
+  run,
+  fileContextPass,
+  now,
+  createId,
+}: {
+  readonly store: RuntimeStore;
+  readonly run: Run;
+  readonly fileContextPass: ReadProjectFileContextPass;
+  readonly now: Clock;
+  readonly createId: IdFactory;
+}): Promise<MultiAgentEventPass> {
+  const events: RunEvent[] = [];
+  const steps = createSupervisorPlan(run.goal);
+  if (!steps.ok) {
+    return finishMultiAgentRunFailure({
+      store,
+      run,
+      now,
+      createId,
+      events,
+      supervisorContext: "",
+      safeMessage: steps.issue.message,
+    });
+  }
+
+  const supervisorPlanStep = createStep({
+    id: createId("step"),
+    runId: run.id,
+    agent: "supervisor",
+    title: "Plan multi-agent run",
+    status: "running",
+    startedAt: now(),
+    input: {
+      goal: run.goal,
+    },
+  });
+  const supervisorPlanStartEvent = createStepEvent(
+    "step.started",
+    supervisorPlanStep,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(supervisorPlanStartEvent);
+  events.push(supervisorPlanStartEvent);
+
+  const supervisorPlanMessage = createMessage({
+    id: createId("message"),
+    runId: run.id,
+    threadId: run.threadId,
+    role: "agent",
+    agent: "supervisor",
+    content: steps.plan.summary,
+    createdAt: now(),
+  });
+  const supervisorPlanMessageEvent = createMessageCompletedEvent(
+    supervisorPlanMessage,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(supervisorPlanMessageEvent);
+  events.push(supervisorPlanMessageEvent);
+
+  const supervisorPlanArtifact = createArtifact({
+    id: createId("artifact"),
+    runId: run.id,
+    kind: "plan",
+    title: "Supervisor Plan",
+    content: JSON.stringify(steps.plan, null, 2),
+    path: null,
+    createdAt: now(),
+  });
+  const supervisorPlanArtifactEvent = createArtifactEvent(
+    supervisorPlanArtifact,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(supervisorPlanArtifactEvent);
+  events.push(supervisorPlanArtifactEvent);
+
+  const supervisorPlanCompletedStep = createStep({
+    ...supervisorPlanStep,
+    status: "completed",
+    completedAt: now(),
+    output: {
+      summary: steps.plan.summary,
+      steps: steps.plan.steps.map((step) => ({
+        id: step.id,
+        agent: step.agent,
+        title: step.title,
+      })),
+    },
+  });
+  const supervisorPlanCompletedEvent = createStepEvent(
+    "step.completed",
+    supervisorPlanCompletedStep,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(supervisorPlanCompletedEvent);
+  events.push(supervisorPlanCompletedEvent);
+
+  const researcherStep = createStep({
+    id: createId("step"),
+    runId: run.id,
+    agent: "researcher",
+    title: "Gather project context",
+    status: "running",
+    startedAt: now(),
+  });
+  const researcherStartEvent = createStepEvent(
+    "step.started",
+    researcherStep,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(researcherStartEvent);
+  events.push(researcherStartEvent);
+
+  const researcherBrief = createResearcherBrief({
+    goal: run.goal,
+    suggestedPaths: fileContextPass.contexts
+      .filter((context) => context.ok)
+      .map((context) => context.relativePath),
+  });
+  if (!researcherBrief.ok) {
+    return finishMultiAgentStepFailure({
+      store,
+      run,
+      step: researcherStep,
+      now,
+      createId,
+      events,
+      supervisorContext: "",
+      safeMessage: researcherBrief.issue.message,
+    });
+  }
+
+  const researcherMessage = createMessage({
+    id: createId("message"),
+    runId: run.id,
+    threadId: run.threadId,
+    role: "agent",
+    agent: "researcher",
+    content: researcherBrief.brief.summary,
+    createdAt: now(),
+  });
+  const researcherMessageEvent = createMessageCompletedEvent(
+    researcherMessage,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(researcherMessageEvent);
+  events.push(researcherMessageEvent);
+
+  const researcherArtifact = createArtifact({
+    id: createId("artifact"),
+    runId: run.id,
+    kind: "document",
+    title: "Researcher Brief",
+    content: JSON.stringify(researcherBrief.brief, null, 2),
+    path: null,
+    createdAt: now(),
+  });
+  const researcherArtifactEvent = createArtifactEvent(
+    researcherArtifact,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(researcherArtifactEvent);
+  events.push(researcherArtifactEvent);
+
+  const researcherCompletedStep = createStep({
+    ...researcherStep,
+    status: "completed",
+    completedAt: now(),
+    output: {
+      summary: researcherBrief.brief.summary,
+      targets: [...researcherBrief.brief.contextTargets],
+    },
+  });
+  const researcherCompletedEvent = createStepEvent(
+    "step.completed",
+    researcherCompletedStep,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(researcherCompletedEvent);
+  events.push(researcherCompletedEvent);
+
+  const builderStep = createStep({
+    id: createId("step"),
+    runId: run.id,
+    agent: "builder",
+    title: "Draft implementation",
+    status: "running",
+    startedAt: now(),
+  });
+  const builderStartEvent = createStepEvent(
+    "step.started",
+    builderStep,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(builderStartEvent);
+  events.push(builderStartEvent);
+
+  const builderDraft = createBuilderDraft({
+    goal: run.goal,
+    contextNotes: [
+      researcherBrief.brief.summary,
+      ...researcherBrief.brief.contextTargets,
+    ],
+    constraints: researcherBrief.brief.constraints,
+  });
+  if (!builderDraft.ok) {
+    return finishMultiAgentStepFailure({
+      store,
+      run,
+      step: builderStep,
+      now,
+      createId,
+      events,
+      supervisorContext: createMultiAgentSupervisorContext({
+        planSummary: steps.plan.summary,
+        researcherBrief: researcherBrief.brief,
+      }),
+      safeMessage: builderDraft.issue.message,
+    });
+  }
+
+  const builderMessage = createMessage({
+    id: createId("message"),
+    runId: run.id,
+    threadId: run.threadId,
+    role: "agent",
+    agent: "builder",
+    content: builderDraft.draft.summary,
+    createdAt: now(),
+  });
+  const builderMessageEvent = createMessageCompletedEvent(
+    builderMessage,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(builderMessageEvent);
+  events.push(builderMessageEvent);
+
+  const builderArtifact = createArtifact({
+    id: createId("artifact"),
+    runId: run.id,
+    kind: "plan",
+    title: "Builder Draft",
+    content: JSON.stringify(builderDraft.draft, null, 2),
+    path: null,
+    createdAt: now(),
+  });
+  const builderArtifactEvent = createArtifactEvent(
+    builderArtifact,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(builderArtifactEvent);
+  events.push(builderArtifactEvent);
+
+  const builderCompletedStep = createStep({
+    ...builderStep,
+    status: "completed",
+    completedAt: now(),
+    output: {
+      summary: builderDraft.draft.summary,
+      patches: builderDraft.draft.patchPlan.map((patch) => ({
+        target: patch.target,
+        intent: patch.intent,
+      })),
+    },
+  });
+  const builderCompletedEvent = createStepEvent(
+    "step.completed",
+    builderCompletedStep,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(builderCompletedEvent);
+  events.push(builderCompletedEvent);
+
+  const reviewerStep = createStep({
+    id: createId("step"),
+    runId: run.id,
+    agent: "reviewer",
+    title: "Review quality and safety",
+    status: "running",
+    startedAt: now(),
+  });
+  const reviewerStartEvent = createStepEvent(
+    "step.started",
+    reviewerStep,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(reviewerStartEvent);
+  events.push(reviewerStartEvent);
+
+  const reviewerReport = createReviewerReport({
+    goal: run.goal,
+    draftSummary: builderDraft.draft.summary,
+    acceptanceCriteria: steps.plan.steps.map((step) => step.title),
+    findings: [],
+    risks: ["Multi-agent run still uses pure-function agent outputs for MVP."],
+    missingChecks: [],
+  });
+  if (!reviewerReport.ok) {
+    return finishMultiAgentStepFailure({
+      store,
+      run,
+      step: reviewerStep,
+      now,
+      createId,
+      events,
+      supervisorContext: createMultiAgentSupervisorContext({
+        planSummary: steps.plan.summary,
+        researcherBrief: researcherBrief.brief,
+        builderDraft: builderDraft.draft,
+      }),
+      safeMessage: reviewerReport.issue.message,
+    });
+  }
+
+  const reviewerMessage = createMessage({
+    id: createId("message"),
+    runId: run.id,
+    threadId: run.threadId,
+    role: "agent",
+    agent: "reviewer",
+    content: reviewerReport.report.summary,
+    createdAt: now(),
+  });
+  const reviewerMessageEvent = createMessageCompletedEvent(
+    reviewerMessage,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(reviewerMessageEvent);
+  events.push(reviewerMessageEvent);
+
+  const reviewerArtifact = createArtifact({
+    id: createId("artifact"),
+    runId: run.id,
+    kind: "summary",
+    title: "Reviewer Report",
+    content: JSON.stringify(reviewerReport.report, null, 2),
+    path: null,
+    createdAt: now(),
+  });
+  const reviewerArtifactEvent = createArtifactEvent(
+    reviewerArtifact,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(reviewerArtifactEvent);
+  events.push(reviewerArtifactEvent);
+
+  const reviewerCompletedStep = createStep({
+    ...reviewerStep,
+    status: reviewerReport.report.decision === "pass" ? "completed" : "failed",
+    completedAt: now(),
+    output: {
+      decision: reviewerReport.report.decision,
+      findings: [...reviewerReport.report.findings],
+      risks: [...reviewerReport.report.risks],
+    },
+  });
+  const reviewerCompletedEvent = createStepEvent(
+    reviewerReport.report.decision === "pass" ? "step.completed" : "step.failed",
+    reviewerCompletedStep,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(reviewerCompletedEvent);
+  events.push(reviewerCompletedEvent);
+
+  if (reviewerReport.report.decision !== "pass") {
+    return finishMultiAgentRunFailure({
+      store,
+      run,
+      now,
+      createId,
+      events,
+      supervisorContext: createMultiAgentSupervisorContext({
+        planSummary: steps.plan.summary,
+        researcherBrief: researcherBrief.brief,
+        builderDraft: builderDraft.draft,
+        reviewerReport: reviewerReport.report,
+      }),
+      safeMessage:
+        "Reviewer gate did not pass; Supervisor final synthesis is blocked.",
+      activeAgent: "reviewer",
+    });
+  }
+
+  return {
+    ok: true,
+    events,
+    supervisorContext: createMultiAgentSupervisorContext({
+      planSummary: steps.plan.summary,
+      researcherBrief: researcherBrief.brief,
+      builderDraft: builderDraft.draft,
+      reviewerReport: reviewerReport.report,
+    }),
+  };
+}
+
+function createStep({
+  id,
+  runId,
+  agent,
+  title,
+  status,
+  startedAt,
+  completedAt = null,
+  input = null,
+  output = null,
+}: {
+  readonly id: string;
+  readonly runId: EntityId;
+  readonly agent: "supervisor" | "researcher" | "builder" | "reviewer";
+  readonly title: string;
+  readonly status: Step["status"];
+  readonly startedAt: string | null;
+  readonly completedAt?: string | null;
+  readonly input?: JsonObject | null;
+  readonly output?: JsonObject | null;
+}): Step {
+  return {
+    id,
+    runId,
+    agent,
+    title,
+    status,
+    input,
+    output,
+    startedAt,
+    completedAt,
+  };
+}
+
+function createMessage({
+  id,
+  runId,
+  threadId,
+  role,
+  agent,
+  content,
+  createdAt,
+}: {
+  readonly id: string;
+  readonly runId: EntityId;
+  readonly threadId: EntityId;
+  readonly role: MessageRole;
+  readonly agent: Step["agent"] | null;
+  readonly content: string;
+  readonly createdAt: string;
+}): Message {
+  return {
+    id,
+    runId,
+    threadId,
+    role,
+    agent,
+    content,
+    createdAt,
+  };
+}
+
+function createArtifact({
+  id,
+  runId,
+  kind,
+  title,
+  content,
+  path,
+  createdAt,
+}: {
+  readonly id: string;
+  readonly runId: EntityId;
+  readonly kind: Artifact["kind"];
+  readonly title: string;
+  readonly content: string | null;
+  readonly path: string | null;
+  readonly createdAt: string;
+}): Artifact {
+  return {
+    id,
+    runId,
+    kind,
+    title,
+    content,
+    path,
+    createdAt,
+  };
+}
+
+function createMultiAgentSupervisorContext({
+  planSummary,
+  researcherBrief,
+  builderDraft = null,
+  reviewerReport = null,
+}: {
+  readonly planSummary: string;
+  readonly researcherBrief: ResearcherBrief;
+  readonly builderDraft?: BuilderDraft | null;
+  readonly reviewerReport?: ReviewerReport | null;
+}): string {
+  const payload = {
+    planSummary,
+    researcher: {
+      summary: researcherBrief.summary,
+      contextTargets: researcherBrief.contextTargets,
+      constraints: researcherBrief.constraints,
+      handoffNotes: researcherBrief.handoffNotes,
+    },
+    builder:
+      builderDraft === null
+        ? null
+        : {
+            summary: builderDraft.summary,
+            implementationNotes: builderDraft.implementationNotes,
+            patchPlan: builderDraft.patchPlan,
+            artifactDrafts: builderDraft.artifactDrafts,
+            safetyNotes: builderDraft.safetyNotes,
+          },
+    reviewer:
+      reviewerReport === null
+        ? null
+        : {
+            summary: reviewerReport.summary,
+            decision: reviewerReport.decision,
+            acceptanceCriteria: reviewerReport.acceptanceCriteria,
+            findings: reviewerReport.findings,
+            risks: reviewerReport.risks,
+            missingChecks: reviewerReport.missingChecks,
+            safetyNotes: reviewerReport.safetyNotes,
+          },
+  };
+
+  return [
+    "Sage multi-agent audit context for final Supervisor synthesis.",
+    "Use this context to summarize Researcher, Builder, and Reviewer work.",
+    "Do not claim side effects beyond audited events.",
+    JSON.stringify(payload, null, 2),
+  ].join("\n");
+}
+
+function createStepEvent(
+  type: "step.started" | "step.completed" | "step.failed",
+  step: Step,
+  createId: IdFactory,
+  sequence: number,
+): Extract<RunEvent, { readonly type: typeof type }> {
+  return {
+    id: createId("event"),
+    runId: step.runId,
+    type,
+    sequence,
+    createdAt: step.completedAt ?? step.startedAt ?? defaultNow(),
+    payload: {
+      step,
+    },
+  } as Extract<RunEvent, { readonly type: typeof type }>;
+}
+
+function createMessageCompletedEvent(
+  message: Message,
+  createId: IdFactory,
+  sequence: number,
+): Extract<RunEvent, { readonly type: "message.completed" }> {
+  return {
+    id: createId("event"),
+    runId: message.runId,
+    type: "message.completed",
+    sequence,
+    createdAt: message.createdAt,
+    payload: {
+      message,
+    },
+  };
+}
+
+function createArtifactEvent(
+  artifact: Artifact,
+  createId: IdFactory,
+  sequence: number,
+): Extract<RunEvent, { readonly type: "artifact.created" }> {
+  return {
+    id: createId("event"),
+    runId: artifact.runId,
+    type: "artifact.created",
+    sequence,
+    createdAt: artifact.createdAt,
+    payload: {
+      artifact,
+    },
+  };
+}
+
+function finishMultiAgentStepFailure({
+  store,
+  run,
+  step,
+  now,
+  createId,
+  events,
+  supervisorContext,
+  safeMessage,
+}: {
+  readonly store: RuntimeStore;
+  readonly run: Run;
+  readonly step: Step;
+  readonly now: Clock;
+  readonly createId: IdFactory;
+  readonly events: RunEvent[];
+  readonly supervisorContext: string;
+  readonly safeMessage: string;
+}): MultiAgentEventPass {
+  const failedStep = {
+    ...step,
+    status: "failed" as const,
+    completedAt: now(),
+  };
+  const failedEvent = createStepEvent(
+    "step.failed",
+    failedStep,
+    createId,
+    nextRunSequence(store, run.id),
+  );
+  store.appendEvent(failedEvent);
+  events.push(failedEvent);
+
+  return finishMultiAgentRunFailure({
+    store,
+    run,
+    now,
+    createId,
+    events,
+    supervisorContext,
+    safeMessage,
+    activeAgent: step.agent,
+  });
+}
+
+function finishMultiAgentRunFailure({
+  store,
+  run,
+  now,
+  createId,
+  events,
+  supervisorContext,
+  safeMessage,
+  activeAgent = "supervisor",
+}: {
+  readonly store: RuntimeStore;
+  readonly run: Run;
+  readonly now: Clock;
+  readonly createId: IdFactory;
+  readonly events: RunEvent[];
+  readonly supervisorContext: string;
+  readonly safeMessage: string;
+  readonly activeAgent?: Run["activeAgent"];
+}): MultiAgentEventPass {
+  const failedAt = now();
+  const failedRun: Run = {
+    ...run,
+    status: "failed",
+    activeAgent,
+    updatedAt: failedAt,
+    completedAt: failedAt,
+  };
+  const failedEvent: RunFailedEvent = {
+    id: createId("event"),
+    runId: run.id,
+    type: "run.failed",
+    sequence: nextRunSequence(store, run.id),
+    createdAt: failedAt,
+    payload: {
+      run: failedRun,
+      error: sanitizeSafeMessage(safeMessage),
+    },
+  };
+  store.appendEvent(failedEvent);
+  events.push(failedEvent);
+
+  return {
+    ok: false,
+    events,
+    supervisorContext,
+    failure: {
+      ok: false,
+      code: "provider_failed",
+      safeMessage: failedEvent.payload.error,
+      run: failedRun,
+      events,
+    },
+  };
 }
 
 function readAssistantContent(

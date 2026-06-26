@@ -136,3 +136,17 @@ BUG 记录：
 - `QA-DS-01` 到 `QA-DS-04` pass。
 - `QA-BUG-01` 到 `QA-BUG-05` 全部 pass。
 - `docs/BUGS.md` 中没有未处理的 P0/P1；P2/P3 必须有后续处理建议。
+
+## 2026-06-26 Phase 2.5 / Product Shell QA
+
+- 日期：2026-06-26
+- 执行者：Codex
+- Commit：本 QA 记录随 Phase 2.5 提交一并归档
+- 环境：`http://localhost:3000`，Next.js 本地 dev server
+- 浏览器：in-app browser
+- 结论：pass
+- 自动化门禁：`rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check` 通过
+- 主要风险：当前浏览器验证基于本地 dev server 的静态首屏与响应式检查；未在真实 API key 环境下做 DeepSeek 在线调用回归
+- BUG 记录：`BUG-0001` 已 fixed，无新增 P0/P1
+- Phase 2.5 契约审查：已补齐 Supervisor plan event、read-only file tool 所属 Step、multi-agent planning failure 的 `run.failed`、Reviewer gate 非 pass 阻塞，以及 streaming 空输出失败测试。
+- 备注：桌面首屏 composer 可见，inspector 内部滚动正常；移动端无横向溢出，页面可继续向下浏览，未见 hydration / recoverable console error

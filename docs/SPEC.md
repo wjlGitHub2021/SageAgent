@@ -282,6 +282,14 @@ Phase 2.4 起，Supervisor route 在调用 DeepSeek 前执行最小只读文件 
 - 成功读取的文件片段会作为额外 context 传入 Supervisor prompt；失败原因也作为安全 context 传入，便于 Supervisor 用用户语言解释限制。
 - 只读工具不触发 approval；写文件、shell 和外部副作用仍必须 approval。
 
+Phase 2.5 起，真实 run 从 Supervisor-only 扩展为顺序编排的 multi-agent event flow：
+
+- run 以 Supervisor 为起点，但中间步骤必须显式写入 `step.started` / `step.completed`。
+- Researcher、Builder、Reviewer 的输出通过 `Message`、`Step`、`Artifact` 和 `RunEvent` 进入同一条审计流。
+- Phase 2.5 复用现有 `@sage/agents` 纯函数作为 agent contract，不引入自由 swarm。
+- Supervisor summary 仍由 Supervisor 负责，但必须消费 Reviewer 结论后再结束 run。
+- 若 Reviewer 判定 `needs_changes`，final summary 需要保留阻塞原因或重新分派后的处理说明。
+
 ## Multi-Agent Model
 
 MVP 使用 supervisor-led workflow。
@@ -306,6 +314,12 @@ User goal
 ```
 
 MVP 避免 free-form agent swarm。子 agents 是职责明确的 task workers，不是长期开放聊天角色。
+
+Phase 2.5 的实现优先级：
+
+1. 先把 Supervisor / Researcher / Builder / Reviewer 的纯函数结果写入真实 run events。
+2. 再让 UI 从 events 派生 step timeline、messages、tool calls、artifacts 和 final summary。
+3. 最后再考虑是否把某些阶段拆成更细的 LLM 或工具调用。
 
 ## 子 agent 工作策略
 

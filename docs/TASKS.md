@@ -118,4 +118,5 @@
 - [x] 将 DeepSeek streamed output 转换为 run events。
 - [x] 文档化 read-only file tool 的触发方式、安全边界、事件顺序和验收标准。
 - [x] 添加 read-only file tool。
-- [ ] 扩展到 supervisor-led multi-agent run。
+- [x] 文档化 supervisor-led multi-agent run 的事件链路与验收标准。
+- [x] 扩展到 supervisor-led multi-agent run。

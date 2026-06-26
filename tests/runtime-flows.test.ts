@@ -55,6 +55,48 @@ const run: Run = {
   completedAt: null,
 };
 
+const multiAgentEventTypes = [
+  "step.started",
+  "message.completed",
+  "artifact.created",
+  "step.completed",
+  "step.started",
+  "message.completed",
+  "artifact.created",
+  "step.completed",
+  "step.started",
+  "message.completed",
+  "artifact.created",
+  "step.completed",
+  "step.started",
+  "message.completed",
+  "artifact.created",
+  "step.completed",
+] as const;
+
+const readFileContextEventTypes = [
+  "step.started",
+  "tool.started",
+  "tool.completed",
+  "step.completed",
+] as const;
+
+function withMultiAgentEvents(
+  ...tail: readonly RunEvent["type"][]
+): RunEvent["type"][] {
+  return ["run.status_changed", ...multiAgentEventTypes, ...tail];
+}
+
+function findSupervisorCompletedMessage(
+  events: readonly RunEvent[],
+): Extract<RunEvent, { type: "message.completed" }> | undefined {
+  return events.findLast(
+    (event): event is Extract<RunEvent, { type: "message.completed" }> =>
+      event.type === "message.completed" &&
+      event.payload.message.agent === "supervisor",
+  );
+}
+
 describe("runtime flows", () => {
   it("applies run events into the memory store and filters by sequence", () => {
     const store = createMemoryRuntimeStore(createEmptyRuntimeSnapshot());
@@ -577,27 +619,32 @@ describe("runtime flows", () => {
       reasoningEffort: run.settings.reasoningEffort,
       messages: [
         { role: "system" },
+        { role: "system" },
         { role: "user", content: run.goal },
       ],
     });
+    expect(providerInput?.messages[1]?.content).toContain(
+      "Sage multi-agent audit context",
+    );
+    expect(providerInput?.messages[1]?.content).toContain('"researcher"');
+    expect(providerInput?.messages[1]?.content).toContain('"builder"');
+    expect(providerInput?.messages[1]?.content).toContain('"reviewer"');
     expect(result.events.map((event) => event.type)).toEqual([
-      "run.status_changed",
-      "message.delta",
-      "message.completed",
-      "run.completed",
+      ...withMultiAgentEvents(
+        "message.delta",
+        "message.completed",
+        "run.completed",
+      ),
     ]);
-    expect(result.events.map((event) => event.sequence)).toEqual([
-      2, 3, 4, 5,
-    ]);
+    expect(result.events.map((event) => event.sequence)).toEqual(
+      Array.from({ length: result.events.length }, (_, index) => index + 2),
+    );
 
     const delta = result.events.find(
       (event): event is Extract<RunEvent, { type: "message.delta" }> =>
         event.type === "message.delta",
     );
-    const completed = result.events.find(
-      (event): event is Extract<RunEvent, { type: "message.completed" }> =>
-        event.type === "message.completed",
-    );
+    const completed = findSupervisorCompletedMessage(result.events);
     expect(delta?.payload.messageId).toBe(completed?.payload.message.id);
     expect(completed?.payload.message.content).toBe(delta?.payload.delta);
     expect(store.getRun(run.id)).toMatchObject({
@@ -605,9 +652,10 @@ describe("runtime flows", () => {
       activeAgent: null,
       completedAt: "2026-06-24T01:00:02.000Z",
     });
-    expect(store.getMessagesByRun(run.id)[0]?.content).toBe(
-      "这是 Supervisor 的真实回复。",
-    );
+    expect(
+      store.getMessagesByRun(run.id).find((message) => message.agent === "supervisor")
+        ?.content,
+    ).toBe("这是 Supervisor 的真实回复。");
   });
 
   it("turns provider failures into safe run.failed events", async () => {
@@ -649,8 +697,7 @@ describe("runtime flows", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.events.map((event) => event.type)).toEqual([
-      "run.status_changed",
-      "run.failed",
+      ...withMultiAgentEvents("run.failed"),
     ]);
     expect(result.safeMessage).toContain("missing_api_key");
     expect(result.safeMessage).not.toContain("sk-secret-should-not-leak");
@@ -822,11 +869,12 @@ describe("runtime flows", () => {
     for await (const event of stream) events.push(event);
 
     expect(events.map((event) => event.type)).toEqual([
-      "run.status_changed",
-      "message.delta",
-      "message.delta",
-      "message.completed",
-      "run.completed",
+      ...withMultiAgentEvents(
+        "message.delta",
+        "message.delta",
+        "message.completed",
+        "run.completed",
+      ),
     ]);
     const deltas = events.filter(
       (event): event is Extract<RunEvent, { type: "message.delta" }> =>
@@ -834,14 +882,130 @@ describe("runtime flows", () => {
     );
     expect(deltas.map((event) => event.payload.delta)).toEqual(["你", "好"]);
     expect(new Set(deltas.map((event) => event.payload.messageId)).size).toBe(1);
-    const completed = events.find(
-      (event): event is Extract<RunEvent, { type: "message.completed" }> =>
-        event.type === "message.completed",
-    );
+    const completed = findSupervisorCompletedMessage(events);
     expect(completed?.payload.message.content).toBe("你好");
     expect(store.getRun(run.id)).toMatchObject({
       status: "completed",
       activeAgent: null,
+    });
+  });
+
+  it("fails the run when multi-agent planning cannot start", async () => {
+    const store = createMemoryRuntimeStore(createEmptyRuntimeSnapshot());
+    const invalidRun: Run = {
+      ...run,
+      goal: " ",
+    };
+    store.upsertThread(thread);
+    store.appendEvent({
+      id: "event-run-created-for-invalid-multi-agent",
+      runId: invalidRun.id,
+      type: "run.created",
+      sequence: 1,
+      createdAt,
+      payload: { run: { ...invalidRun, status: "queued", activeAgent: null } },
+    });
+
+    let providerWasCalled = false;
+    const provider: SupervisorStreamProvider = async function* () {
+      providerWasCalled = true;
+      yield { ok: true, value: { type: "done" } };
+    };
+
+    const events = [];
+    for await (const event of streamSupervisorDeepSeekEvents({
+      store,
+      runId: invalidRun.id,
+      config: {
+        apiKey: "sk-test",
+        baseUrl: "https://api.deepseek.com",
+        defaultModel: "deepseek-v4-flash",
+        defaultReasoningEffort: "high",
+        thinkingEnabled: true,
+      },
+      provider,
+      now: createClock([
+        "2026-06-24T01:05:01.000Z",
+        "2026-06-24T01:05:02.000Z",
+      ]),
+      createId: createIdFactory(),
+    })) {
+      events.push(event);
+    }
+
+    expect(events.map((event) => event.type)).toEqual([
+      "run.status_changed",
+      "run.failed",
+    ]);
+    expect(providerWasCalled).toBe(false);
+    expect(store.getRun(invalidRun.id)).toMatchObject({
+      status: "failed",
+      activeAgent: "supervisor",
+      completedAt: "2026-06-24T01:05:02.000Z",
+    });
+  });
+
+  it("fails the run when streaming completes without assistant content", async () => {
+    const store = createMemoryRuntimeStore(createEmptyRuntimeSnapshot());
+    store.upsertThread(thread);
+    store.appendEvent({
+      id: "event-run-created-for-empty-stream",
+      runId: run.id,
+      type: "run.created",
+      sequence: 1,
+      createdAt,
+      payload: { run: { ...run, status: "queued", activeAgent: null } },
+    });
+
+    const provider: SupervisorStreamProvider = async function* () {
+      yield {
+        ok: true,
+        value: {
+          type: "delta",
+          id: "chatcmpl-empty-stream",
+          model: "deepseek-v4-flash",
+          index: 0,
+          role: "assistant",
+          contentDelta: "",
+          reasoningDelta: "reasoning only",
+          finishReason: null,
+        },
+      };
+      yield { ok: true, value: { type: "done" } };
+    };
+
+    const events = [];
+    for await (const event of streamSupervisorDeepSeekEvents({
+      store,
+      runId: run.id,
+      config: {
+        apiKey: "sk-test",
+        baseUrl: "https://api.deepseek.com",
+        defaultModel: "deepseek-v4-flash",
+        defaultReasoningEffort: "high",
+        thinkingEnabled: true,
+      },
+      provider,
+      now: createClock([
+        "2026-06-24T01:06:01.000Z",
+        "2026-06-24T01:06:02.000Z",
+      ]),
+      createId: createIdFactory(),
+    })) {
+      events.push(event);
+    }
+
+    expect(events.map((event) => event.type)).toEqual([
+      ...withMultiAgentEvents("run.failed"),
+    ]);
+    const failed = events.find(
+      (event): event is Extract<RunEvent, { type: "run.failed" }> =>
+        event.type === "run.failed",
+    );
+    expect(failed?.payload.error).toContain("invalid_response");
+    expect(store.getRun(run.id)).toMatchObject({
+      status: "failed",
+      activeAgent: "supervisor",
     });
   });
 
@@ -914,8 +1078,8 @@ describe("runtime flows", () => {
 
     expect(events.map((event) => event.type)).toEqual([
       "run.status_changed",
-      "tool.started",
-      "tool.completed",
+      ...readFileContextEventTypes,
+      ...multiAgentEventTypes,
       "message.delta",
       "message.completed",
       "run.completed",
@@ -932,6 +1096,11 @@ describe("runtime flows", () => {
         relativePath: "docs/SPEC.md",
       },
     });
+    expect(
+      store
+        .getStepsByRun(fileRun.id)
+        .some((step) => step.id === toolCompleted?.payload.toolCall.stepId),
+    ).toBe(true);
     expect(providerInput?.messages[1]?.content).toContain("docs/SPEC.md");
     expect(providerInput?.messages[1]?.content).toContain("SPEC file content.");
     expect(store.getToolCallsByRun(fileRun.id)[0]?.status).toBe("completed");
@@ -1008,8 +1177,11 @@ describe("runtime flows", () => {
 
     expect(events.map((event) => event.type)).toEqual([
       "run.status_changed",
+      "step.started",
       "tool.started",
       "tool.failed",
+      "step.completed",
+      ...multiAgentEventTypes,
       "message.delta",
       "message.completed",
       "run.completed",
@@ -1025,6 +1197,11 @@ describe("runtime flows", () => {
       error:
         "blocked_path: Path is blocked by the Sage read-only file policy.",
     });
+    expect(
+      store
+        .getStepsByRun(fileRun.id)
+        .some((step) => step.id === toolFailed?.payload.toolCall.stepId),
+    ).toBe(true);
     expect(providerInput?.messages[1]?.content).toContain("read_failed");
     expect(providerInput?.messages[1]?.content).toContain("blocked_path");
     expect(store.getApprovalsByRun(fileRun.id)).toEqual([]);
@@ -1089,17 +1266,32 @@ describe("runtime flows", () => {
 
     expect(events.map((event) => event.type)).toEqual([
       "run.status_changed",
+      ...multiAgentEventTypes,
       "message.delta",
       "run.failed",
     ]);
-    expect(events.some((event) => event.type === "message.completed")).toBe(false);
+    expect(
+      events.some(
+        (event) =>
+          event.type === "message.completed" &&
+          event.payload.message.agent === "supervisor" &&
+          event.payload.message.content === "partial",
+      ),
+    ).toBe(false);
     const failed = events.find(
       (event): event is Extract<RunEvent, { type: "run.failed" }> =>
         event.type === "run.failed",
     );
     expect(failed?.payload.error).toContain("invalid_stream_line");
     expect(failed?.payload.error).not.toContain("sk-secret-token");
-    expect(store.getMessagesByRun(run.id)[0]?.content).toBe("partial");
+    expect(
+      store
+        .getMessagesByRun(run.id)
+        .some(
+          (message) =>
+            message.agent === "supervisor" && message.content === "partial",
+        ),
+    ).toBe(true);
   });
 });
 

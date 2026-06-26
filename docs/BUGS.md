@@ -61,3 +61,16 @@
 - 搜索线索：`FIXME`、`TODO`、`P0`、`P1`。
 - 自动化门禁：Task 5.7 后已重新运行 `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`，均通过。
 - 结论：未发现未登记的 P0/P1 / TODO / FIXME 缺陷线索；当前 `docs/BUGS.md` 仍无 open / blocked bug。
+
+### 2026-06-26 Phase 2.5 收尾复核
+
+- 审计时间：2026-06-26 CST
+- 审计 commit：本记录随 Phase 2.5 收尾提交归档。
+- 审计范围：Phase 2.5 supervisor-led multi-agent run、read-only file tool event contract、Reviewer gate、QA checklist、`tests/runtime-flows.test.ts`。
+- 审计发现：
+  - read-only file tool 的 `ToolCall.stepId` 需要对应真实 Step；已在当前 task 修复。
+  - Supervisor plan 需要作为真实 run event 进入审计流；已在当前 task 修复。
+  - multi-agent planning failure 与 Reviewer gate 非 pass 需要落 `run.failed`；已在当前 task 修复。
+  - streaming 空输出需要明确失败测试；已在当前 task 补测。
+- 自动化门禁：本阶段收尾需重新运行 `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check`。
+- 结论：当前复核未留下 open / blocked bug；未配置真实 DeepSeek API key 的在线调用回归作为发布前 QA 风险记录在 `docs/QA_CHECKLIST.md`，不作为代码缺陷登记。
