@@ -127,7 +127,7 @@ BUG 记录：
 | QA-SET-05 | API key 安全 | 前端不显示、不存储完整 API key，只展示已配置/未配置或脱敏状态 | pass | Task 3.3 tests + browser QA |
 | QA-SET-06 | 连接测试 | 缺 key 不发真实请求；失败和成功都有清楚、脱敏反馈 | pass | Task 3.3 tests + browser QA |
 | QA-SET-07 | Workspace 说明 | workspace root 与 read-only file tool 允许/拒绝规则可见 | pass | Task 3.4 tests |
-| QA-SET-08 | 响应式布局 | Settings 在 desktop/mobile 下可读、可操作、无横向溢出 | pass | Task 3.1/3.3/3.4 QA |
+| QA-SET-08 | 响应式布局 | Settings 在 desktop/mobile 下可读、可操作、无横向溢出 | pass | Task 3.1/3.3/3.4 QA；已复查桌面 Settings 留白问题 |
 
 ## 7. BUG 记录与退出标准
 

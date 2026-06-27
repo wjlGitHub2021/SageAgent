@@ -110,3 +110,19 @@
 - 审计范围：`docs/BUGS.md`、`docs/TASKS.md`、`docs/PHASE3_SPEC.md`、`docs/SPEC.md`、`docs/PHASE2_SPEC.md`、`packages/runtime/src/read-project-file-tool.ts`、`apps/web/src/app/page.tsx`、`apps/web/src/app/globals.css`。
 - 搜索线索：`workspace root`、`read-only`、`blocked_path`、`SAGE_WORKSPACE_ROOT`、`.env`、`.git/`、`node_modules/`、`.next/`、`dist/`、`build/`、`coverage/`、`tmp/`。
 - 结论：当前没有未处理 P0/P1 bug；Task 3.4 需要把 runtime read-only file policy 与 Settings 的可见说明对齐，但不暴露敏感文件内容。
+
+### 2026-06-27 Settings 弹窗左侧大块留白
+
+- 状态：`fixed`
+- 严重级别：`P2`
+- 发现阶段：manual review
+- 影响范围：`apps/web` Settings dialog 的桌面可读性。
+- 复现步骤或线索：
+  - 打开 `http://localhost:3000/`
+  - 打开 Settings
+  - 在桌面截图里，左侧区域出现一大片空白，视觉重心偏右。
+- 修复方式：
+  - 将 Settings dialog 改成两列独立堆叠布局，避免单列内容把大块空白留在左侧。
+  - 去掉卡片内部的 `space-between`，改为顶部自然堆叠，减少视觉空洞。
+- 验证结论：
+  - 重新打开 `http://localhost:3000/` 并展开 Settings 后，左侧大块留白已消失，General、Workspace、Provider、Safety 的信息都能按预期阅读。

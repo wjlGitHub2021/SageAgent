@@ -952,11 +952,18 @@ code {
   padding: 14px;
 }
 
+.settings-dialog-column {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .settings-card {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 16px;
   border: 1px solid var(--border);
   border-radius: 10px;

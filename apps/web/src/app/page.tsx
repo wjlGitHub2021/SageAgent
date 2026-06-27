@@ -1574,265 +1574,269 @@ export default function Home() {
             </header>
 
             <div className="settings-dialog-grid">
-              <article className="settings-card">
-                <div>
-                  <p>{t.generalSettings}</p>
-                  <small>{t.generalSettingsDetail}</small>
-                </div>
-                <div className="settings-card-control">
-                  <span>{t.displayLanguage}</span>
-                  <div className="segmented language-switch" aria-label={t.language}>
-                    <button
-                      aria-pressed={locale === "zh"}
-                      className={locale === "zh" ? "selected" : ""}
-                      onClick={() => updatePreferences({ locale: "zh" })}
-                    >
-                      中文
-                    </button>
-                    <button
-                      aria-pressed={locale === "en"}
-                      className={locale === "en" ? "selected" : ""}
-                      onClick={() => updatePreferences({ locale: "en" })}
-                    >
-                      English
-                    </button>
+              <div className="settings-dialog-column">
+                <article className="settings-card">
+                  <div>
+                    <p>{t.generalSettings}</p>
+                    <small>{t.generalSettingsDetail}</small>
                   </div>
-                </div>
-              </article>
+                  <div className="settings-card-control">
+                    <span>{t.displayLanguage}</span>
+                    <div className="segmented language-switch" aria-label={t.language}>
+                      <button
+                        aria-pressed={locale === "zh"}
+                        className={locale === "zh" ? "selected" : ""}
+                        onClick={() => updatePreferences({ locale: "zh" })}
+                      >
+                        中文
+                      </button>
+                      <button
+                        aria-pressed={locale === "en"}
+                        className={locale === "en" ? "selected" : ""}
+                        onClick={() => updatePreferences({ locale: "en" })}
+                      >
+                        English
+                      </button>
+                    </div>
+                  </div>
+                </article>
 
-              <article className="settings-card">
-                <div>
-                  <p>{t.providerSettings}</p>
-                  <small>{t.providerSettingsDetail}</small>
-                </div>
-                <div className="settings-control-stack">
-                  <div className="settings-card-control">
-                    <span>{t.defaultModel}</span>
-                    <div className="segmented model-selector" aria-label={t.model}>
-                      {ALLOWED_MODELS.map((modelOption) => (
+                <article className="settings-card">
+                  <div>
+                    <p>{t.workspaceSettings}</p>
+                    <small>{t.workspaceSettingsDetail}</small>
+                  </div>
+                  <div className="workspace-policy-stack">
+                    <section className="workspace-policy-block">
+                      <span>{t.workspaceRoot}</span>
+                      <strong>{t.workspaceRootSource}</strong>
+                      <small>{t.workspaceRootDetail}</small>
+                      <small>{t.workspaceRootReadOnly}</small>
+                    </section>
+                    <section className="workspace-policy-block">
+                      <span>
+                        {t.readProjectFileTool} · {t.readProjectFileAllowed}
+                      </span>
+                      <strong>{t.readProjectFileAllowed}</strong>
+                      <small>{t.readProjectFileAllowedDetail}</small>
+                    </section>
+                    <section className="workspace-policy-block">
+                      <span>{t.readProjectFileDenied}</span>
+                      <strong>{t.blockedPathPolicy}</strong>
+                      <small>{getBlockedPathPolicyDetail(t)}</small>
+                      <ul className="policy-chip-list" aria-label={t.blockedPathPolicy}>
+                        {READ_PROJECT_FILE_BLOCKED_PATHS.map((blockedPath) => (
+                          <li key={blockedPath}>
+                            <code>{blockedPath}</code>
+                          </li>
+                        ))}
+                      </ul>
+                      <small>{t.readProjectFileDeniedDetail}</small>
+                    </section>
+                  </div>
+                </article>
+              </div>
+
+              <div className="settings-dialog-column">
+                <article className="settings-card">
+                  <div>
+                    <p>{t.providerSettings}</p>
+                    <small>{t.providerSettingsDetail}</small>
+                  </div>
+                  <div className="settings-control-stack">
+                    <div className="settings-card-control">
+                      <span>{t.defaultModel}</span>
+                      <div className="segmented model-selector" aria-label={t.model}>
+                        {ALLOWED_MODELS.map((modelOption) => (
+                          <button
+                            aria-pressed={model === modelOption}
+                            className={model === modelOption ? "selected" : ""}
+                            key={modelOption}
+                            onClick={() => updatePreferences({ model: modelOption })}
+                          >
+                            {modelOption}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="settings-card-control">
+                      <span>{t.thinkingEnabledSetting}</span>
+                      <div className="segmented thinking-toggle" aria-label={t.thinking}>
                         <button
-                          aria-pressed={model === modelOption}
-                          className={model === modelOption ? "selected" : ""}
-                          key={modelOption}
-                          onClick={() => updatePreferences({ model: modelOption })}
+                          aria-pressed={thinkingEnabled}
+                          className={thinkingEnabled ? "selected" : ""}
+                          onClick={() => updatePreferences({ thinkingEnabled: true })}
                         >
-                          {modelOption}
+                          {t.enabled}
                         </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="settings-card-control">
-                    <span>{t.thinkingEnabledSetting}</span>
-                    <div className="segmented thinking-toggle" aria-label={t.thinking}>
-                      <button
-                        aria-pressed={thinkingEnabled}
-                        className={thinkingEnabled ? "selected" : ""}
-                        onClick={() => updatePreferences({ thinkingEnabled: true })}
-                      >
-                        {t.enabled}
-                      </button>
-                      <button
-                        aria-pressed={!thinkingEnabled}
-                        className={thinkingEnabled ? "" : "selected"}
-                        onClick={() => updatePreferences({ thinkingEnabled: false })}
-                      >
-                        {t.disabled}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="settings-card-control">
-                    <span>{t.reasoningEffort}</span>
-                    <div
-                      className="segmented reasoning-selector"
-                      aria-label={t.reasoningEffort}
-                    >
-                      {ALLOWED_REASONING_EFFORTS.map((effortOption) => (
                         <button
-                          aria-pressed={reasoningEffort === effortOption}
-                          className={reasoningEffort === effortOption ? "selected" : ""}
-                          key={effortOption}
-                          onClick={() =>
-                            updatePreferences({ reasoningEffort: effortOption })
+                          aria-pressed={!thinkingEnabled}
+                          className={thinkingEnabled ? "" : "selected"}
+                          onClick={() => updatePreferences({ thinkingEnabled: false })}
+                        >
+                          {t.disabled}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="settings-card-control">
+                      <span>{t.reasoningEffort}</span>
+                      <div
+                        className="segmented reasoning-selector"
+                        aria-label={t.reasoningEffort}
+                      >
+                        {ALLOWED_REASONING_EFFORTS.map((effortOption) => (
+                          <button
+                            aria-pressed={reasoningEffort === effortOption}
+                            className={reasoningEffort === effortOption ? "selected" : ""}
+                            key={effortOption}
+                            onClick={() =>
+                              updatePreferences({ reasoningEffort: effortOption })
+                            }
+                          >
+                            {effortOption}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="provider-status-panel" aria-live="polite">
+                      <div className="provider-status-header">
+                        <div>
+                          <p>{t.providerConfigStatus}</p>
+                          <small>
+                            {isProviderStatusLoading
+                              ? t.providerStatusLoading
+                              : providerStatus?.configStatus === "valid"
+                                ? t.providerConfigValid
+                                : providerStatus?.configStatus === "invalid"
+                                  ? t.providerConfigInvalid
+                                  : t.notConfigured}
+                          </small>
+                        </div>
+                        <div className="provider-status-actions">
+                          <button
+                            className="ghost-button"
+                            disabled={isProviderStatusLoading}
+                            onClick={() => void loadProviderStatus()}
+                            type="button"
+                          >
+                            {t.refreshProviderStatus}
+                          </button>
+                          <button
+                            className="ghost-button"
+                            disabled={isProviderTesting}
+                            onClick={handleProviderConnectionTest}
+                            type="button"
+                          >
+                            {isProviderTesting
+                              ? t.testingProviderConnection
+                              : t.testProviderConnection}
+                          </button>
+                        </div>
+                      </div>
+
+                      {providerStatusError ? (
+                        <StateBlock
+                          title={t.providerStatusFailed}
+                          detail={providerStatusError}
+                          tone="danger"
+                        />
+                      ) : null}
+
+                      {providerStatus ? (
+                        <dl className="settings-summary provider-summary">
+                          <div>
+                            <dt>{t.apiKeyReadiness}</dt>
+                            <dd>
+                              {providerStatus.apiKeyReadiness === "configured"
+                                ? t.apiKeyConfigured
+                                : t.apiKeyMissing}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>{t.baseUrl}</dt>
+                            <dd>{providerStatus.baseUrl ?? t.notConfigured}</dd>
+                          </div>
+                          <div>
+                            <dt>{t.providerDefaultModel}</dt>
+                            <dd>{providerStatus.defaultModel ?? t.notConfigured}</dd>
+                          </div>
+                          <div>
+                            <dt>{t.providerThinking}</dt>
+                            <dd>
+                              {providerStatus.thinkingEnabled === null
+                                ? t.notConfigured
+                                : providerStatus.thinkingEnabled
+                                  ? t.enabled
+                                  : t.disabled}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>{t.providerReasoningEffort}</dt>
+                            <dd>
+                              {providerStatus.reasoningEffort ?? t.notConfigured}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>{t.providerIssues}</dt>
+                            <dd>
+                              {providerStatus.issueCodes.length > 0
+                                ? providerStatus.issueCodes.join(", ")
+                                : t.noProviderIssues}
+                            </dd>
+                          </div>
+                        </dl>
+                      ) : (
+                        <StateBlock
+                          title={t.providerConfigStatus}
+                          detail={
+                            isProviderStatusLoading
+                              ? t.providerStatusLoading
+                              : t.notConfigured
                           }
-                        >
-                          {effortOption}
-                        </button>
-                      ))}
+                        />
+                      )}
+
+                      {lastProviderTestResult ? (
+                        <StateBlock
+                          title={`${t.recentConnectionTest}: ${getConnectionTestLabel(
+                            lastProviderTestResult.code,
+                            t,
+                          )}${lastProviderTestResult.status ? ` (${lastProviderTestResult.status})` : ""}`}
+                          detail={`${getConnectionTestNextStep(
+                            lastProviderTestResult.code,
+                            t,
+                          )} ${t.lastUpdated}: ${formatAuditTime(
+                            lastProviderTestResult.checkedAt,
+                          )}`}
+                          tone={lastProviderTestResult.ok ? "neutral" : "danger"}
+                        />
+                      ) : (
+                        <StateBlock
+                          title={t.recentConnectionTest}
+                          detail={t.connectionNotTested}
+                        />
+                      )}
                     </div>
                   </div>
-                  <div className="provider-status-panel" aria-live="polite">
-                    <div className="provider-status-header">
-                      <div>
-                        <p>{t.providerConfigStatus}</p>
-                        <small>
-                          {isProviderStatusLoading
-                            ? t.providerStatusLoading
-                            : providerStatus?.configStatus === "valid"
-                              ? t.providerConfigValid
-                              : providerStatus?.configStatus === "invalid"
-                                ? t.providerConfigInvalid
-                                : t.notConfigured}
-                        </small>
-                      </div>
-                      <div className="provider-status-actions">
-                        <button
-                          className="ghost-button"
-                          disabled={isProviderStatusLoading}
-                          onClick={() => void loadProviderStatus()}
-                          type="button"
-                        >
-                          {t.refreshProviderStatus}
-                        </button>
-                        <button
-                          className="ghost-button"
-                          disabled={isProviderTesting}
-                          onClick={handleProviderConnectionTest}
-                          type="button"
-                        >
-                          {isProviderTesting
-                            ? t.testingProviderConnection
-                            : t.testProviderConnection}
-                        </button>
-                      </div>
+                </article>
+
+                <article className="settings-card">
+                  <div>
+                    <p>{t.safetySettings}</p>
+                    <small>{t.safetySettingsDetail}</small>
+                  </div>
+                  <dl className="settings-summary">
+                    <div>
+                      <dt>{t.status}</dt>
+                      <dd>{t.readDraftMode}</dd>
                     </div>
-
-                    {providerStatusError ? (
-                      <StateBlock
-                        title={t.providerStatusFailed}
-                        detail={providerStatusError}
-                        tone="danger"
-                      />
-                    ) : null}
-
-                    {providerStatus ? (
-                      <dl className="settings-summary provider-summary">
-                        <div>
-                          <dt>{t.apiKeyReadiness}</dt>
-                          <dd>
-                            {providerStatus.apiKeyReadiness === "configured"
-                              ? t.apiKeyConfigured
-                              : t.apiKeyMissing}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>{t.baseUrl}</dt>
-                          <dd>{providerStatus.baseUrl ?? t.notConfigured}</dd>
-                        </div>
-                        <div>
-                          <dt>{t.providerDefaultModel}</dt>
-                          <dd>{providerStatus.defaultModel ?? t.notConfigured}</dd>
-                        </div>
-                        <div>
-                          <dt>{t.providerThinking}</dt>
-                          <dd>
-                            {providerStatus.thinkingEnabled === null
-                              ? t.notConfigured
-                              : providerStatus.thinkingEnabled
-                                ? t.enabled
-                                : t.disabled}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>{t.providerReasoningEffort}</dt>
-                          <dd>
-                            {providerStatus.reasoningEffort ?? t.notConfigured}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>{t.providerIssues}</dt>
-                          <dd>
-                            {providerStatus.issueCodes.length > 0
-                              ? providerStatus.issueCodes.join(", ")
-                              : t.noProviderIssues}
-                          </dd>
-                        </div>
-                      </dl>
-                    ) : (
-                      <StateBlock
-                        title={t.providerConfigStatus}
-                        detail={
-                          isProviderStatusLoading
-                            ? t.providerStatusLoading
-                            : t.notConfigured
-                        }
-                      />
-                    )}
-
-                    {lastProviderTestResult ? (
-                      <StateBlock
-                        title={`${t.recentConnectionTest}: ${getConnectionTestLabel(
-                          lastProviderTestResult.code,
-                          t,
-                        )}${lastProviderTestResult.status ? ` (${lastProviderTestResult.status})` : ""}`}
-                        detail={`${getConnectionTestNextStep(
-                          lastProviderTestResult.code,
-                          t,
-                        )} ${t.lastUpdated}: ${formatAuditTime(
-                          lastProviderTestResult.checkedAt,
-                        )}`}
-                        tone={lastProviderTestResult.ok ? "neutral" : "danger"}
-                      />
-                    ) : (
-                      <StateBlock
-                        title={t.recentConnectionTest}
-                        detail={t.connectionNotTested}
-                      />
-                    )}
-                  </div>
-                </div>
-              </article>
-
-              <article className="settings-card">
-                <div>
-                  <p>{t.workspaceSettings}</p>
-                  <small>{t.workspaceSettingsDetail}</small>
-                </div>
-                <div className="workspace-policy-stack">
-                  <section className="workspace-policy-block">
-                    <span>{t.workspaceRoot}</span>
-                    <strong>{t.workspaceRootSource}</strong>
-                    <small>{t.workspaceRootDetail}</small>
-                    <small>{t.workspaceRootReadOnly}</small>
-                  </section>
-                  <section className="workspace-policy-block">
-                    <span>
-                      {t.readProjectFileTool} · {t.readProjectFileAllowed}
-                    </span>
-                    <strong>{t.readProjectFileAllowed}</strong>
-                    <small>{t.readProjectFileAllowedDetail}</small>
-                  </section>
-                  <section className="workspace-policy-block">
-                    <span>{t.readProjectFileDenied}</span>
-                    <strong>{t.blockedPathPolicy}</strong>
-                    <small>{getBlockedPathPolicyDetail(t)}</small>
-                    <ul className="policy-chip-list" aria-label={t.blockedPathPolicy}>
-                      {READ_PROJECT_FILE_BLOCKED_PATHS.map((blockedPath) => (
-                        <li key={blockedPath}>
-                          <code>{blockedPath}</code>
-                        </li>
-                      ))}
-                    </ul>
-                    <small>{t.readProjectFileDeniedDetail}</small>
-                  </section>
-                </div>
-              </article>
-
-              <article className="settings-card">
-                <div>
-                  <p>{t.safetySettings}</p>
-                  <small>{t.safetySettingsDetail}</small>
-                </div>
-                <dl className="settings-summary">
-                  <div>
-                    <dt>{t.status}</dt>
-                    <dd>{t.readDraftMode}</dd>
-                  </div>
-                  <div>
-                    <dt>{t.approvals}</dt>
-                    <dd>{activeAuditSummary.approvalCount}</dd>
-                  </div>
-                </dl>
-              </article>
+                    <div>
+                      <dt>{t.approvals}</dt>
+                      <dd>{activeAuditSummary.approvalCount}</dd>
+                    </div>
+                  </dl>
+                </article>
+              </div>
             </div>
           </section>
         </div>
