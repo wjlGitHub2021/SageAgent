@@ -1096,6 +1096,67 @@ code {
   white-space: normal;
 }
 
+.workspace-policy-stack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workspace-policy-block {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px;
+}
+
+.workspace-policy-block span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 760;
+  letter-spacing: 0.01em;
+}
+
+.workspace-policy-block strong {
+  min-width: 0;
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 780;
+  overflow-wrap: anywhere;
+}
+
+.workspace-policy-block small {
+  margin-top: 0;
+  line-height: 1.55;
+}
+
+.policy-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.policy-chip-list li {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel-muted);
+  padding: 3px 7px;
+}
+
+.policy-chip-list code {
+  color: var(--text-main);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 1080px) {
   .app-shell {
     grid-template-columns: minmax(190px, 230px) minmax(0, 1fr);

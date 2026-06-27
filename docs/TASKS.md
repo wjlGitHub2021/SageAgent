@@ -131,5 +131,5 @@
 - [x] Task 3.1：添加独立 Settings 入口与 Settings 页面 / 面板骨架。
 - [x] Task 3.2：将语言、默认模型、thinking、reasoning effort 集中到 Settings，并添加非敏感偏好持久化。
 - [x] Task 3.3：展示 DeepSeek provider 配置状态，并添加安全连接测试。
-- [ ] Task 3.4：展示 workspace root 与 read-only file tool 安全边界说明。
+- [x] Task 3.4：展示 workspace root 与 read-only file tool 安全边界说明。
 - [ ] Task 3.5：完成 Phase 3 QA、BUG 复核和阶段收尾。

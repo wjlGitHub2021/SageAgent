@@ -134,9 +134,25 @@ const copy = {
     connectionTestNextStepInvalidConfig:
       "修复 DeepSeek 环境变量配置后再测试。",
     workspaceSettingsDetail:
-      "当前工作区以本地单用户模式运行，不在本任务接入 router 或数据库。",
+      "展示本地 workspace 的只读运行边界和 read_project_file 工具权限。",
     safetySettingsDetail:
       "默认 Read + Draft；写文件、shell 和外部副作用操作必须进入 approval。",
+    workspaceRoot: "当前 workspace root",
+    workspaceRootSource: "monorepo root / SAGE_WORKSPACE_ROOT",
+    workspaceRootDetail:
+      "后端优先使用 SAGE_WORKSPACE_ROOT；未设置时从 monorepo root 推导。Settings 只展示边界说明，不暴露或编辑本机绝对路径。",
+    workspaceRootReadOnly:
+      "修改 workspace root 仍通过 SAGE_WORKSPACE_ROOT；此界面暂不提供编辑入口。",
+    readProjectFileTool: "read_project_file",
+    readProjectFileAllowed: "允许读取",
+    readProjectFileAllowedDetail:
+      "只读普通项目文本文件；路径必须是 workspace root 内的相对路径，默认最多 64 KiB。",
+    readProjectFileDenied: "拒绝读取",
+    readProjectFileDeniedDetail:
+      "目录、二进制、过大文件、绝对路径、路径越界，以及 blocked policy 命中的路径都会被拒绝且不返回敏感内容。",
+    blockedPathPolicy: "Blocked path policy",
+    blockedPathPolicyDetail:
+      "以下路径即使位于 workspace root 内也会被拒绝，覆盖环境文件、仓库元数据、依赖、构建产物和测试缓存。",
     readDraftMode: "Read + Draft 模式",
     localSingleUser: "本地单用户",
     notConfigured: "暂未配置",
@@ -281,9 +297,25 @@ const copy = {
     connectionTestNextStepInvalidConfig:
       "Fix DeepSeek environment variables before testing again.",
     workspaceSettingsDetail:
-      "The workspace runs in local single-user mode. This task does not add routing or a database.",
+      "Shows the local workspace read boundary and read_project_file tool permissions.",
     safetySettingsDetail:
       "Default Read + Draft mode; file writes, shell, and external side effects require approval.",
+    workspaceRoot: "Current workspace root",
+    workspaceRootSource: "monorepo root / SAGE_WORKSPACE_ROOT",
+    workspaceRootDetail:
+      "The backend uses SAGE_WORKSPACE_ROOT first; otherwise it infers the monorepo root. Settings explains the boundary without exposing or editing a local absolute path.",
+    workspaceRootReadOnly:
+      "Workspace root changes still go through SAGE_WORKSPACE_ROOT; this UI does not provide an editor.",
+    readProjectFileTool: "read_project_file",
+    readProjectFileAllowed: "Allowed reads",
+    readProjectFileAllowedDetail:
+      "Read-only access to ordinary project text files; paths must be workspace-relative and stay inside the workspace root, with a default 64 KiB limit.",
+    readProjectFileDenied: "Rejected reads",
+    readProjectFileDeniedDetail:
+      "Directories, binary files, oversized files, absolute paths, path escapes, and blocked policy matches are rejected without returning sensitive content.",
+    blockedPathPolicy: "Blocked path policy",
+    blockedPathPolicyDetail:
+      "These paths are rejected even inside the workspace root, covering env files, repository metadata, dependencies, build outputs, and test caches.",
     readDraftMode: "Read + Draft mode",
     localSingleUser: "Local single-user",
     notConfigured: "Not configured",
@@ -376,6 +408,20 @@ const copy = {
     noAuditEvents: "No audit events for this run",
   },
 } satisfies Record<Locale, Record<string, string>>;
+
+const READ_PROJECT_FILE_BLOCKED_PATHS = [
+  ".env",
+  ".env.*",
+  ".git/",
+  "node_modules/",
+  ".next/",
+  "dist/",
+  "build/",
+  "coverage/",
+  "tmp/",
+  "playwright-report/",
+  "test-results/",
+] as const;
 
 const initialThreads: ThreadItem[] = [
   {
@@ -880,6 +926,10 @@ function getConnectionTestNextStep(
     case "invalid_config":
       return t.connectionTestNextStepInvalidConfig;
   }
+}
+
+function getBlockedPathPolicyDetail(t: (typeof copy)[Locale]): string {
+  return `${t.blockedPathPolicyDetail} ${READ_PROJECT_FILE_BLOCKED_PATHS.join(", ")}`;
 }
 
 export default function Home() {
@@ -1737,16 +1787,34 @@ export default function Home() {
                   <p>{t.workspaceSettings}</p>
                   <small>{t.workspaceSettingsDetail}</small>
                 </div>
-                <dl className="settings-summary">
-                  <div>
-                    <dt>{t.status}</dt>
-                    <dd>{t.localSingleUser}</dd>
-                  </div>
-                  <div>
-                    <dt>{t.currentRun}</dt>
-                    <dd>{activeRun?.id ?? t.notConfigured}</dd>
-                  </div>
-                </dl>
+                <div className="workspace-policy-stack">
+                  <section className="workspace-policy-block">
+                    <span>{t.workspaceRoot}</span>
+                    <strong>{t.workspaceRootSource}</strong>
+                    <small>{t.workspaceRootDetail}</small>
+                    <small>{t.workspaceRootReadOnly}</small>
+                  </section>
+                  <section className="workspace-policy-block">
+                    <span>
+                      {t.readProjectFileTool} · {t.readProjectFileAllowed}
+                    </span>
+                    <strong>{t.readProjectFileAllowed}</strong>
+                    <small>{t.readProjectFileAllowedDetail}</small>
+                  </section>
+                  <section className="workspace-policy-block">
+                    <span>{t.readProjectFileDenied}</span>
+                    <strong>{t.blockedPathPolicy}</strong>
+                    <small>{getBlockedPathPolicyDetail(t)}</small>
+                    <ul className="policy-chip-list" aria-label={t.blockedPathPolicy}>
+                      {READ_PROJECT_FILE_BLOCKED_PATHS.map((blockedPath) => (
+                        <li key={blockedPath}>
+                          <code>{blockedPath}</code>
+                        </li>
+                      ))}
+                    </ul>
+                    <small>{t.readProjectFileDeniedDetail}</small>
+                  </section>
+                </div>
               </article>
 
               <article className="settings-card">

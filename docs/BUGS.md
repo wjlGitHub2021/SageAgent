@@ -103,3 +103,10 @@
 - 审计范围：`docs/BUGS.md`、`docs/TASKS.md`、`docs/PHASE3_SPEC.md`、`docs/SPEC.md`、`packages/deepseek/src/config.ts`、`packages/deepseek/src/api-key.ts`、`apps/web/src/app/api/runs/[runId]/supervisor/route.ts`、`apps/web/src/app/page.tsx`。
 - 搜索线索：`provider status`、`readiness`、`connection test`、`API key`、`missing_api_key`、`http_error`、`network_error`、`invalid_response`、`invalid_config`、`Authorization`、`token`、`secret`。
 - 结论：当前没有未处理 P0/P1 bug；Task 3.3 需要以后端安全摘要和结构化结果展示 DeepSeek provider 状态，并避免前端直接拿到完整凭据。
+
+### 2026-06-27 Task 3.4 启动前复核
+
+- 审计时间：2026-06-27 CST
+- 审计范围：`docs/BUGS.md`、`docs/TASKS.md`、`docs/PHASE3_SPEC.md`、`docs/SPEC.md`、`docs/PHASE2_SPEC.md`、`packages/runtime/src/read-project-file-tool.ts`、`apps/web/src/app/page.tsx`、`apps/web/src/app/globals.css`。
+- 搜索线索：`workspace root`、`read-only`、`blocked_path`、`SAGE_WORKSPACE_ROOT`、`.env`、`.git/`、`node_modules/`、`.next/`、`dist/`、`build/`、`coverage/`、`tmp/`。
+- 结论：当前没有未处理 P0/P1 bug；Task 3.4 需要把 runtime read-only file policy 与 Settings 的可见说明对齐，但不暴露敏感文件内容。

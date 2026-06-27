@@ -156,14 +156,24 @@ Phase 3 不在一开始做：
 
 - Settings 中展示当前 workspace root。
 - 说明 `read_project_file` 只读工具能读取和不能读取的路径类型。
-- 展示 blocked path policy，例如 `.env`、`.git/`、`node_modules/`、`.next/`、`dist/`、`build/`、`coverage/`、`tmp/`。
+- 展示 blocked path policy，例如 `.env`、`.env.*`、`.git/`、`node_modules/`、`.next/`、`dist/`、`build/`、`coverage/`、`tmp/`、`playwright-report/`、`test-results/`。
 - 暂不提供修改 workspace root 的 UI；修改仍通过 `SAGE_WORKSPACE_ROOT`。
+
+实现约束：
+
+- workspace root 说明必须和 runtime 的 `read_project_file` 规则一致，只展示允许/拒绝原则，不展示敏感文件内容。
+- 在 UI 中，workspace root 只作为当前运行边界的只读信息展示；若环境变量未设置，则使用 monorepo root / 默认推导值的安全说明，不引导用户直接暴露本机路径细节。
+- blocked path 说明需覆盖目录类、敏感环境文件类、产物目录类和缓存目录类，并明确这些路径即便位于 workspace root 内也会被拒绝。
+- read-only file tool 说明要明确：允许读普通文本文件、拒绝目录/二进制/过大文件/路径越界/被 blocked policy 命中的路径。
+- 新增文案仍必须进入 copy 字典或现有 i18n 资源，中文/English 一致。
+- 这部分只做可解释性说明，不引入 workspace root 选择器、编辑器或写入能力。
 
 验收：
 
 - 用户能理解为什么某些文件可读、某些文件被拒绝。
 - Settings 中的权限说明与 `docs/PHASE2_SPEC.md` 和 runtime 实现一致。
 - 不暴露敏感文件内容。
+- desktop/mobile 下的说明可读，不遮挡 provider / settings controls。
 
 ## Task 3.5：Phase 3 QA 与收尾
 
