@@ -129,6 +129,15 @@ BUG 记录：
 | QA-SET-07 | Workspace 说明 | workspace root 与 read-only file tool 允许/拒绝规则可见 | pass | Task 3.4 tests |
 | QA-SET-08 | 响应式布局 | Settings 在 desktop/mobile 下可读、可操作、无横向溢出 | pass | Task 3.1/3.3/3.4 QA；已复查桌面 Settings 留白问题 |
 
+## 6.6 Phase 4 Multi-Agent 产品化承接
+
+| ID | 检查项 | 期望 | 状态 | 备注 |
+| --- | --- | --- | --- | --- |
+| QA-4-01 | 任务口径 | `docs/PHASE4_SPEC.md` 明确 Phase 4 的现状、目标和任务拆分 | pass | 已新增 Phase 4 规格文档 |
+| QA-4-02 | 现状对齐 | `docs/STAGE4_SPEC.md` 与当前实现事实不冲突 | pass | 已恢复为历史 Stage 4 规格 |
+| QA-4-03 | 主链路承接 | multi-agent helper 的后续 task 能明确指向 UI / runtime / QA 承接 | pass | Phase 4 规格已改写为承接型路线图 |
+| QA-4-04 | 风险可见 | 已识别 runner/helper 重复逻辑、文档口径不一致、承接断层等风险 | pass | 已在 Phase 4 规格中列出 |
+
 ## 7. BUG 记录与退出标准
 
 | ID | 检查项 | 期望 | 状态 | 备注 |

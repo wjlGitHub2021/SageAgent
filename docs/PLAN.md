@@ -75,23 +75,22 @@
 - provider 错误能在 run UI 中清楚显示。
 - model 与 reasoning settings 在本地可见并可持久化。
 
-## Stage 4：Multi-Agent MVP
+## Phase 4：Multi-Agent 产品化承接
 
-目标：实现 supervisor-led multi-agent 行为，并保持安全工具边界。
+目标：把现有的 supervisor-led multi-agent 纯函数、approval helper、artifact helper 和 final summary gate 推进到可审计、可接 UI 的产品化闭环。
 
 计划交付物：
 
-- 添加 Supervisor、Researcher、Builder、Reviewer agent definitions。
-- 添加 orchestrator，负责创建 steps、分派子 agent、汇总结果。
-- 添加 Read + Draft tool set。
-- 添加 write、shell、external side-effect actions 的 approval flow。
-- 添加 final artifact 生成与 reviewer pass。
+- 对齐当前已有的 `@sage/agents`、`@sage/runtime` 和 `apps/web/src/lib/supervisor-runner.ts` 能力，区分已完成基础与待承接部分。
+- 明确 multi-agent 事件流、approval / artifact / final summary 的主链路承接任务。
+- 将 UI、inspector、timeline 与 runtime helper 对齐，确保事件可理解。
+- 更新 QA checklist 和 BUG 文档，清理阶段内风险。
 
 退出标准：
 
-- 一个用户目标可以完整经过 supervisor planning、context gathering、builder output、reviewer feedback、final summary。
-- 所有 risky actions 在执行前都会产生 approval request。
-- UI 能让用户理解 agent activity、tool calls 和 final output。
+- 用户能在 UI 中理解 multi-agent 工作流、审批和最终总结。
+- 现有 helper 与主链路事件语义一致，不再出现“实现了但没接上”的断层。
+- Phase 4 的文档、实现、QA 与 BUG 状态保持一致。
 
 ## Stage 5：商业化质量加固
 
