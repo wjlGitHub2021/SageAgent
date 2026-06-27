@@ -88,9 +88,9 @@
 说明：本节是当前 active phase；Phase 4 聚焦把现有 multi-agent 纯函数、approval helper、artifact helper 和 final summary gate 串成可审计、可接 UI 的产品化闭环。
 
 - [x] 编写 `docs/PHASE4_SPEC.md`，锁定 Phase 4 的现状、目标和任务拆分。
-- [ ] 对齐 `docs/STAGE4_SPEC.md`、`docs/PLAN.md`、`docs/SPEC.md` 与当前实现口径。
-- [ ] 明确 `apps/web/src/lib/supervisor-runner.ts` 与 `packages/runtime` 的 source of truth 分工。
-- [ ] 明确 multi-agent 事件流、approval / artifact / final summary 的主链路承接任务。
+- [x] 对齐 `docs/STAGE4_SPEC.md`、`docs/PLAN.md`、`docs/SPEC.md` 与当前实现口径。
+- [x] 明确 `apps/web/src/lib/supervisor-runner.ts` 与 `packages/runtime` 的 source of truth 分工。
+- [x] 明确 multi-agent 事件流、approval / artifact / final summary 的主链路承接任务。
 - [ ] 检查并修复 UI / runtime / QA 中 Phase 4 的承接断层。
 - [ ] 完成 Phase 4 QA、BUG 复核和阶段收尾。
 

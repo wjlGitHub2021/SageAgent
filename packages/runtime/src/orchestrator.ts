@@ -20,6 +20,7 @@ export interface DelegationFlowInput {
   readonly reviewFindings?: readonly string[];
   readonly reviewRisks?: readonly string[];
   readonly missingChecks?: readonly string[];
+  readonly builderContextNotes?: readonly string[];
 }
 
 export interface DelegationStep {
@@ -88,11 +89,12 @@ export function createDelegationFlow(
 
   const builderResult = createBuilderDraft({
     goal: input.goal,
-    contextNotes: [
+    contextNotes: normalizeList([
+      ...(input.builderContextNotes ?? input.contextNotes ?? []),
+      researcherResult.brief.summary,
       ...researcherResult.brief.contextTargets,
       ...researcherResult.brief.constraints,
-      ...(input.contextNotes ?? []),
-    ],
+    ]),
     constraints: input.knownConstraints,
   });
   if (!builderResult.ok) {
@@ -162,4 +164,12 @@ export function createDelegationFlow(
       reviewerDecision: reviewerResult.report.decision,
     },
   };
+}
+
+function normalizeList(items: readonly string[]): readonly string[] {
+  const normalized = items
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+
+  return Array.from(new Set(normalized));
 }

@@ -11,19 +11,11 @@ import {
 import {
   DEFAULT_READ_PROJECT_FILE_MAX_BYTES,
   readProjectFileTool,
+  createDelegationFlow,
   type ReadProjectFileResult,
   type ReadProjectFileToolInput,
   type RuntimeStore,
 } from "@sage/runtime";
-import {
-  createBuilderDraft,
-  createResearcherBrief,
-  createReviewerReport,
-  createSupervisorPlan,
-  type BuilderDraft,
-  type ResearcherBrief,
-  type ReviewerReport,
-} from "@sage/agents";
 import type {
   EntityId,
   JsonObject,
@@ -36,6 +28,11 @@ import type {
   RunFailedEvent,
   ToolCall,
 } from "@sage/shared";
+import type {
+  BuilderDraft,
+  ResearcherBrief,
+  ReviewerReport,
+} from "@sage/agents";
 
 const SUPERVISOR_SYSTEM_PROMPT = [
   "You are Sage Agent Supervisor.",
@@ -935,8 +932,18 @@ async function runMultiAgentEventPass({
   readonly createId: IdFactory;
 }): Promise<MultiAgentEventPass> {
   const events: RunEvent[] = [];
-  const steps = createSupervisorPlan(run.goal);
-  if (!steps.ok) {
+  const delegationFlow = createDelegationFlow({
+    goal: run.goal,
+    suggestedPaths: fileContextPass.contexts
+      .filter((context) => context.ok)
+      .map((context) => context.relativePath),
+    builderContextNotes: fileContextPass.contexts.map((context) =>
+      context.ok
+        ? `Read ${context.relativePath}: ${truncateForToolResult(context.content)}`
+        : `Failed to read ${context.relativePath}: ${context.message}`,
+    ),
+  });
+  if (!delegationFlow.ok) {
     return finishMultiAgentRunFailure({
       store,
       run,
@@ -944,9 +951,11 @@ async function runMultiAgentEventPass({
       createId,
       events,
       supervisorContext: "",
-      safeMessage: steps.issue.message,
+      safeMessage: delegationFlow.issue.message,
     });
   }
+
+  const steps = delegationFlow.flow.supervisorPlan;
 
   const supervisorPlanStep = createStep({
     id: createId("step"),
@@ -974,7 +983,7 @@ async function runMultiAgentEventPass({
     threadId: run.threadId,
     role: "agent",
     agent: "supervisor",
-    content: steps.plan.summary,
+    content: steps.summary,
     createdAt: now(),
   });
   const supervisorPlanMessageEvent = createMessageCompletedEvent(
@@ -990,7 +999,7 @@ async function runMultiAgentEventPass({
     runId: run.id,
     kind: "plan",
     title: "Supervisor Plan",
-    content: JSON.stringify(steps.plan, null, 2),
+    content: JSON.stringify(steps, null, 2),
     path: null,
     createdAt: now(),
   });
@@ -1007,8 +1016,8 @@ async function runMultiAgentEventPass({
     status: "completed",
     completedAt: now(),
     output: {
-      summary: steps.plan.summary,
-      steps: steps.plan.steps.map((step) => ({
+      summary: steps.summary,
+      steps: steps.steps.map((step) => ({
         id: step.id,
         agent: step.agent,
         title: step.title,
@@ -1041,24 +1050,7 @@ async function runMultiAgentEventPass({
   store.appendEvent(researcherStartEvent);
   events.push(researcherStartEvent);
 
-  const researcherBrief = createResearcherBrief({
-    goal: run.goal,
-    suggestedPaths: fileContextPass.contexts
-      .filter((context) => context.ok)
-      .map((context) => context.relativePath),
-  });
-  if (!researcherBrief.ok) {
-    return finishMultiAgentStepFailure({
-      store,
-      run,
-      step: researcherStep,
-      now,
-      createId,
-      events,
-      supervisorContext: "",
-      safeMessage: researcherBrief.issue.message,
-    });
-  }
+  const researcherBrief = delegationFlow.flow.researcherBrief;
 
   const researcherMessage = createMessage({
     id: createId("message"),
@@ -1066,7 +1058,7 @@ async function runMultiAgentEventPass({
     threadId: run.threadId,
     role: "agent",
     agent: "researcher",
-    content: researcherBrief.brief.summary,
+    content: researcherBrief.summary,
     createdAt: now(),
   });
   const researcherMessageEvent = createMessageCompletedEvent(
@@ -1082,7 +1074,7 @@ async function runMultiAgentEventPass({
     runId: run.id,
     kind: "document",
     title: "Researcher Brief",
-    content: JSON.stringify(researcherBrief.brief, null, 2),
+    content: JSON.stringify(researcherBrief, null, 2),
     path: null,
     createdAt: now(),
   });
@@ -1099,8 +1091,8 @@ async function runMultiAgentEventPass({
     status: "completed",
     completedAt: now(),
     output: {
-      summary: researcherBrief.brief.summary,
-      targets: [...researcherBrief.brief.contextTargets],
+      summary: researcherBrief.summary,
+      targets: [...researcherBrief.contextTargets],
     },
   });
   const researcherCompletedEvent = createStepEvent(
@@ -1129,29 +1121,7 @@ async function runMultiAgentEventPass({
   store.appendEvent(builderStartEvent);
   events.push(builderStartEvent);
 
-  const builderDraft = createBuilderDraft({
-    goal: run.goal,
-    contextNotes: [
-      researcherBrief.brief.summary,
-      ...researcherBrief.brief.contextTargets,
-    ],
-    constraints: researcherBrief.brief.constraints,
-  });
-  if (!builderDraft.ok) {
-    return finishMultiAgentStepFailure({
-      store,
-      run,
-      step: builderStep,
-      now,
-      createId,
-      events,
-      supervisorContext: createMultiAgentSupervisorContext({
-        planSummary: steps.plan.summary,
-        researcherBrief: researcherBrief.brief,
-      }),
-      safeMessage: builderDraft.issue.message,
-    });
-  }
+  const builderDraft = delegationFlow.flow.builderDraft;
 
   const builderMessage = createMessage({
     id: createId("message"),
@@ -1159,7 +1129,7 @@ async function runMultiAgentEventPass({
     threadId: run.threadId,
     role: "agent",
     agent: "builder",
-    content: builderDraft.draft.summary,
+    content: builderDraft.summary,
     createdAt: now(),
   });
   const builderMessageEvent = createMessageCompletedEvent(
@@ -1175,7 +1145,7 @@ async function runMultiAgentEventPass({
     runId: run.id,
     kind: "plan",
     title: "Builder Draft",
-    content: JSON.stringify(builderDraft.draft, null, 2),
+    content: JSON.stringify(builderDraft, null, 2),
     path: null,
     createdAt: now(),
   });
@@ -1192,8 +1162,8 @@ async function runMultiAgentEventPass({
     status: "completed",
     completedAt: now(),
     output: {
-      summary: builderDraft.draft.summary,
-      patches: builderDraft.draft.patchPlan.map((patch) => ({
+      summary: builderDraft.summary,
+      patches: builderDraft.patchPlan.map((patch) => ({
         target: patch.target,
         intent: patch.intent,
       })),
@@ -1225,30 +1195,7 @@ async function runMultiAgentEventPass({
   store.appendEvent(reviewerStartEvent);
   events.push(reviewerStartEvent);
 
-  const reviewerReport = createReviewerReport({
-    goal: run.goal,
-    draftSummary: builderDraft.draft.summary,
-    acceptanceCriteria: steps.plan.steps.map((step) => step.title),
-    findings: [],
-    risks: ["Multi-agent run still uses pure-function agent outputs for MVP."],
-    missingChecks: [],
-  });
-  if (!reviewerReport.ok) {
-    return finishMultiAgentStepFailure({
-      store,
-      run,
-      step: reviewerStep,
-      now,
-      createId,
-      events,
-      supervisorContext: createMultiAgentSupervisorContext({
-        planSummary: steps.plan.summary,
-        researcherBrief: researcherBrief.brief,
-        builderDraft: builderDraft.draft,
-      }),
-      safeMessage: reviewerReport.issue.message,
-    });
-  }
+  const reviewerReport = delegationFlow.flow.reviewerReport;
 
   const reviewerMessage = createMessage({
     id: createId("message"),
@@ -1256,7 +1203,7 @@ async function runMultiAgentEventPass({
     threadId: run.threadId,
     role: "agent",
     agent: "reviewer",
-    content: reviewerReport.report.summary,
+    content: reviewerReport.summary,
     createdAt: now(),
   });
   const reviewerMessageEvent = createMessageCompletedEvent(
@@ -1272,7 +1219,7 @@ async function runMultiAgentEventPass({
     runId: run.id,
     kind: "summary",
     title: "Reviewer Report",
-    content: JSON.stringify(reviewerReport.report, null, 2),
+    content: JSON.stringify(reviewerReport, null, 2),
     path: null,
     createdAt: now(),
   });
@@ -1286,16 +1233,16 @@ async function runMultiAgentEventPass({
 
   const reviewerCompletedStep = createStep({
     ...reviewerStep,
-    status: reviewerReport.report.decision === "pass" ? "completed" : "failed",
+    status: reviewerReport.decision === "pass" ? "completed" : "failed",
     completedAt: now(),
     output: {
-      decision: reviewerReport.report.decision,
-      findings: [...reviewerReport.report.findings],
-      risks: [...reviewerReport.report.risks],
+      decision: reviewerReport.decision,
+      findings: [...reviewerReport.findings],
+      risks: [...reviewerReport.risks],
     },
   });
   const reviewerCompletedEvent = createStepEvent(
-    reviewerReport.report.decision === "pass" ? "step.completed" : "step.failed",
+    reviewerReport.decision === "pass" ? "step.completed" : "step.failed",
     reviewerCompletedStep,
     createId,
     nextRunSequence(store, run.id),
@@ -1303,7 +1250,7 @@ async function runMultiAgentEventPass({
   store.appendEvent(reviewerCompletedEvent);
   events.push(reviewerCompletedEvent);
 
-  if (reviewerReport.report.decision !== "pass") {
+  if (reviewerReport.decision !== "pass") {
     return finishMultiAgentRunFailure({
       store,
       run,
@@ -1311,10 +1258,10 @@ async function runMultiAgentEventPass({
       createId,
       events,
       supervisorContext: createMultiAgentSupervisorContext({
-        planSummary: steps.plan.summary,
-        researcherBrief: researcherBrief.brief,
-        builderDraft: builderDraft.draft,
-        reviewerReport: reviewerReport.report,
+        planSummary: steps.summary,
+        researcherBrief,
+        builderDraft,
+        reviewerReport,
       }),
       safeMessage:
         "Reviewer gate did not pass; Supervisor final synthesis is blocked.",
@@ -1326,10 +1273,10 @@ async function runMultiAgentEventPass({
     ok: true,
     events,
     supervisorContext: createMultiAgentSupervisorContext({
-      planSummary: steps.plan.summary,
-      researcherBrief: researcherBrief.brief,
-      builderDraft: builderDraft.draft,
-      reviewerReport: reviewerReport.report,
+      planSummary: steps.summary,
+      researcherBrief,
+      builderDraft,
+      reviewerReport,
     }),
   };
 }
@@ -1525,51 +1472,6 @@ function createArtifactEvent(
       artifact,
     },
   };
-}
-
-function finishMultiAgentStepFailure({
-  store,
-  run,
-  step,
-  now,
-  createId,
-  events,
-  supervisorContext,
-  safeMessage,
-}: {
-  readonly store: RuntimeStore;
-  readonly run: Run;
-  readonly step: Step;
-  readonly now: Clock;
-  readonly createId: IdFactory;
-  readonly events: RunEvent[];
-  readonly supervisorContext: string;
-  readonly safeMessage: string;
-}): MultiAgentEventPass {
-  const failedStep = {
-    ...step,
-    status: "failed" as const,
-    completedAt: now(),
-  };
-  const failedEvent = createStepEvent(
-    "step.failed",
-    failedStep,
-    createId,
-    nextRunSequence(store, run.id),
-  );
-  store.appendEvent(failedEvent);
-  events.push(failedEvent);
-
-  return finishMultiAgentRunFailure({
-    store,
-    run,
-    now,
-    createId,
-    events,
-    supervisorContext,
-    safeMessage,
-    activeAgent: step.agent,
-  });
 }
 
 function finishMultiAgentRunFailure({

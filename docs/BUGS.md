@@ -129,7 +129,7 @@
 
 ### 2026-06-28 Phase 4 runner/helper 承接断层风险
 
-- 状态：`open`
+- 状态：`fixed`
 - 严重级别：`P2`
 - 发现阶段：docs review
 - 影响范围：`apps/web/src/lib/supervisor-runner.ts`、`packages/runtime`、`docs/PLAN.md`、`docs/TASKS.md` 的 multi-agent 承接一致性。
@@ -137,8 +137,9 @@
   - 当前 `supervisor-runner.ts` 已经直接组装 multi-agent step、message、artifact 和 final summary 事件。
   - 同时 `packages/runtime` 里又存在 `createDelegationFlow`、approval helper、artifact helper、final summary gate 等独立 helper。
   - 如果 Phase 4 继续推进而不明确谁是唯一 source of truth，后续很容易出现重复逻辑或 UI / runtime 口径不一致。
-- 暂不修复原因：
-  - 这是 Phase 4 规划和分工问题，不是单点代码 bug；需要先把 phase 任务拆清楚，再决定迁移/去重策略。
-- 后续处理建议：
-  - 在 Phase 4 的第一个实现 task 中明确 `apps/web/src/lib/supervisor-runner.ts` 与 `packages/runtime` 的职责边界。
-  - 若 runner 保持组装事件，runtime helper 只提供纯函数；若 runtime 成为 source of truth，则逐步下沉事件拼装逻辑。
+- 修复方式：
+  - `packages/runtime/src/orchestrator.ts` 的 `createDelegationFlow` 增加 `builderContextNotes`，让 runtime 成为 multi-agent 纯函数输出的 source of truth。
+  - `apps/web/src/lib/supervisor-runner.ts` 改为消费 `createDelegationFlow` 的 `supervisorPlan`、`researcherBrief`、`builderDraft`、`reviewerReport`，不再分别重复调用 agent 纯函数。
+  - runner 仍负责把结构化输出转换为真实 run events，维持现有 UI / SSE / runtime store 合同。
+- 验证结论：
+  - `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check` 通过。
