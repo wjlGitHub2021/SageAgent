@@ -120,24 +120,24 @@ BUG 记录：
 
 | ID | 检查项 | 期望 | 状态 | 备注 |
 | --- | --- | --- | --- | --- |
-| QA-SET-01 | Settings 入口 | 工作台中有清晰可发现的 Settings 入口 |  |  |
-| QA-SET-02 | Settings 分区 | 至少展示 General、Provider、Workspace、Safety 分区 |  |  |
-| QA-SET-03 | 双语覆盖 | Settings 标题、说明、按钮、错误状态支持中文/English |  |  |
-| QA-SET-04 | 非敏感偏好持久化 | 语言、默认模型、thinking、reasoning effort 刷新后保持 |  |  |
-| QA-SET-05 | API key 安全 | 前端不显示、不存储完整 API key，只展示已配置/未配置或脱敏状态 |  |  |
-| QA-SET-06 | 连接测试 | 缺 key 不发真实请求；失败和成功都有清楚、脱敏反馈 |  |  |
-| QA-SET-07 | Workspace 说明 | workspace root 与 read-only file tool 允许/拒绝规则可见 |  |  |
-| QA-SET-08 | 响应式布局 | Settings 在 desktop/mobile 下可读、可操作、无横向溢出 |  |  |
+| QA-SET-01 | Settings 入口 | 工作台中有清晰可发现的 Settings 入口 | pass | Task 3.1 browser QA |
+| QA-SET-02 | Settings 分区 | 至少展示 General、Provider、Workspace、Safety 分区 | pass | Task 3.1/3.4 browser QA |
+| QA-SET-03 | 双语覆盖 | Settings 标题、说明、按钮、错误状态支持中文/English | pass | Task 3.1/3.2/3.3 browser QA |
+| QA-SET-04 | 非敏感偏好持久化 | 语言、默认模型、thinking、reasoning effort 刷新后保持 | pass | Task 3.2 tests + browser QA |
+| QA-SET-05 | API key 安全 | 前端不显示、不存储完整 API key，只展示已配置/未配置或脱敏状态 | pass | Task 3.3 tests + browser QA |
+| QA-SET-06 | 连接测试 | 缺 key 不发真实请求；失败和成功都有清楚、脱敏反馈 | pass | Task 3.3 tests + browser QA |
+| QA-SET-07 | Workspace 说明 | workspace root 与 read-only file tool 允许/拒绝规则可见 | pass | Task 3.4 tests |
+| QA-SET-08 | 响应式布局 | Settings 在 desktop/mobile 下可读、可操作、无横向溢出 | pass | Task 3.1/3.3/3.4 QA |
 
 ## 7. BUG 记录与退出标准
 
 | ID | 检查项 | 期望 | 状态 | 备注 |
 | --- | --- | --- | --- | --- |
-| QA-BUG-01 | 失败项记录 | 每个 `fail` / `blocked` 都有 `BUG-xxxx` 记录 |  |  |
-| QA-BUG-02 | 严重级别 | 每个 bug 标注 P0/P1/P2/P3 |  |  |
-| QA-BUG-03 | 复现线索 | 每个 bug 有复现步骤或足够线索 |  |  |
-| QA-BUG-04 | 处理建议 | 每个 bug 有当下修复、延期或阻塞说明 |  |  |
-| QA-BUG-05 | 退出标准 | P0/P1 均已 fixed 或明确 blocked，P2/P3 有后续处理建议 |  |  |
+| QA-BUG-01 | 失败项记录 | 每个 `fail` / `blocked` 都有 `BUG-xxxx` 记录 | pass | 当前无 fail / blocked 退出项 |
+| QA-BUG-02 | 严重级别 | 每个 bug 标注 P0/P1/P2/P3 | pass | `docs/BUGS.md` 现有记录覆盖 |
+| QA-BUG-03 | 复现线索 | 每个 bug 有复现步骤或足够线索 | pass | `docs/BUGS.md` 现有记录覆盖 |
+| QA-BUG-04 | 处理建议 | 每个 bug 有当下修复、延期或阻塞说明 | pass | `docs/BUGS.md` 现有记录覆盖 |
+| QA-BUG-05 | 退出标准 | P0/P1 均已 fixed 或明确 blocked，P2/P3 有后续处理建议 | pass | 当前 `docs/BUGS.md` 无未处理 P0/P1 |
 
 ## 当前 Stage 5 最小通过标准
 
