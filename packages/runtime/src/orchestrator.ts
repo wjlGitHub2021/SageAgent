@@ -10,6 +10,10 @@ import {
   type SupervisorPlan,
 } from "@sage/agents";
 import type { AgentRole } from "@sage/shared";
+import {
+  createFinalSummaryGate,
+  type FinalSummaryGateResult,
+} from "./final-summary.js";
 
 export interface DelegationFlowInput {
   readonly goal: string;
@@ -38,6 +42,7 @@ export interface DelegationFlow {
   readonly builderDraft: BuilderDraft;
   readonly reviewerReport: ReviewerReport;
   readonly reviewerDecision: ReviewDecision;
+  readonly finalSummaryGate: FinalSummaryGateResult;
 }
 
 export interface DelegationFlowIssue {
@@ -127,6 +132,11 @@ export function createDelegationFlow(
     };
   }
 
+  const finalSummaryGate = createFinalSummaryGate({
+    goal: input.goal,
+    reviewerReport: reviewerResult.report,
+  });
+
   return {
     ok: true,
     flow: {
@@ -162,6 +172,7 @@ export function createDelegationFlow(
       builderDraft: builderResult.draft,
       reviewerReport: reviewerResult.report,
       reviewerDecision: reviewerResult.report.decision,
+      finalSummaryGate,
     },
   };
 }

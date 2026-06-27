@@ -139,7 +139,7 @@
   - 如果 Phase 4 继续推进而不明确谁是唯一 source of truth，后续很容易出现重复逻辑或 UI / runtime 口径不一致。
 - 修复方式：
   - `packages/runtime/src/orchestrator.ts` 的 `createDelegationFlow` 增加 `builderContextNotes`，让 runtime 成为 multi-agent 纯函数输出的 source of truth。
-  - `apps/web/src/lib/supervisor-runner.ts` 改为消费 `createDelegationFlow` 的 `supervisorPlan`、`researcherBrief`、`builderDraft`、`reviewerReport`，不再分别重复调用 agent 纯函数。
+  - `apps/web/src/lib/supervisor-runner.ts` 改为消费 `createDelegationFlow` 的 `supervisorPlan`、`researcherBrief`、`builderDraft`、`reviewerReport`、`finalSummaryGate`，不再分别重复调用 agent 纯函数。
   - runner 仍负责把结构化输出转换为真实 run events，维持现有 UI / SSE / runtime store 合同。
 - 验证结论：
   - `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check` 通过。

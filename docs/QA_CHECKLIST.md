@@ -136,7 +136,7 @@ BUG 记录：
 | QA-4-01 | 任务口径 | `docs/PHASE4_SPEC.md` 明确 Phase 4 的现状、目标和任务拆分 | pass | 已新增 Phase 4 规格文档 |
 | QA-4-02 | 现状对齐 | `docs/STAGE4_SPEC.md` 与当前实现事实不冲突 | pass | 已恢复为历史 Stage 4 规格 |
 | QA-4-03 | 主链路承接 | multi-agent helper 的后续 task 能明确指向 UI / runtime / QA 承接 | pass | Phase 4 规格已改写为承接型路线图 |
-| QA-4-04 | 风险可见 | 已识别 runner/helper 重复逻辑、文档口径不一致、承接断层等风险 | pass | 已在 Phase 4 规格中列出 |
+| QA-4-04 | 风险可见 | 已识别 runner/helper 重复逻辑、文档口径不一致、承接断层等风险 | pass | 已在 Phase 4 规格和 BUG 文档中列出并部分收敛 |
 
 ## 7. BUG 记录与退出标准
 

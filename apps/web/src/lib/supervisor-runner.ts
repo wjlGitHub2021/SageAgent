@@ -12,6 +12,7 @@ import {
   DEFAULT_READ_PROJECT_FILE_MAX_BYTES,
   readProjectFileTool,
   createDelegationFlow,
+  type FinalSummaryGateResult,
   type ReadProjectFileResult,
   type ReadProjectFileToolInput,
   type RuntimeStore,
@@ -1196,6 +1197,7 @@ async function runMultiAgentEventPass({
   events.push(reviewerStartEvent);
 
   const reviewerReport = delegationFlow.flow.reviewerReport;
+  const finalSummaryGate = delegationFlow.flow.finalSummaryGate;
 
   const reviewerMessage = createMessage({
     id: createId("message"),
@@ -1233,7 +1235,11 @@ async function runMultiAgentEventPass({
 
   const reviewerCompletedStep = createStep({
     ...reviewerStep,
-    status: reviewerReport.decision === "pass" ? "completed" : "failed",
+    status:
+      finalSummaryGate.ok &&
+      finalSummaryGate.ready.reviewerDecision === "pass"
+        ? "completed"
+        : "failed",
     completedAt: now(),
     output: {
       decision: reviewerReport.decision,
@@ -1242,7 +1248,10 @@ async function runMultiAgentEventPass({
     },
   });
   const reviewerCompletedEvent = createStepEvent(
-    reviewerReport.decision === "pass" ? "step.completed" : "step.failed",
+    finalSummaryGate.ok &&
+      finalSummaryGate.ready.reviewerDecision === "pass"
+      ? "step.completed"
+      : "step.failed",
     reviewerCompletedStep,
     createId,
     nextRunSequence(store, run.id),
@@ -1250,7 +1259,7 @@ async function runMultiAgentEventPass({
   store.appendEvent(reviewerCompletedEvent);
   events.push(reviewerCompletedEvent);
 
-  if (reviewerReport.decision !== "pass") {
+  if (!finalSummaryGate.ok) {
     return finishMultiAgentRunFailure({
       store,
       run,
@@ -1262,9 +1271,9 @@ async function runMultiAgentEventPass({
         researcherBrief,
         builderDraft,
         reviewerReport,
+        finalSummaryGate,
       }),
-      safeMessage:
-        "Reviewer gate did not pass; Supervisor final synthesis is blocked.",
+      safeMessage: finalSummaryGate.blocked.message,
       activeAgent: "reviewer",
     });
   }
@@ -1277,6 +1286,7 @@ async function runMultiAgentEventPass({
       researcherBrief,
       builderDraft,
       reviewerReport,
+      finalSummaryGate,
     }),
   };
 }
@@ -1376,11 +1386,13 @@ function createMultiAgentSupervisorContext({
   researcherBrief,
   builderDraft = null,
   reviewerReport = null,
+  finalSummaryGate = null,
 }: {
   readonly planSummary: string;
   readonly researcherBrief: ResearcherBrief;
   readonly builderDraft?: BuilderDraft | null;
   readonly reviewerReport?: ReviewerReport | null;
+  readonly finalSummaryGate?: FinalSummaryGateResult | null;
 }): string {
   const payload = {
     planSummary,
@@ -1412,6 +1424,24 @@ function createMultiAgentSupervisorContext({
             missingChecks: reviewerReport.missingChecks,
             safetyNotes: reviewerReport.safetyNotes,
           },
+    finalSummaryGate:
+      finalSummaryGate === null
+        ? null
+        : finalSummaryGate.ok
+          ? {
+              status: "ready",
+              reviewerDecision: finalSummaryGate.ready.reviewerDecision,
+              summary: finalSummaryGate.ready.summary,
+              risks: finalSummaryGate.ready.risks,
+            }
+          : {
+              status: "blocked",
+              code: finalSummaryGate.blocked.code,
+              reviewerDecision: finalSummaryGate.blocked.reviewerDecision,
+              message: finalSummaryGate.blocked.message,
+              findings: finalSummaryGate.blocked.findings,
+              missingChecks: finalSummaryGate.blocked.missingChecks,
+            },
   };
 
   return [
