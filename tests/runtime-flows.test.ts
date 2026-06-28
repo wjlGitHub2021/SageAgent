@@ -273,6 +273,8 @@ describe("runtime flows", () => {
   it("keeps approval flow explicit for side-effect actions", () => {
     expect(requiresApprovalForAction("write_file")).toBe(true);
     expect(requiresApprovalForAction("run_shell")).toBe(true);
+    expect(requiresApprovalForAction("external_request")).toBe(true);
+    expect(requiresApprovalForAction("persist_state")).toBe(true);
     expect(requiresApprovalForAction("read_project_file")).toBe(false);
 
     const request = createApprovalRequest({

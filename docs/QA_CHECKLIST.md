@@ -38,21 +38,21 @@ BUG 记录：
 
 | ID | 检查项 | 期望 | 状态 | 备注 |
 | --- | --- | --- | --- | --- |
-| QA-ENV-01 | `rtk pnpm --version` | 使用项目约定的 pnpm 主版本，当前为 11.x |  |  |
-| QA-ENV-02 | `rtk git status --short --branch` | 位于目标分支，除当前 QA 记录外无意外脏文件 |  |  |
-| QA-ENV-03 | `.env.example` | 不包含真实 API key 或敏感凭据 |  |  |
-| QA-ENV-04 | `docs/TASKS.md` | 当前阶段任务状态与实际进度一致 |  |  |
-| QA-ENV-05 | `docs/BUGS.md` | 高优先级问题有状态、影响和后续处理建议 |  |  |
+| QA-ENV-01 | `rtk pnpm --version` | 使用项目约定的 pnpm 主版本，当前为 11.x | pass | 2026-06-28 `rtk pnpm --version` returned 11.7.0 |
+| QA-ENV-02 | `rtk git status --short --branch` | 位于目标分支，除当前 QA 记录外无意外脏文件 | pass | 2026-06-28 `main...origin/main` clean before this QA edit |
+| QA-ENV-03 | `.env.example` | 不包含真实 API key 或敏感凭据 | pass | `.env.example` contains blank key and safe defaults only |
+| QA-ENV-04 | `docs/TASKS.md` | 当前阶段任务状态与实际进度一致 | pass | `docs/TASKS.md` shows Stage 5 completed and later QA reconciliation tasks recorded |
+| QA-ENV-05 | `docs/BUGS.md` | 高优先级问题有状态、影响和后续处理建议 | pass | `docs/BUGS.md` contains fixed P1/P2 records and no open P0/P1 |
 
 ## 1. 自动化门禁
 
 | ID | 命令 | 期望 | 状态 | 备注 |
 | --- | --- | --- | --- | --- |
-| QA-AUTO-01 | `rtk pnpm test` | 关键单元测试全部通过 |  |  |
-| QA-AUTO-02 | `rtk pnpm run typecheck` | TypeScript 类型检查通过 |  |  |
-| QA-AUTO-03 | `rtk pnpm lint` | ESLint 通过，无新增 lint error |  |  |
-| QA-AUTO-04 | `rtk pnpm build` | workspace packages 与 Next.js build 通过 |  |  |
-| QA-AUTO-05 | `rtk git diff --check` | 无 trailing whitespace 或 patch 格式问题 |  |  |
+| QA-AUTO-01 | `rtk pnpm test` | 关键单元测试全部通过 | pass | 2026-06-28 and 2026-06-28 follow-up runs both passed |
+| QA-AUTO-02 | `rtk pnpm run typecheck` | TypeScript 类型检查通过 | pass | 2026-06-28 and 2026-06-28 follow-up runs passed |
+| QA-AUTO-03 | `rtk pnpm lint` | ESLint 通过，无新增 lint error | pass | 2026-06-28 and 2026-06-28 follow-up runs passed |
+| QA-AUTO-04 | `rtk pnpm build` | workspace packages 与 Next.js build 通过 | pass | 2026-06-28 and 2026-06-28 follow-up builds passed |
+| QA-AUTO-05 | `rtk git diff --check` | 无 trailing whitespace 或 patch 格式问题 | pass | 2026-06-28 and 2026-06-28 follow-up checks passed |
 
 ## 2. UI 工作台与双语
 
@@ -62,7 +62,7 @@ BUG 记录：
 | --- | --- | --- | --- | --- |
 | QA-UI-01 | 首屏信息架构 | 左侧 threads/runs、中间 current run、右侧 inspector 同时可见 | pass | 2026-06-28 in-app browser QA confirmed three-column layout remains visible at first viewport |
 | QA-UI-02 | 视觉密度 | 页面像工作台，不像 landing page；没有大面积装饰性 hero | pass | 2026-06-28 in-app browser QA confirmed compact workbench layout without hero-style framing |
-| QA-UI-03 | 中文默认界面 | 默认显示中文导航、按钮、状态文案 |  |  |
+| QA-UI-03 | 中文默认界面 | 默认显示中文导航、按钮、状态文案 | pass | 2026-06-28 browser QA confirmed default Chinese copy on first load |
 | QA-UI-04 | English 切换 | 点击 `English` 后主要导航、面板、按钮、状态文案切换 | pass | 2026-06-28 in-app browser QA confirmed English copy swap in Settings and workbench labels |
 | QA-UI-05 | 中文切回 | 点击 `中文` 后界面恢复中文，状态不丢失 | pass | 2026-06-28 in-app browser QA confirmed Chinese copy restored without losing run/settings state |
 | QA-UI-06 | 文案溢出 | 中英文长文案不遮挡、不挤压、不横向溢出 | pass | 2026-06-28 browser QA confirmed no clipping or horizontal overflow in mixed-length copy |
@@ -98,21 +98,21 @@ BUG 记录：
 
 | ID | 检查项 | 期望 | 状态 | 备注 |
 | --- | --- | --- | --- | --- |
-| QA-AGENT-01 | Supervisor plan | Supervisor 先拆解目标和验收标准 |  |  |
-| QA-AGENT-02 | Researcher brief | Researcher 只做上下文整理，不执行写入或副作用 |  |  |
-| QA-AGENT-03 | Builder draft | Builder 生成实现/patch/artifact 草稿，不直接越权写入 |  |  |
-| QA-AGENT-04 | Reviewer gate | final summary 前必须有 Reviewer pass 或明确 blocked 原因 |  |  |
-| QA-AGENT-05 | Timeline | agent timeline 能反映 agent、状态和关键动作 |  |  |
-| QA-AGENT-06 | Artifacts | final artifacts 能区分 plan、patch、document、summary、link |  |  |
+| QA-AGENT-01 | Supervisor plan | Supervisor 先拆解目标和验收标准 | pass | Covered by `createSupervisorPlan` / `createDelegationFlow` tests and live multi-agent run layout |
+| QA-AGENT-02 | Researcher brief | Researcher 只做上下文整理，不执行写入或副作用 | pass | Covered by agent/orchestrator tests and read-only tool boundary |
+| QA-AGENT-03 | Builder draft | Builder 生成实现/patch/artifact 草稿，不直接越权写入 | pass | Covered by builder draft tests and approval boundary checks |
+| QA-AGENT-04 | Reviewer gate | final summary 前必须有 Reviewer pass 或明确 blocked 原因 | pass | Covered by final summary gate tests and phase 4 UI state |
+| QA-AGENT-05 | Timeline | agent timeline 能反映 agent、状态和关键动作 | pass | Confirmed in browser QA on `/` run timeline panel |
+| QA-AGENT-06 | Artifacts | final artifacts 能区分 plan、patch、document、summary、link | pass | Confirmed in browser QA and phase 4 artifact summary tests |
 
 ## 6. DeepSeek Provider 设置
 
 | ID | 检查项 | 期望 | 状态 | 备注 |
 | --- | --- | --- | --- | --- |
-| QA-DS-01 | 默认模型 | 默认 `deepseek-v4-flash` |  |  |
-| QA-DS-02 | 可选模型 | 只暴露 `deepseek-v4-flash` 和 `deepseek-v4-pro` |  |  |
-| QA-DS-03 | thinking 默认 | 默认 thinking enabled |  |  |
-| QA-DS-04 | reasoning effort | UI 只暴露 `high` / `max`，默认 `high` |  |  |
+| QA-DS-01 | 默认模型 | 默认 `deepseek-v4-flash` | pass | `tests/deepseek-provider.test.ts` confirms safe default config and UI settings show `deepseek-v4-flash` as default |
+| QA-DS-02 | 可选模型 | 只暴露 `deepseek-v4-flash` 和 `deepseek-v4-pro` | pass | `apps/web/src/app/page.tsx` and provider tests confirm only the two allowed models are surfaced |
+| QA-DS-03 | thinking 默认 | 默认 thinking enabled | pass | `tests/deepseek-provider.test.ts` confirms `thinkingEnabled: true` in safe defaults |
+| QA-DS-04 | reasoning effort | UI 只暴露 `high` / `max`，默认 `high` | pass | `tests/deepseek-provider.test.ts` confirms default `high`; UI segmented control only exposes `high` / `max` |
 | QA-DS-05 | base URL | 默认 `https://api.deepseek.com`，拒绝 insecure URL；可用 `rtk pnpm test -- tests/deepseek-provider.test.ts` 验证配置规则 | pass | Task 3.3 tests + 2026-06-28 online connection check |
 | QA-DS-06 | 无 API key 行为 | 无 key 时不发真实请求，提示安全可理解 | pass | Task 3.3 tests + 2026-06-28 browser/settings connection check |
 
