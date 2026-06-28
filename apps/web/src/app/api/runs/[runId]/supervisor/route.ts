@@ -1,8 +1,9 @@
 import * as path from "node:path";
 import { NextResponse } from "next/server";
 import { loadDeepSeekProviderConfig } from "@sage/deepseek";
-import { isTerminalRunStatus } from "@sage/runtime";
+import { createMemoryContextMessage, isTerminalRunStatus } from "@sage/runtime";
 import { getRuntimeStore, getTelemetryLogger } from "@/lib/runtime-store";
+import { getMemoryRegistry } from "@/lib/memory-registry";
 import {
   appendSupervisorFailureEvent,
   streamSupervisorDeepSeekEvents,
@@ -97,6 +98,12 @@ export async function POST(_request: Request, context: RouteContext) {
     return createRunEventStreamResponse(result.events);
   }
 
+  const memoryContextMessage = createMemoryContextMessage({
+    snapshot: getMemoryRegistry().getSnapshot(),
+    currentThreadId: run.threadId,
+    currentRunId: run.id,
+  });
+
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -109,6 +116,7 @@ export async function POST(_request: Request, context: RouteContext) {
           runId: run.id,
           config: configResult.config,
           workspaceRoot: WORKSPACE_ROOT,
+          memoryContextMessage,
         });
         for await (const event of stream) {
           eventCount += 1;

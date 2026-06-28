@@ -291,3 +291,17 @@ export type RunEvent =
   | ArtifactCreatedEvent
   | RunCompletedEvent
   | RunFailedEvent;
+
+export {
+  MEMORY_AUDIT_ACTIONS,
+  MEMORY_SCOPES,
+  createEmptyMemorySnapshot,
+  type DeleteMemoryEntryInput,
+  type MemoryActor,
+  type MemoryAuditAction,
+  type MemoryAuditRecord,
+  type MemoryEntry,
+  type MemoryScope,
+  type MemorySnapshot,
+  type UpsertMemoryEntryInput,
+} from "./memory.js";

@@ -24,10 +24,21 @@ export {
   type FinalSummaryReady,
 } from "./final-summary.js";
 export {
+  createMemoryContextMessage,
+  type CreateMemoryContextMessageInput,
+} from "./memory-context.js";
+export {
   createMemoryRuntimeStore,
   isTerminalRunStatus,
   type RuntimeStore,
 } from "./memory-store.js";
+export {
+  createMemoryRegistry,
+  createPersistentMemoryRegistry,
+  type MemoryAuditInput,
+  type CreatePersistentMemoryRegistryInput,
+  type MemoryRegistry,
+} from "./memory-registry.js";
 export {
   DEFAULT_READ_PROJECT_FILE_MAX_BYTES,
   readProjectFileTool,

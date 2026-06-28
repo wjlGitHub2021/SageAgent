@@ -6,11 +6,15 @@ import type {
   Approval,
   ApprovalStatus,
   Artifact,
+  MemoryEntry,
+  MemorySnapshot,
+  MemoryScope,
   Run,
   RunEvent,
   Thread,
   ToolCall,
 } from "@sage/shared";
+import { MEMORY_SCOPES } from "@sage/shared";
 import {
   ALLOWED_MODELS,
   ALLOWED_REASONING_EFFORTS,
@@ -77,6 +81,34 @@ type CreateRunPayload = {
     reasoningEffort: ReasoningEffort;
   };
 };
+
+type MemorySnapshotResponse = {
+  snapshot: MemorySnapshot;
+};
+
+type MemoryFormState = {
+  scope: MemoryScope;
+  title: string;
+  content: string;
+  tags: string;
+  sourceThreadId: string;
+  sourceRunId: string;
+  reason: string;
+};
+
+const DEFAULT_MEMORY_FORM: MemoryFormState = {
+  scope: "workspace",
+  title: "",
+  content: "",
+  tags: "",
+  sourceThreadId: "",
+  sourceRunId: "",
+  reason: "initial memory capture",
+};
+
+const memoryScopeOptions: readonly MemoryScope[] = [
+  ...MEMORY_SCOPES,
+];
 
 const copy = {
   zh: {
@@ -174,6 +206,31 @@ const copy = {
     artifacts: "产物",
     auditTrail: "审计轨迹",
     phase4Summary: "Phase 4 真实状态",
+    memoryVault: "记忆底座",
+    memoryVaultDetail: "本地跨会话记忆、审计和上下文注入。",
+    memoryEntries: "记忆条目",
+    memoryAuditTrail: "记忆审计",
+    memoryCreate: "新建记忆",
+    memoryEdit: "编辑记忆",
+    memoryDelete: "删除记忆",
+    memoryCreateOrUpdate: "保存记忆",
+    memoryEmpty: "当前没有记忆条目",
+    memoryEmptyDetail: "创建项目约束、用户偏好或可复用结论后会保存在这里。",
+    memoryLoading: "正在读取记忆底座...",
+    memorySave: "保存记忆",
+    memoryScope: "范围",
+    memoryTitle: "标题",
+    memoryContent: "内容",
+    memoryTags: "标签",
+    memorySourceThread: "来源 thread",
+    memorySourceRun: "来源 run",
+    memoryReason: "原因",
+    memorySaved: "已保存",
+    memoryDeleted: "已删除",
+    memoryAction: "操作",
+    memoryCreatedBy: "创建者",
+    memoryUpdatedAt: "更新时间",
+    memoryAuditSummary: "审计摘要",
     phase4SummaryDetail:
       "直接读取 runtime events、artifact summaries 和 final summary gate。",
     runtimeDerived: "runtime 派生",
@@ -378,6 +435,31 @@ const copy = {
     artifacts: "Artifacts",
     auditTrail: "Audit Trail",
     phase4Summary: "Phase 4 live state",
+    memoryVault: "Memory vault",
+    memoryVaultDetail: "Local cross-session memory, audit trail, and context injection.",
+    memoryEntries: "Memory entries",
+    memoryAuditTrail: "Memory audit trail",
+    memoryCreate: "New memory",
+    memoryEdit: "Edit memory",
+    memoryDelete: "Delete memory",
+    memoryCreateOrUpdate: "Save memory",
+    memoryEmpty: "No memory entries yet",
+    memoryEmptyDetail: "Project constraints, user preferences, and reusable conclusions will appear here.",
+    memoryLoading: "Loading memory vault...",
+    memorySave: "Save memory",
+    memoryScope: "Scope",
+    memoryTitle: "Title",
+    memoryContent: "Content",
+    memoryTags: "Tags",
+    memorySourceThread: "Source thread",
+    memorySourceRun: "Source run",
+    memoryReason: "Reason",
+    memorySaved: "Saved",
+    memoryDeleted: "Deleted",
+    memoryAction: "Action",
+    memoryCreatedBy: "Created by",
+    memoryUpdatedAt: "Updated at",
+    memoryAuditSummary: "Audit summary",
     phase4SummaryDetail:
       "Derived directly from runtime events, artifact summaries, and the final summary gate.",
     runtimeDerived: "runtime-derived",
@@ -1071,6 +1153,19 @@ export default function Home() {
   const [isProviderTesting, setIsProviderTesting] = useState(false);
   const [messages, setMessages] = useState<Message[]>(baseMessages);
   const [runEvents, setRunEvents] = useState<RunEvent[]>(seedRunEvents);
+  const [memorySnapshot, setMemorySnapshot] = useState<MemorySnapshot>({
+    entries: [],
+    auditTrail: [],
+  });
+  const [isMemoryLoading, setIsMemoryLoading] = useState(false);
+  const [isMemoryEditorOpen, setIsMemoryEditorOpen] = useState(false);
+  const [memoryEditorMode, setMemoryEditorMode] = useState<"create" | "edit">(
+    "create",
+  );
+  const [memoryForm, setMemoryForm] =
+    useState<MemoryFormState>(DEFAULT_MEMORY_FORM);
+  const [activeMemoryId, setActiveMemoryId] = useState<string | null>(null);
+  const [memoryFeedback, setMemoryFeedback] = useState<string | null>(null);
   const [isRunBusy, setIsRunBusy] = useState(false);
   const [lastComposerState, setLastComposerState] = useState<
     "idle" | "cancelled"
@@ -1108,6 +1203,31 @@ export default function Home() {
     }
   }, []);
 
+  const loadMemorySnapshot = useCallback(async () => {
+    setIsMemoryLoading(true);
+    try {
+      const response = await fetchMemorySnapshot();
+      setMemorySnapshot(response.snapshot);
+    } catch (error) {
+      setMemoryFeedback(toSafeErrorMessage(error));
+    } finally {
+      setIsMemoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      if (!cancelled) {
+        await loadMemorySnapshot();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadMemorySnapshot]);
+
   useEffect(() => {
     if (!isSettingsOpen) return;
 
@@ -1128,6 +1248,98 @@ export default function Home() {
       ...current,
       ...nextPreferences,
     }));
+  }
+
+  function openMemoryEditor(entry?: MemoryEntry) {
+    if (entry) {
+      setMemoryEditorMode("edit");
+      setActiveMemoryId(entry.id);
+      setMemoryForm({
+        scope: entry.scope,
+        title: entry.title,
+        content: entry.content,
+        tags: entry.tags.join(", "),
+        sourceThreadId: entry.sourceThreadId ?? "",
+        sourceRunId: entry.sourceRunId ?? "",
+        reason: "",
+      });
+    } else {
+      setMemoryEditorMode("create");
+      setActiveMemoryId(null);
+      setMemoryForm(DEFAULT_MEMORY_FORM);
+    }
+    setMemoryFeedback(null);
+    setIsMemoryEditorOpen(true);
+  }
+
+  async function submitMemoryEntry() {
+    const payload = normalizeMemoryForm(memoryForm);
+    if (!payload.ok) {
+      setMemoryFeedback(payload.message);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        memoryEditorMode === "create"
+          ? "/api/memory"
+          : `/api/memory/${encodeURIComponent(activeMemoryId ?? "")}`,
+        {
+          method: memoryEditorMode === "create" ? "POST" : "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload.value),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`memory_request_failed_${response.status}`);
+      }
+
+      const result = (await response.json()) as {
+        snapshot?: MemorySnapshot;
+      };
+      if (result.snapshot) {
+        setMemorySnapshot(result.snapshot);
+      } else {
+        await loadMemorySnapshot();
+      }
+      setIsMemoryEditorOpen(false);
+      setMemoryFeedback(copy[locale].memorySaved);
+    } catch (error) {
+      setMemoryFeedback(toSafeErrorMessage(error));
+    }
+  }
+
+  async function deleteMemoryEntry(memoryId: string) {
+    try {
+      const response = await fetch(`/api/memory/${encodeURIComponent(memoryId)}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          reason: `${copy[locale].memoryDeleted}: ${memoryId}`,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`memory_delete_failed_${response.status}`);
+      }
+
+      const result = (await response.json()) as {
+        snapshot?: MemorySnapshot;
+      };
+      if (result.snapshot) {
+        setMemorySnapshot(result.snapshot);
+      } else {
+        await loadMemorySnapshot();
+      }
+      setMemoryFeedback(copy[locale].memoryDeleted);
+    } catch (error) {
+      setMemoryFeedback(toSafeErrorMessage(error));
+    }
   }
 
   async function handleProviderConnectionTest() {
@@ -1819,6 +2031,93 @@ export default function Home() {
             )}
           </Panel>
 
+          <Panel
+            title={t.memoryVault}
+            action={
+              <button className="ghost-button" onClick={() => openMemoryEditor()}>
+                {t.memoryCreate}
+              </button>
+            }
+          >
+            <div className="stack">
+              <StateBlock
+                eyebrow={t.memoryVault}
+                title={t.memoryVault}
+                detail={t.memoryVaultDetail}
+              />
+              {memoryFeedback ? (
+                <StateBlock title={t.memoryAuditSummary} detail={memoryFeedback} />
+              ) : null}
+              {isMemoryLoading ? (
+                <StateBlock
+                  eyebrow={t.memoryEntries}
+                  title={t.memoryLoading}
+                  detail={t.memoryVaultDetail}
+                />
+              ) : null}
+              {memorySnapshot.entries.length === 0 ? (
+                <StateBlock
+                  eyebrow={t.memoryEntries}
+                  title={t.memoryEmpty}
+                  detail={t.memoryEmptyDetail}
+                />
+              ) : (
+                memorySnapshot.entries.map((entry) => (
+                  <div className="memory-row" key={entry.id}>
+                    <div>
+                      <p>{entry.title}</p>
+                      <small>
+                        {entry.scope} · {entry.tags.join(", ") || "no tags"}
+                      </small>
+                      <small>
+                        {t.memoryUpdatedAt}: {formatAuditTime(entry.updatedAt)}
+                      </small>
+                    </div>
+                    <div className="memory-row-actions">
+                      <button
+                        className="ghost-button"
+                        onClick={() => openMemoryEditor(entry)}
+                        type="button"
+                      >
+                        {t.memoryEdit}
+                      </button>
+                      <button
+                        className="ghost-button"
+                        onClick={() => void deleteMemoryEntry(entry.id)}
+                        type="button"
+                      >
+                        {t.memoryDelete}
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+              <div className="memory-audit-list">
+                <p>{t.memoryAuditTrail}</p>
+                {memorySnapshot.auditTrail.length === 0 ? (
+                  <StateBlock
+                    title={t.memoryAuditTrail}
+                    detail={t.memoryEmptyDetail}
+                  />
+                ) : (
+                  memorySnapshot.auditTrail.slice(-5).map((record) => (
+                    <div className="memory-audit-row" key={record.id}>
+                      <div>
+                        <p>
+                          {record.action} · {record.title}
+                        </p>
+                        <small>
+                          {t.memoryCreatedBy}: {record.actor} · {formatAuditTime(record.createdAt)}
+                        </small>
+                      </div>
+                      <small>{record.summary}</small>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </Panel>
+
           <Panel title={t.toolCalls}>
             <div className="stack">
               {isRunBusy ? (
@@ -1930,15 +2229,191 @@ export default function Home() {
               ) : (
                 activeArtifacts.map((artifact) => (
                   <div className="artifact-row" key={artifact.id}>
-                  <span>{artifact.title[locale]}</span>
-                  <small>{artifact.kind}</small>
-                </div>
+                    <span>{artifact.title[locale]}</span>
+                    <small>{artifact.kind}</small>
+                  </div>
                 ))
               )}
             </div>
           </Panel>
         </aside>
       </div>
+      {isMemoryEditorOpen ? (
+        <div
+          className="settings-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsMemoryEditorOpen(false);
+            }
+          }}
+        >
+          <section
+            aria-labelledby="memory-dialog-title"
+            aria-modal="true"
+            className="settings-dialog memory-dialog"
+            role="dialog"
+          >
+            <header className="settings-dialog-header">
+              <div>
+                <p className="section-label">{t.memoryVault}</p>
+                <h2 id="memory-dialog-title">
+                  {memoryEditorMode === "create" ? t.memoryCreate : t.memoryEdit}
+                </h2>
+                <p>{t.memoryVaultDetail}</p>
+              </div>
+              <button
+                className="ghost-button"
+                onClick={() => setIsMemoryEditorOpen(false)}
+                type="button"
+              >
+                {t.closeSettings}
+              </button>
+            </header>
+
+            <div className="settings-dialog-grid memory-dialog-grid">
+              <div className="settings-dialog-column">
+                <article className="settings-card">
+                  <div>
+                    <p>{t.memoryTitle}</p>
+                    <small>{t.memoryReason}</small>
+                  </div>
+                  <div className="settings-control-stack">
+                    <div className="settings-card-control">
+                      <span>{t.memoryScope}</span>
+                      <div className="segmented memory-scope-selector">
+                        {memoryScopeOptions.map((scopeOption) => (
+                          <button
+                            aria-pressed={memoryForm.scope === scopeOption}
+                            className={memoryForm.scope === scopeOption ? "selected" : ""}
+                            key={scopeOption}
+                            onClick={() =>
+                              setMemoryForm((current) => ({
+                                ...current,
+                                scope: scopeOption,
+                              }))
+                            }
+                            type="button"
+                          >
+                            {scopeOption}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <label className="memory-field">
+                      <span>{t.memoryTitle}</span>
+                      <input
+                        className="composer-input"
+                        value={memoryForm.title}
+                        onChange={(event) =>
+                          setMemoryForm((current) => ({
+                            ...current,
+                            title: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label className="memory-field">
+                      <span>{t.memoryContent}</span>
+                      <textarea
+                        className="composer-input"
+                        rows={6}
+                        value={memoryForm.content}
+                        onChange={(event) =>
+                          setMemoryForm((current) => ({
+                            ...current,
+                            content: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                  </div>
+                </article>
+              </div>
+
+              <div className="settings-dialog-column">
+                <article className="settings-card">
+                  <div>
+                    <p>{t.memoryAuditSummary}</p>
+                    <small>{t.memoryVaultDetail}</small>
+                  </div>
+                  <div className="settings-control-stack">
+                    <label className="memory-field">
+                      <span>{t.memoryTags}</span>
+                      <input
+                        className="composer-input"
+                        value={memoryForm.tags}
+                        onChange={(event) =>
+                          setMemoryForm((current) => ({
+                            ...current,
+                            tags: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label className="memory-field">
+                      <span>{t.memorySourceThread}</span>
+                      <input
+                        className="composer-input"
+                        value={memoryForm.sourceThreadId}
+                        onChange={(event) =>
+                          setMemoryForm((current) => ({
+                            ...current,
+                            sourceThreadId: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label className="memory-field">
+                      <span>{t.memorySourceRun}</span>
+                      <input
+                        className="composer-input"
+                        value={memoryForm.sourceRunId}
+                        onChange={(event) =>
+                          setMemoryForm((current) => ({
+                            ...current,
+                            sourceRunId: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label className="memory-field">
+                      <span>{t.memoryReason}</span>
+                      <textarea
+                        className="composer-input"
+                        rows={4}
+                        value={memoryForm.reason}
+                        onChange={(event) =>
+                          setMemoryForm((current) => ({
+                            ...current,
+                            reason: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    {memoryFeedback ? (
+                      <StateBlock title={t.memoryAuditSummary} detail={memoryFeedback} />
+                    ) : null}
+                    <div className="composer-actions">
+                      <button
+                        className="secondary-button"
+                        onClick={() => setIsMemoryEditorOpen(false)}
+                        type="button"
+                      >
+                        {t.cancel}
+                      </button>
+                      <button onClick={() => void submitMemoryEntry()} type="button">
+                        {memoryEditorMode === "create"
+                          ? t.memoryCreate
+                          : t.memoryCreateOrUpdate}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
       {isSettingsOpen ? (
         <div
           className="settings-overlay"
@@ -2414,6 +2889,69 @@ async function testDeepSeekProviderConnectionApi(): Promise<DeepSeekProviderConn
     response,
     "provider_connection_test_failed",
   );
+}
+
+async function fetchMemorySnapshot(): Promise<MemorySnapshotResponse> {
+  const response = await fetch("/api/memory", {
+    method: "GET",
+  });
+
+  return parseJsonResponse<MemorySnapshotResponse>(response, "memory_load_failed");
+}
+
+function normalizeMemoryForm(
+  form: MemoryFormState,
+):
+  | {
+      ok: true;
+      value: {
+        scope: MemoryScope;
+        title: string;
+        content: string;
+        tags: readonly string[];
+        sourceThreadId: string | null;
+        sourceRunId: string | null;
+        createdBy: "user";
+        reason: string;
+      };
+    }
+  | { ok: false; message: string } {
+  const title = form.title.trim();
+  const content = form.content.trim();
+  const reason = form.reason.trim();
+  if (title.length === 0) return { ok: false, message: "Memory title is required." };
+  if (content.length === 0) return { ok: false, message: "Memory content is required." };
+  if (reason.length === 0) return { ok: false, message: "Memory reason is required." };
+
+  return {
+    ok: true,
+    value: {
+      scope: form.scope,
+      title,
+      content,
+      tags: parseCommaSeparatedList(form.tags),
+      sourceThreadId: normalizeOptionalMemoryId(form.sourceThreadId),
+      sourceRunId: normalizeOptionalMemoryId(form.sourceRunId),
+      createdBy: "user",
+      reason,
+    },
+  };
+}
+
+function parseCommaSeparatedList(value: string): readonly string[] {
+  return Array.from(
+    new Set(
+      value
+        .split(",")
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0),
+    ),
+  );
+}
+
+function normalizeOptionalMemoryId(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 async function streamApiSupervisorRun(

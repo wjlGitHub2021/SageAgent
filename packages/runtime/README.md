@@ -6,6 +6,7 @@ Sage Agent 的 runtime package。
 
 - `RuntimeSnapshot`：统一保存 threads、runs、messages、steps、tool calls、approvals、artifacts 和 events。
 - `createMemoryRuntimeStore`：创建内存 store。
+- `createMemoryRegistry`：创建本地 memory registry，用于跨会话记忆条目的 CRUD 与审计轨迹。
 - `RuntimeStore.appendEvent`：写入 run event，并根据事件 payload 更新对应实体。
 - `createDelegationFlow`：Stage 4 最小 orchestrator delegation flow，串联 Supervisor、Researcher、Builder、Reviewer 的纯函数输出，并允许单独传入 builderContextNotes 以减少 runner 侧重复组装。
 - `READ_DRAFT_TOOL_DEFINITIONS`：Stage 4 Read + Draft tool registry，定义只读和草稿工具的 agent 权限与 approval 分类。

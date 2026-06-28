@@ -204,3 +204,20 @@
   - `rtk pnpm --filter web lint` 通过。
   - `rtk pnpm --filter web build` 通过。
   - 浏览器核对确认桌面视口和窄屏视口均保持可读，无明显 runtime error。
+
+### 2026-06-28 V2.2 记忆底座 QA 复核
+
+- 状态：`fixed`
+- 严重级别：`P2`
+- 发现阶段：QA
+- 影响范围：`@sage/shared` memory domain、`@sage/runtime` memory registry/context、`apps/web` memory API / workbench UI、supervisor prompt 注入。
+- 复现步骤或线索：
+  - Task V2.2 实现后，QA 需要确认记忆不是只停留在 UI 层，而是可跨会话持久化、可审计、可读写删，并能进入 supervisor 上下文。
+  - 只读 QA 发现 `docs/TASKS.md` 状态未勾选，持久化测试也只覆盖同实例读取，不能充分证明重启后可恢复。
+- 修复方式：
+  - 将 `tests/memory-registry.test.ts` 的持久化测试补成“写入后重新创建 registry，再从同一 storagePath 读取”。
+  - 同步 `docs/TASKS.md`、`docs/SPEC.md`、`docs/PLAN.md` 的 V2.2 完成状态。
+  - Browser QA 通过工作台新建 / 展示 / 删除一条 QA memory，确认列表、反馈和 audit trail 正常。
+- 验证结论：
+  - 重新运行 `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check`。
+  - Browser QA 确认 `http://localhost:3000/` 首屏非空、无 framework overlay、console 无 error / warn，记忆 CRUD 与审计反馈正常。

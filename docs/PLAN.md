@@ -59,7 +59,7 @@ Sage Agent 当前进入“本地单用户 v1 收口”阶段。
 
 以下内容只作为下一阶段候选，不是当前工作项：
 
-- 核心候选：memory、skills、provider registry、desktop shell
+- 核心候选：memory（V2.2 本地 registry 已完成，后续可扩展 provider / 自动摘要）、skills、provider registry、desktop shell
 - 平台候选：hosted multi-user、auth 与 tenant isolation、billing 与 plans、remote storage / sync、automation / tool ecosystem
 
 这些候选项只有在 v1 稳定后、并且有单独提案时才进入新规划。当前仍然以 v1 收口为主。详细对照和路线图见 [HERMES_ROADMAP](HERMES_ROADMAP.md)。
