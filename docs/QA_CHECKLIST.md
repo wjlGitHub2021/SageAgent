@@ -67,15 +67,15 @@ BUG 记录：
 | QA-UI-05 | 中文切回 | 点击 `中文` 后界面恢复中文，状态不丢失 |  |  |
 | QA-UI-06 | 文案溢出 | 中英文长文案不遮挡、不挤压、不横向溢出 |  |  |
 | QA-UI-07 | 桌面布局 | 1440x900 下三栏稳定，inspector 面板可读 |  |  |
-| QA-UI-08 | 移动布局 | 390x844 下无横向滚动，面板按顺序可读 |  |  |
+| QA-UI-08 | 移动布局 | 390x844 下无横向滚动，面板按顺序可读 | pass | Stage 5.3 Browser QA confirmed no horizontal overflow |
 
 ## 3. Run、Audit 与状态表达
 
 | ID | 检查项 | 期望 | 状态 | 备注 |
 | --- | --- | --- | --- | --- |
-| QA-RUN-01 | runs 切换 | 点击不同 run 后，中间标题和右侧派生信息更新 |  |  |
-| QA-RUN-02 | audit summary | 显示最后事件、最后更新时间、events/tools/approvals/artifacts 计数 |  |  |
-| QA-RUN-03 | audit 可读性 | 中文和 English 下 label/value 不粘连、不截断关键数字 |  |  |
+| QA-RUN-01 | runs 切换 | 点击不同 run 后，中间标题和右侧派生信息更新 | pass | Stage 5.3 Browser QA confirmed run-1839 switch updates current run and audit |
+| QA-RUN-02 | audit summary | 显示最后事件、最后更新时间、events/tools/approvals/artifacts 计数 | pass | Stage 5.3 now shows localized last event, raw event type, timestamp, and counts from events |
+| QA-RUN-03 | audit 可读性 | 中文和 English 下 label/value 不粘连、不截断关键数字 | pass | Browser QA confirmed Chinese / English audit labels and values remain readable |
 | QA-RUN-04 | empty states | 无 tool/approval/artifact/provider error 时显示 title + detail |  |  |
 | QA-RUN-05 | loading state | 点击 Run 后按钮进入短暂 running/disabled 状态 |  |  |
 | QA-RUN-06 | cancel feedback | busy 状态下 Cancel 可用，点击后追加取消反馈 | pass | Browser QA confirmed busy -> cancel -> local cancelled hint |

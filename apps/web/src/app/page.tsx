@@ -204,7 +204,15 @@ const copy = {
     approvals: "审批",
     lastEvent: "最后事件",
     lastUpdated: "最后更新",
+    rawEventType: "原始类型",
     counts: "计数",
+    statusQueued: "排队中",
+    statusPlanning: "规划中",
+    statusRunning: "运行中",
+    statusWaitingForApproval: "待审批",
+    statusCompleted: "已完成",
+    statusFailed: "失败",
+    statusCancelled: "已取消",
     providerError: "Provider Error",
     noProviderError: "当前任务暂无 provider error",
     noProviderErrorDetail:
@@ -401,7 +409,15 @@ const copy = {
     approvals: "Approvals",
     lastEvent: "Last event",
     lastUpdated: "Last updated",
+    rawEventType: "Raw type",
     counts: "Counts",
+    statusQueued: "Queued",
+    statusPlanning: "Planning",
+    statusRunning: "Running",
+    statusWaitingForApproval: "Waiting approval",
+    statusCompleted: "Completed",
+    statusFailed: "Failed",
+    statusCancelled: "Cancelled",
     providerError: "Provider Error",
     noProviderError: "No provider error for this run",
     noProviderErrorDetail:
@@ -878,6 +894,7 @@ type ProviderErrorState = {
 type AuditSummary = {
   readonly eventCount: number;
   readonly lastEventType: string | null;
+  readonly lastEventTitle: Record<Locale, string> | null;
   readonly lastEventAt: string | null;
   readonly toolCallCount: number;
   readonly approvalCount: number;
@@ -897,6 +914,30 @@ function StatusDot({ status }: { status: string }) {
           : "bg-amber-500";
 
   return <span className={`h-2 w-2 shrink-0 rounded-full ${color}`} />;
+}
+
+function formatRunStatusLabel(
+  status: string,
+  t: (typeof copy)[Locale],
+): string {
+  switch (status) {
+    case "queued":
+      return t.statusQueued;
+    case "planning":
+      return t.statusPlanning;
+    case "running":
+      return t.statusRunning;
+    case "waiting_for_approval":
+      return t.statusWaitingForApproval;
+    case "completed":
+      return t.statusCompleted;
+    case "failed":
+      return t.statusFailed;
+    case "cancelled":
+      return t.statusCancelled;
+    default:
+      return status;
+  }
 }
 
 function Panel({
@@ -1439,8 +1480,10 @@ export default function Home() {
                   <StatusDot status={run.status} />
                   <div>
                     <p>{run.title[locale]}</p>
-                    <small>
-                      {run.id} · {run.time}
+                    <small className="run-row-meta">
+                      <span>{formatRunStatusLabel(run.status, t)}</span>
+                      <span>{run.time}</span>
+                      <code>{run.id}</code>
                     </small>
                   </div>
                 </button>
@@ -1534,7 +1577,15 @@ export default function Home() {
                 <div>
                   <dt>{t.lastEvent}</dt>
                   <dd title={activeAuditSummary.lastEventType ?? t.noAuditEvents}>
-                    {activeAuditSummary.lastEventType ?? t.noAuditEvents}
+                    <span>
+                      {activeAuditSummary.lastEventTitle?.[locale] ??
+                        t.noAuditEvents}
+                    </span>
+                    {activeAuditSummary.lastEventType ? (
+                      <small>
+                        {t.rawEventType}: {activeAuditSummary.lastEventType}
+                      </small>
+                    ) : null}
                   </dd>
                 </div>
                 <div>
@@ -2805,10 +2856,12 @@ function getAuditSummary(
 ): AuditSummary {
   const runEventsForAudit = getEventsForRun(events, activeRunId);
   const lastEvent = runEventsForAudit.at(-1) ?? null;
+  const lastEventTitle = lastEvent ? toTimelineRow(lastEvent).title : null;
 
   return {
     eventCount: runEventsForAudit.length,
     lastEventType: lastEvent?.type ?? null,
+    lastEventTitle,
     lastEventAt: lastEvent?.createdAt ?? null,
     toolCallCount: getToolCallRows(events, activeRunId).length,
     approvalCount: countUniquePayloads(

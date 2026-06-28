@@ -433,6 +433,42 @@ code {
   white-space: nowrap;
 }
 
+.run-row-meta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+.run-row-meta span {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.run-row-meta span:first-child {
+  border: 1px solid #dbe3ef;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #334155;
+  font-size: 10px;
+  font-weight: 720;
+  line-height: 1;
+  padding: 3px 6px;
+}
+
+.run-row-meta code {
+  min-width: 0;
+  max-width: 100%;
+  color: var(--text-muted);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .workspace-header {
   display: flex;
   flex: 0 0 auto;
@@ -752,16 +788,31 @@ code {
 }
 
 .audit-primary dd {
-  display: block;
+  display: flex;
   min-width: 0;
+  flex-direction: column;
+  gap: 4px;
   margin-top: 5px;
-  overflow: hidden;
   color: var(--text-main);
   font-size: 13px;
   font-weight: 760;
   line-height: 1.25;
+}
+
+.audit-primary dd > span,
+.audit-primary dd > small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.audit-primary dd > small {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.2;
 }
 
 .audit-primary time {

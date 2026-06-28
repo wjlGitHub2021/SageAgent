@@ -81,6 +81,8 @@ Stage 5 必须继续遵守：
 - 切换 run 后 audit summary 根据 activeRunId 更新。
 - audit summary 不直接依赖手写静态数字，必须从 events 派生。
 - audit summary 在中文和 English 下都要清楚区分最后事件、更新时间和统计计数，不能出现标签和值粘连。
+- 最后事件应展示本地化的可读文案，同时保留原始 event type 作为 title / 审计线索。
+- 左侧 runs 列表继续作为 lightweight history，但需要让 run 状态和时间更容易扫描，不改变数据来源或持久化边界。
 - desktop / mobile 下不溢出。
 - `rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
 
