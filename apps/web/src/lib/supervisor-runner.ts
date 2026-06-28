@@ -87,6 +87,7 @@ export interface RunSupervisorDeepSeekInput {
   readonly provider?: SupervisorProvider;
   readonly workspaceRoot?: string | null;
   readonly memoryContextMessage?: string | null;
+  readonly skillContextMessage?: string | null;
   readonly readProjectFile?: ReadProjectFileRunner;
   readonly maxFileBytes?: number;
   readonly now?: Clock;
@@ -108,6 +109,7 @@ export interface StreamSupervisorDeepSeekInput {
   readonly provider?: SupervisorStreamProvider;
   readonly workspaceRoot?: string | null;
   readonly memoryContextMessage?: string | null;
+  readonly skillContextMessage?: string | null;
   readonly readProjectFile?: ReadProjectFileRunner;
   readonly maxFileBytes?: number;
   readonly now?: Clock;
@@ -121,6 +123,7 @@ export async function runSupervisorDeepSeekOnce({
   provider = createDeepSeekChatCompletion,
   workspaceRoot = null,
   memoryContextMessage = null,
+  skillContextMessage = null,
   readProjectFile = readProjectFileTool,
   maxFileBytes = DEFAULT_READ_PROJECT_FILE_MAX_BYTES,
   now = defaultNow,
@@ -170,6 +173,7 @@ export async function runSupervisorDeepSeekOnce({
       fileContextPass.contexts,
       multiAgentPass.supervisorContext,
       memoryContextMessage,
+      skillContextMessage,
     ),
     model: run.settings.model,
     thinkingEnabled: run.settings.thinkingEnabled,
@@ -287,6 +291,7 @@ export async function* streamSupervisorDeepSeekEvents({
   provider = streamDeepSeekChatCompletion,
   workspaceRoot = null,
   memoryContextMessage = null,
+  skillContextMessage = null,
   readProjectFile = readProjectFileTool,
   maxFileBytes = DEFAULT_READ_PROJECT_FILE_MAX_BYTES,
   now = defaultNow,
@@ -339,6 +344,7 @@ export async function* streamSupervisorDeepSeekEvents({
       fileContextPass.contexts,
       multiAgentPass.supervisorContext,
       memoryContextMessage,
+      skillContextMessage,
     ),
     model: run.settings.model,
     thinkingEnabled: run.settings.thinkingEnabled,
@@ -880,6 +886,7 @@ function createSupervisorMessages(
   fileContexts: readonly ReadProjectFileContext[] = [],
   multiAgentContext: string | null = null,
   memoryContextMessage: string | null = null,
+  skillContextMessage: string | null = null,
 ): DeepSeekChatCompletionInput["messages"] {
   const messages: DeepSeekChatCompletionInput["messages"][number][] = [
     {
@@ -907,6 +914,13 @@ function createSupervisorMessages(
     messages.push({
       role: "system",
       content: memoryContextMessage,
+    });
+  }
+
+  if (skillContextMessage !== null) {
+    messages.push({
+      role: "system",
+      content: skillContextMessage,
     });
   }
 

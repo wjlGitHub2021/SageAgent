@@ -1,9 +1,14 @@
 import * as path from "node:path";
 import { NextResponse } from "next/server";
 import { loadDeepSeekProviderConfig } from "@sage/deepseek";
-import { createMemoryContextMessage, isTerminalRunStatus } from "@sage/runtime";
+import {
+  createMemoryContextMessage,
+  createSkillContextMessage,
+  isTerminalRunStatus,
+} from "@sage/runtime";
 import { getRuntimeStore, getTelemetryLogger } from "@/lib/runtime-store";
 import { getMemoryRegistry } from "@/lib/memory-registry";
+import { getSkillRegistry } from "@/lib/skill-registry";
 import {
   appendSupervisorFailureEvent,
   streamSupervisorDeepSeekEvents,
@@ -103,6 +108,9 @@ export async function POST(_request: Request, context: RouteContext) {
     currentThreadId: run.threadId,
     currentRunId: run.id,
   });
+  const skillContextMessage = createSkillContextMessage({
+    snapshot: getSkillRegistry().getSnapshot(),
+  });
 
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
@@ -117,6 +125,7 @@ export async function POST(_request: Request, context: RouteContext) {
           config: configResult.config,
           workspaceRoot: WORKSPACE_ROOT,
           memoryContextMessage,
+          skillContextMessage,
         });
         for await (const event of stream) {
           eventCount += 1;

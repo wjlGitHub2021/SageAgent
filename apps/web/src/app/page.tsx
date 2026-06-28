@@ -11,10 +11,15 @@ import type {
   MemoryScope,
   Run,
   RunEvent,
+  SkillEntry,
+  SkillAuditAction,
+  SkillSnapshot,
+  SkillSource,
+  SkillStatus,
   Thread,
   ToolCall,
 } from "@sage/shared";
-import { MEMORY_SCOPES } from "@sage/shared";
+import { MEMORY_SCOPES, SKILL_SOURCES } from "@sage/shared";
 import {
   ALLOWED_MODELS,
   ALLOWED_REASONING_EFFORTS,
@@ -86,6 +91,10 @@ type MemorySnapshotResponse = {
   snapshot: MemorySnapshot;
 };
 
+type SkillSnapshotResponse = {
+  snapshot: SkillSnapshot;
+};
+
 type MemoryFormState = {
   scope: MemoryScope;
   title: string;
@@ -108,6 +117,28 @@ const DEFAULT_MEMORY_FORM: MemoryFormState = {
 
 const memoryScopeOptions: readonly MemoryScope[] = [
   ...MEMORY_SCOPES,
+];
+
+type SkillFormState = {
+  name: string;
+  description: string;
+  instruction: string;
+  tags: string;
+  source: SkillSource;
+  reason: string;
+};
+
+const DEFAULT_SKILL_FORM: SkillFormState = {
+  name: "",
+  description: "",
+  instruction: "",
+  tags: "",
+  source: "user",
+  reason: "initial skill capture",
+};
+
+const skillSourceOptions: readonly SkillSource[] = [
+  ...SKILL_SOURCES,
 ];
 
 const copy = {
@@ -231,6 +262,44 @@ const copy = {
     memoryCreatedBy: "创建者",
     memoryUpdatedAt: "更新时间",
     memoryAuditSummary: "审计摘要",
+    skillVault: "技能库",
+    skillVaultDetail: "本地技能、人工 curation、审计和上下文注入。",
+    skillEntries: "技能条目",
+    skillAuditTrail: "技能审计",
+    skillCreate: "新建技能",
+    skillEdit: "编辑技能",
+    skillDelete: "删除技能",
+    skillEnable: "启用",
+    skillDisable: "停用",
+    skillCreateOrUpdate: "保存技能",
+    skillEmpty: "当前没有技能条目",
+    skillEmptyDetail: "沉淀可复用操作说明后会保存在这里，启用后进入 supervisor 上下文。",
+    skillLoading: "正在读取技能库...",
+    skillName: "名称",
+    skillDescription: "说明",
+    skillInstruction: "指令",
+    skillTags: "标签",
+    skillSource: "来源",
+    skillStatus: "状态",
+    skillVersion: "版本",
+    skillReason: "原因",
+    skillSourceUser: "用户",
+    skillSourceAgent: "Agent 经验",
+    skillSourceTemplate: "项目模板",
+    skillStatusDraft: "草稿",
+    skillStatusCurated: "已启用",
+    skillStatusDisabled: "已停用",
+    skillActionCreate: "创建",
+    skillActionUpdate: "更新",
+    skillActionDelete: "删除",
+    skillActionEnable: "启用",
+    skillActionDisable: "停用",
+    skillDraftAfterSave: "保存后会进入 draft，需要通过启用按钮人工 curated。",
+    skillSaved: "已保存",
+    skillDeleted: "已删除",
+    skillEnabled: "已启用",
+    skillDisabled: "已停用",
+    skillAuditSummary: "审计摘要",
     phase4SummaryDetail:
       "直接读取 runtime events、artifact summaries 和 final summary gate。",
     runtimeDerived: "runtime 派生",
@@ -460,6 +529,44 @@ const copy = {
     memoryCreatedBy: "Created by",
     memoryUpdatedAt: "Updated at",
     memoryAuditSummary: "Audit summary",
+    skillVault: "Skill vault",
+    skillVaultDetail: "Local skills, manual curation, audit trail, and context injection.",
+    skillEntries: "Skill entries",
+    skillAuditTrail: "Skill audit trail",
+    skillCreate: "New skill",
+    skillEdit: "Edit skill",
+    skillDelete: "Delete skill",
+    skillEnable: "Enable",
+    skillDisable: "Disable",
+    skillCreateOrUpdate: "Save skill",
+    skillEmpty: "No skill entries yet",
+    skillEmptyDetail: "Reusable operating instructions will appear here and enter supervisor context when enabled.",
+    skillLoading: "Loading skill vault...",
+    skillName: "Name",
+    skillDescription: "Description",
+    skillInstruction: "Instruction",
+    skillTags: "Tags",
+    skillSource: "Source",
+    skillStatus: "Status",
+    skillVersion: "Version",
+    skillReason: "Reason",
+    skillSourceUser: "User",
+    skillSourceAgent: "Agent experience",
+    skillSourceTemplate: "Project template",
+    skillStatusDraft: "Draft",
+    skillStatusCurated: "Enabled",
+    skillStatusDisabled: "Disabled",
+    skillActionCreate: "Create",
+    skillActionUpdate: "Update",
+    skillActionDelete: "Delete",
+    skillActionEnable: "Enable",
+    skillActionDisable: "Disable",
+    skillDraftAfterSave: "Saving moves the skill to draft; enable it manually after review.",
+    skillSaved: "Saved",
+    skillDeleted: "Deleted",
+    skillEnabled: "Enabled",
+    skillDisabled: "Disabled",
+    skillAuditSummary: "Audit summary",
     phase4SummaryDetail:
       "Derived directly from runtime events, artifact summaries, and the final summary gate.",
     runtimeDerived: "runtime-derived",
@@ -674,6 +781,8 @@ const stepTitleCopy: Record<string, Record<Locale, string>> = {
     en: "Complete spec consistency review",
   },
 };
+
+type CopyText = (typeof copy)[Locale];
 
 const artifactTitleCopy: Record<string, Record<Locale, string>> = {
   "artifact-1842-stage1-spec": {
@@ -1157,15 +1266,28 @@ export default function Home() {
     entries: [],
     auditTrail: [],
   });
+  const [skillSnapshot, setSkillSnapshot] = useState<SkillSnapshot>({
+    entries: [],
+    auditTrail: [],
+  });
   const [isMemoryLoading, setIsMemoryLoading] = useState(false);
+  const [isSkillLoading, setIsSkillLoading] = useState(false);
   const [isMemoryEditorOpen, setIsMemoryEditorOpen] = useState(false);
+  const [isSkillEditorOpen, setIsSkillEditorOpen] = useState(false);
   const [memoryEditorMode, setMemoryEditorMode] = useState<"create" | "edit">(
+    "create",
+  );
+  const [skillEditorMode, setSkillEditorMode] = useState<"create" | "edit">(
     "create",
   );
   const [memoryForm, setMemoryForm] =
     useState<MemoryFormState>(DEFAULT_MEMORY_FORM);
+  const [skillForm, setSkillForm] =
+    useState<SkillFormState>(DEFAULT_SKILL_FORM);
   const [activeMemoryId, setActiveMemoryId] = useState<string | null>(null);
+  const [activeSkillId, setActiveSkillId] = useState<string | null>(null);
   const [memoryFeedback, setMemoryFeedback] = useState<string | null>(null);
+  const [skillFeedback, setSkillFeedback] = useState<string | null>(null);
   const [isRunBusy, setIsRunBusy] = useState(false);
   const [lastComposerState, setLastComposerState] = useState<
     "idle" | "cancelled"
@@ -1215,18 +1337,31 @@ export default function Home() {
     }
   }, []);
 
+  const loadSkillSnapshot = useCallback(async () => {
+    setIsSkillLoading(true);
+    try {
+      const response = await fetchSkillSnapshot();
+      setSkillSnapshot(response.snapshot);
+    } catch (error) {
+      setSkillFeedback(toSafeErrorMessage(error));
+    } finally {
+      setIsSkillLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       if (!cancelled) {
         await loadMemorySnapshot();
+        await loadSkillSnapshot();
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [loadMemorySnapshot]);
+  }, [loadMemorySnapshot, loadSkillSnapshot]);
 
   useEffect(() => {
     if (!isSettingsOpen) return;
@@ -1339,6 +1474,133 @@ export default function Home() {
       setMemoryFeedback(copy[locale].memoryDeleted);
     } catch (error) {
       setMemoryFeedback(toSafeErrorMessage(error));
+    }
+  }
+
+  function openSkillEditor(entry?: SkillEntry) {
+    if (entry) {
+      setSkillEditorMode("edit");
+      setActiveSkillId(entry.id);
+      setSkillForm({
+        name: entry.name,
+        description: entry.description,
+        instruction: entry.instruction,
+        tags: entry.tags.join(", "),
+        source: entry.source,
+        reason: "",
+      });
+    } else {
+      setSkillEditorMode("create");
+      setActiveSkillId(null);
+      setSkillForm(DEFAULT_SKILL_FORM);
+    }
+    setSkillFeedback(null);
+    setIsSkillEditorOpen(true);
+  }
+
+  async function submitSkillEntry() {
+    const payload = normalizeSkillForm(skillForm);
+    if (!payload.ok) {
+      setSkillFeedback(payload.message);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        skillEditorMode === "create"
+          ? "/api/skills"
+          : `/api/skills/${encodeURIComponent(activeSkillId ?? "")}`,
+        {
+          method: skillEditorMode === "create" ? "POST" : "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload.value),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`skill_request_failed_${response.status}`);
+      }
+
+      const result = (await response.json()) as {
+        snapshot?: SkillSnapshot;
+      };
+      if (result.snapshot) {
+        setSkillSnapshot(result.snapshot);
+      } else {
+        await loadSkillSnapshot();
+      }
+      setIsSkillEditorOpen(false);
+      setSkillFeedback(copy[locale].skillSaved);
+    } catch (error) {
+      setSkillFeedback(toSafeErrorMessage(error));
+    }
+  }
+
+  async function setSkillEntryStatus(skillId: string, status: Extract<SkillStatus, "curated" | "disabled">) {
+    try {
+      const response = await fetch(`/api/skills/${encodeURIComponent(skillId)}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status,
+          reason:
+            status === "curated"
+              ? `${copy[locale].skillEnabled}: ${skillId}`
+              : `${copy[locale].skillDisabled}: ${skillId}`,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`skill_status_failed_${response.status}`);
+      }
+
+      const result = (await response.json()) as {
+        snapshot?: SkillSnapshot;
+      };
+      if (result.snapshot) {
+        setSkillSnapshot(result.snapshot);
+      } else {
+        await loadSkillSnapshot();
+      }
+      setSkillFeedback(
+        status === "curated" ? copy[locale].skillEnabled : copy[locale].skillDisabled,
+      );
+    } catch (error) {
+      setSkillFeedback(toSafeErrorMessage(error));
+    }
+  }
+
+  async function deleteSkillEntry(skillId: string) {
+    try {
+      const response = await fetch(`/api/skills/${encodeURIComponent(skillId)}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          reason: `${copy[locale].skillDeleted}: ${skillId}`,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`skill_delete_failed_${response.status}`);
+      }
+
+      const result = (await response.json()) as {
+        snapshot?: SkillSnapshot;
+      };
+      if (result.snapshot) {
+        setSkillSnapshot(result.snapshot);
+      } else {
+        await loadSkillSnapshot();
+      }
+      setSkillFeedback(copy[locale].skillDeleted);
+    } catch (error) {
+      setSkillFeedback(toSafeErrorMessage(error));
     }
   }
 
@@ -2118,6 +2380,105 @@ export default function Home() {
             </div>
           </Panel>
 
+          <Panel
+            title={t.skillVault}
+            action={
+              <button className="ghost-button" onClick={() => openSkillEditor()}>
+                {t.skillCreate}
+              </button>
+            }
+          >
+            <div className="stack">
+              <StateBlock
+                eyebrow={t.skillVault}
+                title={t.skillVault}
+                detail={t.skillVaultDetail}
+              />
+              {skillFeedback ? (
+                <StateBlock title={t.skillAuditSummary} detail={skillFeedback} />
+              ) : null}
+              {isSkillLoading ? (
+                <StateBlock
+                  eyebrow={t.skillEntries}
+                  title={t.skillLoading}
+                  detail={t.skillVaultDetail}
+                />
+              ) : null}
+              {skillSnapshot.entries.length === 0 ? (
+                <StateBlock
+                  eyebrow={t.skillEntries}
+                  title={t.skillEmpty}
+                  detail={t.skillEmptyDetail}
+                />
+              ) : (
+                skillSnapshot.entries.map((entry) => (
+                  <div className="skill-row" key={entry.id}>
+                    <div>
+                      <p>{entry.name}</p>
+                      <small>
+                        {formatSkillStatus(entry.status, t)} · {formatSkillSource(entry.source, t)} · v{entry.version}
+                      </small>
+                      <small>{entry.description}</small>
+                    </div>
+                    <div className="skill-row-actions">
+                      <button
+                        className="ghost-button"
+                        onClick={() => openSkillEditor(entry)}
+                        type="button"
+                      >
+                        {t.skillEdit}
+                      </button>
+                      <button
+                        className="ghost-button"
+                        onClick={() =>
+                          void setSkillEntryStatus(
+                            entry.id,
+                            entry.status === "curated" ? "disabled" : "curated",
+                          )
+                        }
+                        type="button"
+                      >
+                        {entry.status === "curated" ? t.skillDisable : t.skillEnable}
+                      </button>
+                      <button
+                        className="ghost-button"
+                        onClick={() => void deleteSkillEntry(entry.id)}
+                        type="button"
+                      >
+                        {t.skillDelete}
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+              <div className="skill-audit-list">
+                <p>{t.skillAuditTrail}</p>
+                {skillSnapshot.auditTrail.length === 0 ? (
+                  <StateBlock
+                    title={t.skillAuditTrail}
+                    detail={t.skillEmptyDetail}
+                  />
+                ) : (
+                  skillSnapshot.auditTrail.slice(-5).map((record) => (
+                    <div className="skill-audit-row" key={record.id}>
+                      <div>
+                        <p>
+                          {formatSkillAuditAction(record.action, t)} · {record.name}
+                        </p>
+                        <small>
+                          {t.skillStatus}: {formatSkillStatus(record.status, t)} · {t.skillVersion}: {record.version}
+                        </small>
+                      </div>
+                      <small>
+                        {formatSkillStatus(record.status, t)}: {record.name} v{record.version}
+                      </small>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </Panel>
+
           <Panel title={t.toolCalls}>
             <div className="stack">
               {isRunBusy ? (
@@ -2405,6 +2766,174 @@ export default function Home() {
                         {memoryEditorMode === "create"
                           ? t.memoryCreate
                           : t.memoryCreateOrUpdate}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
+      {isSkillEditorOpen ? (
+        <div
+          className="settings-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsSkillEditorOpen(false);
+            }
+          }}
+        >
+          <section
+            aria-labelledby="skill-dialog-title"
+            aria-modal="true"
+            className="settings-dialog skill-dialog"
+            role="dialog"
+          >
+            <header className="settings-dialog-header">
+              <div>
+                <p className="section-label">{t.skillVault}</p>
+                <h2 id="skill-dialog-title">
+                  {skillEditorMode === "create" ? t.skillCreate : t.skillEdit}
+                </h2>
+                <p>{t.skillVaultDetail}</p>
+              </div>
+              <button
+                className="ghost-button"
+                onClick={() => setIsSkillEditorOpen(false)}
+                type="button"
+              >
+                {t.closeSettings}
+              </button>
+            </header>
+
+            <div className="settings-dialog-grid skill-dialog-grid">
+              <div className="settings-dialog-column">
+                <article className="settings-card">
+                  <div>
+                    <p>{t.skillName}</p>
+                    <small>{t.skillDescription}</small>
+                  </div>
+                  <div className="settings-control-stack">
+                    <label className="skill-field">
+                      <span>{t.skillName}</span>
+                      <input
+                        className="composer-input"
+                        value={skillForm.name}
+                        onChange={(event) =>
+                          setSkillForm((current) => ({
+                            ...current,
+                            name: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label className="skill-field">
+                      <span>{t.skillDescription}</span>
+                      <textarea
+                        className="composer-input"
+                        rows={4}
+                        value={skillForm.description}
+                        onChange={(event) =>
+                          setSkillForm((current) => ({
+                            ...current,
+                            description: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label className="skill-field">
+                      <span>{t.skillInstruction}</span>
+                      <textarea
+                        className="composer-input"
+                        rows={8}
+                        value={skillForm.instruction}
+                        onChange={(event) =>
+                          setSkillForm((current) => ({
+                            ...current,
+                            instruction: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                  </div>
+                </article>
+              </div>
+
+              <div className="settings-dialog-column">
+                <article className="settings-card">
+                  <div>
+                    <p>{t.skillAuditSummary}</p>
+                    <small>{t.skillVaultDetail}</small>
+                  </div>
+                  <div className="settings-control-stack">
+                    <div className="settings-card-control">
+                      <span>{t.skillSource}</span>
+                      <div className="segmented skill-selector">
+                        {skillSourceOptions.map((sourceOption) => (
+                          <button
+                            aria-pressed={skillForm.source === sourceOption}
+                            className={skillForm.source === sourceOption ? "selected" : ""}
+                            key={sourceOption}
+                            onClick={() =>
+                              setSkillForm((current) => ({
+                                ...current,
+                                source: sourceOption,
+                              }))
+                            }
+                            type="button"
+                          >
+                            {formatSkillSource(sourceOption, t)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <StateBlock
+                      title={t.skillStatus}
+                      detail={t.skillDraftAfterSave}
+                    />
+                    <label className="skill-field">
+                      <span>{t.skillTags}</span>
+                      <input
+                        className="composer-input"
+                        value={skillForm.tags}
+                        onChange={(event) =>
+                          setSkillForm((current) => ({
+                            ...current,
+                            tags: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label className="skill-field">
+                      <span>{t.skillReason}</span>
+                      <textarea
+                        className="composer-input"
+                        rows={4}
+                        value={skillForm.reason}
+                        onChange={(event) =>
+                          setSkillForm((current) => ({
+                            ...current,
+                            reason: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    {skillFeedback ? (
+                      <StateBlock title={t.skillAuditSummary} detail={skillFeedback} />
+                    ) : null}
+                    <div className="composer-actions">
+                      <button
+                        className="secondary-button"
+                        onClick={() => setIsSkillEditorOpen(false)}
+                        type="button"
+                      >
+                        {t.cancel}
+                      </button>
+                      <button onClick={() => void submitSkillEntry()} type="button">
+                        {skillEditorMode === "create"
+                          ? t.skillCreate
+                          : t.skillCreateOrUpdate}
                       </button>
                     </div>
                   </div>
@@ -2899,6 +3428,14 @@ async function fetchMemorySnapshot(): Promise<MemorySnapshotResponse> {
   return parseJsonResponse<MemorySnapshotResponse>(response, "memory_load_failed");
 }
 
+async function fetchSkillSnapshot(): Promise<SkillSnapshotResponse> {
+  const response = await fetch("/api/skills", {
+    method: "GET",
+  });
+
+  return parseJsonResponse<SkillSnapshotResponse>(response, "skill_load_failed");
+}
+
 function normalizeMemoryForm(
   form: MemoryFormState,
 ):
@@ -2936,6 +3473,82 @@ function normalizeMemoryForm(
       reason,
     },
   };
+}
+
+function normalizeSkillForm(
+  form: SkillFormState,
+):
+  | {
+      ok: true;
+      value: {
+        name: string;
+        description: string;
+        instruction: string;
+        tags: readonly string[];
+        source: SkillSource;
+        createdBy: "user";
+        reason: string;
+      };
+    }
+  | { ok: false; message: string } {
+  const name = form.name.trim();
+  const description = form.description.trim();
+  const instruction = form.instruction.trim();
+  const reason = form.reason.trim();
+  if (name.length === 0) return { ok: false, message: "Skill name is required." };
+  if (description.length === 0) return { ok: false, message: "Skill description is required." };
+  if (instruction.length === 0) return { ok: false, message: "Skill instruction is required." };
+  if (reason.length === 0) return { ok: false, message: "Skill reason is required." };
+
+  return {
+    ok: true,
+    value: {
+      name,
+      description,
+      instruction,
+      tags: parseCommaSeparatedList(form.tags),
+      source: form.source,
+      createdBy: "user",
+      reason,
+    },
+  };
+}
+
+function formatSkillSource(source: SkillSource, t: CopyText): string {
+  switch (source) {
+    case "user":
+      return t.skillSourceUser;
+    case "agent":
+      return t.skillSourceAgent;
+    case "template":
+      return t.skillSourceTemplate;
+  }
+}
+
+function formatSkillStatus(status: SkillStatus, t: CopyText): string {
+  switch (status) {
+    case "draft":
+      return t.skillStatusDraft;
+    case "curated":
+      return t.skillStatusCurated;
+    case "disabled":
+      return t.skillStatusDisabled;
+  }
+}
+
+function formatSkillAuditAction(action: SkillAuditAction, t: CopyText): string {
+  switch (action) {
+    case "create":
+      return t.skillActionCreate;
+    case "update":
+      return t.skillActionUpdate;
+    case "delete":
+      return t.skillActionDelete;
+    case "enable":
+      return t.skillActionEnable;
+    case "disable":
+      return t.skillActionDisable;
+  }
 }
 
 function parseCommaSeparatedList(value: string): readonly string[] {

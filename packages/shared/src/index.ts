@@ -305,3 +305,19 @@ export {
   type MemorySnapshot,
   type UpsertMemoryEntryInput,
 } from "./memory.js";
+export {
+  SKILL_AUDIT_ACTIONS,
+  SKILL_SOURCES,
+  SKILL_STATUSES,
+  createEmptySkillSnapshot,
+  type DeleteSkillEntryInput,
+  type SetSkillStatusInput,
+  type SkillActor,
+  type SkillAuditAction,
+  type SkillAuditRecord,
+  type SkillEntry,
+  type SkillSnapshot,
+  type SkillSource,
+  type SkillStatus,
+  type UpsertSkillEntryInput,
+} from "./skill.js";

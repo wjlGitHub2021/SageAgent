@@ -28,6 +28,10 @@ export {
   type CreateMemoryContextMessageInput,
 } from "./memory-context.js";
 export {
+  createSkillContextMessage,
+  type CreateSkillContextMessageInput,
+} from "./skill-context.js";
+export {
   createMemoryRuntimeStore,
   isTerminalRunStatus,
   type RuntimeStore,
@@ -39,6 +43,13 @@ export {
   type CreatePersistentMemoryRegistryInput,
   type MemoryRegistry,
 } from "./memory-registry.js";
+export {
+  createPersistentSkillRegistry,
+  createSkillRegistry,
+  type CreatePersistentSkillRegistryInput,
+  type SkillAuditInput,
+  type SkillRegistry,
+} from "./skill-registry.js";
 export {
   DEFAULT_READ_PROJECT_FILE_MAX_BYTES,
   readProjectFileTool,

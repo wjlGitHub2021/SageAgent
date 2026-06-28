@@ -879,8 +879,12 @@ code {
 }
 
 .memory-row,
-.memory-audit-row {
+.memory-audit-row,
+.skill-row,
+.skill-audit-row {
   display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
   border-radius: 7px;
@@ -889,12 +893,21 @@ code {
 }
 
 .memory-row > div,
-.memory-audit-row > div {
+.memory-audit-row > div,
+.skill-row > div,
+.skill-audit-row > div {
   min-width: 0;
 }
 
+.memory-row > div:first-child,
+.skill-row > div:first-child {
+  flex: 1 1 150px;
+}
+
 .memory-row p,
-.memory-audit-row p {
+.memory-audit-row p,
+.skill-row p,
+.skill-audit-row p {
   margin: 0;
   color: var(--text-main);
   font-size: 12px;
@@ -903,7 +916,9 @@ code {
 }
 
 .memory-row small,
-.memory-audit-row small {
+.memory-audit-row small,
+.skill-row small,
+.skill-audit-row small {
   display: block;
   color: var(--text-muted);
   font-size: 11px;
@@ -911,38 +926,56 @@ code {
   overflow-wrap: anywhere;
 }
 
-.memory-row-actions {
+.memory-row-actions,
+.skill-row-actions {
   display: flex;
-  flex-shrink: 0;
+  flex: 1 1 100%;
+  align-items: center;
   gap: 6px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
 
-.memory-field {
+.memory-row-actions .ghost-button,
+.skill-row-actions .ghost-button {
+  display: inline-flex;
+  flex: 1 1 74px;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  min-width: 74px;
+  white-space: nowrap;
+}
+
+.memory-field,
+.skill-field {
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: 6px;
 }
 
-.memory-field span {
+.memory-field span,
+.skill-field span {
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 720;
 }
 
-.memory-dialog .settings-dialog-grid {
+.memory-dialog .settings-dialog-grid,
+.skill-dialog .settings-dialog-grid {
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
 }
 
-.memory-scope-selector {
+.memory-scope-selector,
+.skill-selector {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.memory-scope-selector button {
+.memory-scope-selector button,
+.skill-selector button {
   min-width: 0;
 }
 

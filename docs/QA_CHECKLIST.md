@@ -12,7 +12,9 @@
 2. 启动本地 dev server。
 3. 打开 `http://localhost:3000`。
 4. 确认三栏工作台、Settings 双语切换、空态、busy / cancel / retry、provider error、安全边界和 run history 都能正常显示。
-5. 只要发现 P0 / P1，就先修复或写入 `docs/BUGS.md`，不要继续往下走发布流程。
+5. 检查记忆底座和技能库：新建一条本地条目，确认列表、审计、删除反馈正常；技能必须先保存为 draft，再通过启用按钮进入 curated。
+6. 至少确认一次 English 界面下技能来源、状态、操作和审计文案不直接暴露原始枚举。
+7. 只要发现 P0 / P1，就先修复或写入 `docs/BUGS.md`，不要继续往下走发布流程。
 
 状态字段：
 
@@ -83,6 +85,17 @@ BUG 记录：
 | QA-SHELL-03 | composer 锚点 | composer 在 desktop 下稳定贴底，滚动时仍保持可见性 | pass | `web` lint/build 后浏览器核对通过 |
 | QA-SHELL-04 | 既有状态保留 | run、timeline、approvals、artifacts、provider error 不丢失 | pass | 浏览器核对无回归 |
 | QA-SHELL-05 | 窄屏回归 | 390px 宽度下仍保持可读，不出现明显 runtime error | pass | 浏览器核对无明显异常 |
+
+## 1.7 记忆与技能底座 QA
+
+| ID | 检查项 | 期望 | 状态 | 备注 |
+| --- | --- | --- | --- | --- |
+| QA-CONTEXT-01 | 记忆 CRUD | 新建、展示、删除记忆后列表和审计反馈正常 | pass | V2.2 browser QA 已覆盖 |
+| QA-CONTEXT-02 | 技能 draft 保存 | 新建技能后只能以 draft/user 进入列表，不直接 curated | pass | V2.3 browser QA 和 route tests 已覆盖 |
+| QA-CONTEXT-03 | 技能人工 curation | 列表中的启用 / 停用按钮能产生 enable / disable 审计 | pass | V2.3 browser QA 已覆盖 |
+| QA-CONTEXT-04 | 技能 supervisor 注入 | 只有 curated skill 会进入 supervisor context，draft / disabled 不注入 | pass | `tests/skill-registry.test.ts` 覆盖 curated-only context |
+| QA-CONTEXT-05 | 技能坏文件恢复 | 无效 `skill-registry.json` 会先备份为 `.invalid-*`，不会被保存覆盖 | pass | `tests/skill-registry.test.ts` 覆盖 |
+| QA-CONTEXT-06 | 技能双语展示 | 中文 / English 下技能来源、状态、操作和审计文案走 copy 字典 | pass | V2.3 UI 已补齐本地化映射 |
 
 ## 2. UI 工作台与双语
 

@@ -30,8 +30,8 @@ Hermes 的关键特征是“同一个 agent core，跑在 CLI、desktop、gatewa
 | --- | --- | --- | --- | --- |
 | Web + desktop + gateway + CLI 多入口 | 同一 agent core 覆盖 CLI、TUI、desktop、gateway、消息平台 | 只有 Web workbench，desktop 只是方向 | 保留 Web shell、run workspace、inspector、composer 的稳定入口 | desktop app、gateway、消息平台 |
 | 多 provider | 支持 OpenAI-compatible、云 provider、本地模型和 fallback | v1 只做 DeepSeek | 保留 provider 状态、错误脱敏和单 provider 入口 | provider registry、多 provider fallback、provider allowlist |
-| 跨会话记忆 | bounded memory、memory providers、记忆沉淀 | 目前只有 run/audit 历史，没有长期记忆底座 | 保留历史记录和未来记忆入口，不实现跨会话记忆 | memory providers、自动摘要、知识检索、个性化记忆 |
-| 技能自动生长 | skills 作为 on-demand knowledge docs，可创建、加载、同步、整理 | 目前没有技能系统 | 保留技能入口和未来扩展位置，不实现技能系统 | skills hub、技能创建流程、自动整理、技能市场 |
+| 跨会话记忆 | bounded memory、memory providers、记忆沉淀 | V2.2 已有本地 memory registry、审计和 prompt 注入 | 保留本地记忆 CRUD、审计和上下文注入 | memory providers、自动摘要、知识检索、个性化记忆 |
+| 技能自动生长 | skills 作为 on-demand knowledge docs，可创建、加载、同步、整理 | V2.3 已有本地 skill registry、人工 curation、审计和 prompt 注入 | 保留本地技能 CRUD、启用 / 停用、审计和 curated context 注入 | skills hub、自动生成、自动整理、远程同步、技能市场 |
 | 定制化 prompt / profile | profile、SOUL.md、profile distributions、独立 home 目录 | 只有当前产品级 system prompt 和 settings | 保留 prompt / settings 入口，不做 profile 体系 | profile 管理、profile distribution、模板市场 |
 | 安全边界与多用户入口 | gateway allowlist、DM pairing、消息平台权限 | Read + Draft + approval | 继续收紧 approval、脱敏、审计和 workspace 边界 | 远程登录、gateway 权限、团队/多用户治理 |
 | 自动化任务 | cron jobs、定时触发、无 agent mode | 当前没有自动化调度 | 保留自动化入口，不进入 v1 主线 | cron、定时任务、触发器、自动交付 |
@@ -76,12 +76,13 @@ Hermes 的关键特征是“同一个 agent core，跑在 CLI、desktop、gatewa
 
 - 把 skills 做成一等公民。
 - 让 agent 可以从经验中生成、整理、复用技能。
+- 当前实现口径先落在本地 registry + curation + run prompt 注入，后续再做自动生成、同步和市场化。
 
 要做的事：
 
 - 定义 skills 的存储、加载、版本和展示。
 - 支持技能来源于用户、agent 经验和项目模板。
-- 提供技能 curation，但保留人工确认边界。
+- 提供技能 curation 和启用 / 停用路径，但保留人工确认边界。
 
 ### V2.4：多 provider 与多入口
 

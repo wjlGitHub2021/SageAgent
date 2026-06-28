@@ -221,3 +221,23 @@
 - 验证结论：
   - 重新运行 `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check`。
   - Browser QA 确认 `http://localhost:3000/` 首屏非空、无 framework overlay、console 无 error / warn，记忆 CRUD 与审计反馈正常。
+
+### 2026-06-28 V2.3 技能系统 QA 复核
+
+- 状态：`fixed`
+- 严重级别：`P2`
+- 发现阶段：QA
+- 影响范围：`@sage/shared` skill domain、`@sage/runtime` skill registry/context、`apps/web` skill API / workbench UI、supervisor prompt 注入。
+- 复现步骤或线索：
+  - V2.3 初版需要确认技能不是只停留在 UI 层，而是本地持久化、可审计、可人工 curated，并且只有 curated skill 能进入 supervisor 上下文。
+  - QA 发现两个当前可修复边界：坏的 `.sage/skill-registry.json` 不能静默覆盖；客户端不能通过 `POST/PUT` 伪造 `curated` 或 agent actor。
+  - Browser QA 还发现 inspector 窄宽度下技能行操作按钮被挤压成不可读的高按钮。
+- 修复方式：
+  - `PersistentSkillRegistry` 读取无效 JSON 或 schema 时先备份为 `.invalid-*`，备份失败则显式抛错，避免后续保存覆盖坏文件。
+  - Web skill API 强制 `POST/PUT` 写入 `draft/user`，启用 / 停用只能走 `PATCH`，`PATCH/DELETE` audit actor 也固定为 `user`。
+  - 技能编辑弹窗移除直接选择 `curated` 的入口，只保留来源、内容、标签和原因；保存后必须通过列表“启用”按钮人工 curation。
+  - 调整技能 / 记忆行 CSS，确保 inspector 内操作按钮在窄宽度下仍保持可读尺寸。
+- 验证结论：
+  - 重新运行 `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check`。
+  - Browser QA 确认 `http://localhost:3000/` 首屏非空、无 framework overlay、console 无 error / warn，技能新建、启用、停用、删除和审计反馈正常。
+  - `/api/skills` QA 后 `entries` 为空，只保留本地审计记录；`.sage/` 被 git ignore，不进入提交。

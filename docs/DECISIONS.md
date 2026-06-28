@@ -337,3 +337,25 @@ V2.2 的跨会话记忆底座先实现为本地记忆 registry + CRUD API + audi
 - 当前仓库没有独立数据库层，本地 registry 能在最小改动下把 memory 真正接入 agent 上下文。
 - 记忆如果只停在 UI 文档层，就不能支撑后续的项目约束、用户偏好和可复用结论。
 - 先把类型、审计和上下文注入打通，后续再换持久化后端会更稳。
+
+## DEC-0018：V2.3 先落本地技能注册表
+
+状态：accepted
+
+决策：
+
+V2.3 的技能系统先实现为本地 skill registry + CRUD API + curation 状态 + audit trail，并由 supervisor 运行时读取 enabled / curated skills 注入上下文。
+
+约束：
+
+- 技能条目和审计记录使用 `@sage/shared` 的共享 domain types。
+- 技能管理入口由 Web 工作台承载，当前以本地单用户为边界。
+- 技能可以来源于用户、agent 经验或项目模板，但进入上下文必须经过人工 curated / enabled 状态。
+- 当前不实现自动生成技能、远程同步、技能市场、跨项目分发或自动执行技能代码。
+- 未来如果引入文件 / 数据库持久化，可以替换 registry 后端，但不改变上层 skill contract。
+
+理由：
+
+- V2.2 已证明本地 registry + audit + prompt context 的模式适合 local single-user 能力底座。
+- 技能如果直接自动写入或自动启用，会绕过人工确认边界，和 Read + Draft 安全模型冲突。
+- 先把技能对象、curation 状态和上下文注入打通，后续自动生长能力才能建立在可审计基础上。
