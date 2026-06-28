@@ -12,6 +12,7 @@ import {
   createFinalSummaryGate,
   createMemoryRuntimeStore,
   createLocalTelemetryLogger,
+  createDelegationFlow,
   readProjectFileTool,
   requiresApprovalForAction,
   requiresToolApproval,
@@ -28,6 +29,7 @@ import {
   type SupervisorProvider,
   type SupervisorStreamProvider,
 } from "../apps/web/src/lib/supervisor-runner";
+import { getPhase4RunSummary } from "../apps/web/src/lib/phase4-summary";
 
 const createdAt = "2026-06-24T01:00:00.000Z";
 
@@ -463,6 +465,203 @@ describe("runtime flows", () => {
         summary: "Ready",
       },
     });
+  });
+
+  it("derives the phase 4 summary from runtime events and helper output", () => {
+    const flow = createDelegationFlow({
+      goal: "Implement phase 4 summary UI",
+      suggestedPaths: ["apps/web/src/app/page.tsx"],
+      knownConstraints: ["Do not bypass runtime events"],
+      acceptanceCriteria: ["Show reviewer gate", "Show artifact summaries"],
+    });
+
+    expect(flow.ok).toBe(true);
+    if (!flow.ok) return;
+
+    const events: RunEvent[] = [
+      {
+        id: "event-phase4-plan-artifact",
+        runId: run.id,
+        type: "artifact.created",
+        sequence: 1,
+        createdAt: "2026-06-24T01:00:01.000Z",
+        payload: {
+          artifact: {
+            id: "artifact-phase4-plan",
+            runId: run.id,
+            kind: "plan",
+            title: "Supervisor Plan",
+            content: JSON.stringify(flow.flow.supervisorPlan, null, 2),
+            path: null,
+            createdAt: "2026-06-24T01:00:01.000Z",
+          },
+        },
+      },
+      {
+        id: "event-phase4-plan-step",
+        runId: run.id,
+        type: "step.completed",
+        sequence: 2,
+        createdAt: "2026-06-24T01:00:02.000Z",
+        payload: {
+          step: {
+            id: "step-phase4-supervisor",
+            runId: run.id,
+            agent: "supervisor",
+            title: "Plan multi-agent run",
+            status: "completed",
+            input: null,
+            output: flow.flow.supervisorPlan as never,
+            startedAt: "2026-06-24T01:00:00.000Z",
+            completedAt: "2026-06-24T01:00:02.000Z",
+          },
+        },
+      },
+      {
+        id: "event-phase4-researcher-step",
+        runId: run.id,
+        type: "step.completed",
+        sequence: 3,
+        createdAt: "2026-06-24T01:00:03.000Z",
+        payload: {
+          step: {
+            id: "step-phase4-researcher",
+            runId: run.id,
+            agent: "researcher",
+            title: "Gather project context",
+            status: "completed",
+            input: null,
+            output: flow.flow.researcherBrief as never,
+            startedAt: "2026-06-24T01:00:02.000Z",
+            completedAt: "2026-06-24T01:00:03.000Z",
+          },
+        },
+      },
+      {
+        id: "event-phase4-researcher-artifact",
+        runId: run.id,
+        type: "artifact.created",
+        sequence: 4,
+        createdAt: "2026-06-24T01:00:03.000Z",
+        payload: {
+          artifact: {
+            id: "artifact-phase4-researcher",
+            runId: run.id,
+            kind: "document",
+            title: "Researcher Brief",
+            content: JSON.stringify(flow.flow.researcherBrief, null, 2),
+            path: null,
+            createdAt: "2026-06-24T01:00:03.000Z",
+          },
+        },
+      },
+      {
+        id: "event-phase4-builder-step",
+        runId: run.id,
+        type: "step.completed",
+        sequence: 5,
+        createdAt: "2026-06-24T01:00:04.000Z",
+        payload: {
+          step: {
+            id: "step-phase4-builder",
+            runId: run.id,
+            agent: "builder",
+            title: "Draft implementation",
+            status: "completed",
+            input: null,
+            output: flow.flow.builderDraft as never,
+            startedAt: "2026-06-24T01:00:03.000Z",
+            completedAt: "2026-06-24T01:00:04.000Z",
+          },
+        },
+      },
+      {
+        id: "event-phase4-reviewer-step",
+        runId: run.id,
+        type: "step.completed",
+        sequence: 6,
+        createdAt: "2026-06-24T01:00:05.000Z",
+        payload: {
+          step: {
+            id: "step-phase4-reviewer",
+            runId: run.id,
+            agent: "reviewer",
+            title: "Review quality and safety",
+            status: "completed",
+            input: null,
+            output: flow.flow.reviewerReport as never,
+            startedAt: "2026-06-24T01:00:04.000Z",
+            completedAt: "2026-06-24T01:00:05.000Z",
+          },
+        },
+      },
+      {
+        id: "event-phase4-reviewer-artifact",
+        runId: run.id,
+        type: "artifact.created",
+        sequence: 7,
+        createdAt: "2026-06-24T01:00:05.000Z",
+        payload: {
+          artifact: {
+            id: "artifact-phase4-reviewer",
+            runId: run.id,
+            kind: "summary",
+            title: "Reviewer Report",
+            content: JSON.stringify(flow.flow.reviewerReport, null, 2),
+            path: null,
+            createdAt: "2026-06-24T01:00:05.000Z",
+          },
+        },
+      },
+    ];
+
+    const summary = getPhase4RunSummary(events, run.id);
+    expect(summary.hasData).toBe(true);
+    expect(summary.supervisor.status).toBe("completed");
+    expect(summary.supervisor.summary).toBe(flow.flow.supervisorPlan.summary);
+    expect(summary.researcher.contextTargets).toContain("apps/web/src/app/page.tsx");
+    expect(summary.builder.patchTargets).toEqual([
+      "docs",
+      "implementation",
+      "qa",
+    ]);
+    expect(summary.reviewer.decision).toBe(flow.flow.reviewerDecision);
+    expect(summary.finalSummaryGate.status).toBe("ready");
+    expect(summary.artifacts.map((artifact) => artifact.title)).toEqual([
+      "Supervisor Plan",
+      "Researcher Brief",
+      "Reviewer Report",
+    ]);
+  });
+
+  it("ignores unrelated legacy seed artifacts when deriving phase 4 status", () => {
+    const summary = getPhase4RunSummary(
+      [
+        {
+          id: "event-legacy-artifact",
+          runId: run.id,
+          type: "artifact.created",
+          sequence: 1,
+          createdAt: createdAt,
+          payload: {
+            artifact: {
+              id: "artifact-legacy",
+              runId: run.id,
+              kind: "document",
+              title: "Stage 1 Implementation Spec",
+              content: JSON.stringify({ summary: "Legacy seed" }),
+              path: "docs/STAGE1_SPEC.md",
+              createdAt,
+            },
+          },
+        },
+      ],
+      run.id,
+    );
+
+    expect(summary.hasData).toBe(false);
+    expect(summary.supervisor.status).toBe("missing");
+    expect(summary.artifacts).toEqual([]);
   });
 
   it("records local telemetry with ordering, filtering, trimming, and redaction", () => {

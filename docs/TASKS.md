@@ -91,8 +91,10 @@
 - [x] 对齐 `docs/STAGE4_SPEC.md`、`docs/PLAN.md`、`docs/SPEC.md` 与当前实现口径。
 - [x] 明确 `apps/web/src/lib/supervisor-runner.ts` 与 `packages/runtime` 的 source of truth 分工。
 - [x] 明确 multi-agent 事件流、approval / artifact / final summary 的主链路承接任务。
-- [ ] 检查并修复 UI / runtime / QA 中 Phase 4 的承接断层。
-- [ ] 完成 Phase 4 QA、BUG 复核和阶段收尾。
+- [x] 将 Phase 4 的 reviewer gate / final summary gate / artifact summary 接入 UI 可读状态。
+- [x] 将 Phase 4 的 multi-agent 状态从 seed 说明迁移到 runtime event 派生。
+- [x] 检查并修复 UI / runtime / QA 中 Phase 4 的承接断层。
+- [x] 完成 Phase 4 QA、BUG 复核和阶段收尾。
 
 ## Stage 5：商业化质量加固
 

@@ -21,6 +21,7 @@ import {
   readStoredPreferences,
   writeStoredPreferences,
 } from "@/lib/preferences";
+import { getPhase4RunSummary } from "@/lib/phase4-summary";
 import type {
   DeepSeekConnectionTestCode,
   DeepSeekConnectionTestResult,
@@ -172,6 +173,32 @@ const copy = {
     approval: "审批",
     artifacts: "产物",
     auditTrail: "审计轨迹",
+    phase4Summary: "Phase 4 真实状态",
+    phase4SummaryDetail:
+      "直接读取 runtime events、artifact summaries 和 final summary gate。",
+    runtimeDerived: "runtime 派生",
+    runtimeDerivedDetail: "当前视图从事件和 helper 输出汇总，不依赖静态说明。",
+    supervisorPlan: "Supervisor plan",
+    researcherBrief: "Researcher brief",
+    builderDraft: "Builder draft",
+    reviewerReport: "Reviewer report",
+    finalSummaryGate: "Final summary gate",
+    artifactSummaries: "Artifacts",
+    phase4Missing: "未生成",
+    phase4Ready: "可进入 final summary",
+    phase4Blocked: "阻断 final summary",
+    phase4SummaryReady: "Reviewer pass，final summary 可继续。",
+    phase4SummaryBlocked: "Reviewer 仍有阻断项。",
+    phase4SummaryMissing: "当前 run 尚未产生 phase 4 事件。",
+    stepCount: "步骤",
+    contextTargets: "上下文",
+    patchTargets: "patch 目标",
+    artifactDrafts: "artifact 草稿",
+    acceptanceCriteria: "验收",
+    findings: "发现",
+    risks: "风险",
+    missingChecks: "缺失检查",
+    decision: "决策",
     events: "事件",
     tools: "工具",
     approvals: "审批",
@@ -335,6 +362,33 @@ const copy = {
     approval: "Approval",
     artifacts: "Artifacts",
     auditTrail: "Audit Trail",
+    phase4Summary: "Phase 4 live state",
+    phase4SummaryDetail:
+      "Derived directly from runtime events, artifact summaries, and the final summary gate.",
+    runtimeDerived: "runtime-derived",
+    runtimeDerivedDetail:
+      "This view is assembled from events and helper output, not static copy.",
+    supervisorPlan: "Supervisor plan",
+    researcherBrief: "Researcher brief",
+    builderDraft: "Builder draft",
+    reviewerReport: "Reviewer report",
+    finalSummaryGate: "Final summary gate",
+    artifactSummaries: "Artifacts",
+    phase4Missing: "Not generated",
+    phase4Ready: "Ready for final summary",
+    phase4Blocked: "Blocking final summary",
+    phase4SummaryReady: "Reviewer passed, final summary can continue.",
+    phase4SummaryBlocked: "Reviewer still has blocking items.",
+    phase4SummaryMissing: "This run has not produced phase 4 events yet.",
+    stepCount: "Steps",
+    contextTargets: "Context",
+    patchTargets: "Patch targets",
+    artifactDrafts: "Artifact drafts",
+    acceptanceCriteria: "Acceptance",
+    findings: "Findings",
+    risks: "Risks",
+    missingChecks: "Missing checks",
+    decision: "Decision",
     events: "Events",
     tools: "Tools",
     approvals: "Approvals",
@@ -1043,6 +1097,7 @@ export default function Home() {
   const activeArtifacts = getArtifactRows(runEvents, activeRunId);
   const activeProviderError = getProviderError(runEvents, activeRunId);
   const activeAuditSummary = getAuditSummary(runEvents, activeRunId);
+  const activePhase4Summary = getPhase4RunSummary(runEvents, activeRunId);
   const activeMessages = messages.filter((message) => message.runId === activeRunId);
   const trimmedComposerInput = composerInput.trim();
   const composerStatusText = getComposerStatusText({
@@ -1444,6 +1499,144 @@ export default function Home() {
                 </div>
               ))}
             </div>
+          </Panel>
+
+          <Panel title={t.phase4Summary}>
+            {activePhase4Summary.hasData ? (
+              <div className="stack phase4-summary-stack">
+                <StateBlock
+                  title={t.runtimeDerived}
+                  detail={t.runtimeDerivedDetail}
+                />
+                <StateBlock
+                  title={`${t.supervisorPlan} · ${formatPhase4Status(
+                    activePhase4Summary.supervisor.status,
+                    t,
+                  )}`}
+                  detail={formatPhase4SummaryDetail([
+                    activePhase4Summary.supervisor.summary,
+                    formatPhase4KeyValue(
+                      t.stepCount,
+                      summarizeList(activePhase4Summary.supervisor.stepTitles),
+                    ),
+                  ])}
+                />
+                <StateBlock
+                  title={`${t.researcherBrief} · ${formatPhase4Status(
+                    activePhase4Summary.researcher.status,
+                    t,
+                  )}`}
+                  detail={formatPhase4SummaryDetail([
+                    activePhase4Summary.researcher.summary,
+                    formatPhase4KeyValue(
+                      t.contextTargets,
+                      summarizeList(activePhase4Summary.researcher.contextTargets),
+                    ),
+                    formatPhase4KeyValue(
+                      t.risks,
+                      summarizeList(activePhase4Summary.researcher.constraints),
+                    ),
+                  ])}
+                />
+                <StateBlock
+                  title={`${t.builderDraft} · ${formatPhase4Status(
+                    activePhase4Summary.builder.status,
+                    t,
+                  )}`}
+                  detail={formatPhase4SummaryDetail([
+                    activePhase4Summary.builder.summary,
+                    formatPhase4KeyValue(
+                      t.patchTargets,
+                      summarizeList(activePhase4Summary.builder.patchTargets),
+                    ),
+                    formatPhase4KeyValue(
+                      t.artifactDrafts,
+                      summarizeList(activePhase4Summary.builder.artifactDraftTitles),
+                    ),
+                  ])}
+                />
+                <StateBlock
+                  title={`${t.reviewerReport} · ${formatPhase4Status(
+                    activePhase4Summary.reviewer.status,
+                    t,
+                  )}`}
+                  detail={formatPhase4SummaryDetail([
+                    activePhase4Summary.reviewer.summary,
+                    formatPhase4KeyValue(
+                      t.decision,
+                      activePhase4Summary.reviewer.decision ?? t.phase4Missing,
+                    ),
+                    formatPhase4KeyValue(
+                      t.findings,
+                      summarizeList(activePhase4Summary.reviewer.findings),
+                    ),
+                    formatPhase4KeyValue(
+                      t.missingChecks,
+                      summarizeList(activePhase4Summary.reviewer.missingChecks),
+                    ),
+                  ])}
+                />
+                <StateBlock
+                  title={`${t.finalSummaryGate} · ${formatPhase4GateStatus(
+                    activePhase4Summary.finalSummaryGate.status,
+                    t,
+                  )}`}
+                  detail={formatPhase4SummaryDetail([
+                    activePhase4Summary.finalSummaryGate.summary,
+                    activePhase4Summary.finalSummaryGate.status === "blocked"
+                      ? t.phase4SummaryBlocked
+                      : activePhase4Summary.finalSummaryGate.status === "ready"
+                        ? t.phase4SummaryReady
+                        : t.phase4SummaryMissing,
+                    formatPhase4KeyValue(
+                      t.findings,
+                      summarizeList(activePhase4Summary.finalSummaryGate.findings),
+                    ),
+                    formatPhase4KeyValue(
+                      t.risks,
+                      summarizeList(activePhase4Summary.finalSummaryGate.risks),
+                    ),
+                    formatPhase4KeyValue(
+                      t.missingChecks,
+                      summarizeList(
+                        activePhase4Summary.finalSummaryGate.missingChecks,
+                      ),
+                    ),
+                  ])}
+                  tone={
+                    activePhase4Summary.finalSummaryGate.status === "blocked"
+                      ? "danger"
+                      : "neutral"
+                  }
+                />
+                <div className="phase4-artifact-list">
+                  <p>{t.artifactSummaries}</p>
+                  {activePhase4Summary.artifacts.length > 0 ? (
+                    activePhase4Summary.artifacts.map((artifact) => (
+                      <div className="phase4-artifact-row" key={artifact.id}>
+                        <div>
+                          <span>{artifact.title}</span>
+                          <small>{artifact.kind}</small>
+                        </div>
+                        <small>
+                          {artifact.summary ?? t.phase4Missing}
+                        </small>
+                      </div>
+                    ))
+                  ) : (
+                    <StateBlock
+                      title={t.phase4SummaryMissing}
+                      detail={t.artifactSummaries}
+                    />
+                  )}
+                </div>
+              </div>
+            ) : (
+              <StateBlock
+                title={t.phase4SummaryMissing}
+                detail={t.phase4SummaryDetail}
+              />
+            )}
           </Panel>
 
           <Panel title={t.toolCalls}>
@@ -2591,4 +2784,59 @@ function isApprovalEvent(
   { type: "approval.requested" | "approval.resolved" }
 > {
   return event.type === "approval.requested" || event.type === "approval.resolved";
+}
+
+function formatPhase4Status(
+  status: "missing" | "pending" | "running" | "completed" | "failed" | "skipped",
+  t: (typeof copy)[Locale],
+): string {
+  switch (status) {
+    case "missing":
+      return t.phase4Missing;
+    case "running":
+      return t.running;
+    case "completed":
+      return t.phase4Ready;
+    case "failed":
+      return t.phase4Blocked;
+    case "pending":
+      return t.enabled;
+    case "skipped":
+      return t.phase4Missing;
+  }
+}
+
+function formatPhase4GateStatus(
+  status: "missing" | "ready" | "blocked",
+  t: (typeof copy)[Locale],
+): string {
+  switch (status) {
+    case "missing":
+      return t.phase4Missing;
+    case "ready":
+      return t.phase4Ready;
+    case "blocked":
+      return t.phase4Blocked;
+  }
+}
+
+function formatPhase4SummaryDetail(parts: readonly (string | null)[]): string {
+  return parts
+    .map((part) => part?.trim() ?? "")
+    .filter((part) => part.length > 0)
+    .join(" · ");
+}
+
+function formatPhase4KeyValue(label: string, value: string | null): string | null {
+  if (!value) return null;
+  return `${label}: ${value}`;
+}
+
+function summarizeList(items: readonly string[], limit = 3): string | null {
+  const normalized = items.map((item) => item.trim()).filter((item) => item.length > 0);
+  if (normalized.length === 0) return null;
+
+  const visible = normalized.slice(0, limit);
+  const remainder = normalized.length - visible.length;
+  return remainder > 0 ? `${visible.join(", ")} +${remainder}` : visible.join(", ");
 }

@@ -143,3 +143,19 @@
   - runner 仍负责把结构化输出转换为真实 run events，维持现有 UI / SSE / runtime store 合同。
 - 验证结论：
   - `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check` 通过。
+
+### 2026-06-28 Phase 4 UI 仍以 seed data 解释 multi-agent
+
+- 状态：`fixed`
+- 严重级别：`P2`
+- 发现阶段：docs review
+- 影响范围：`apps/web/src/app/page.tsx` 的 multi-agent 展示、`docs/QA_CHECKLIST.md` 的 Phase 4 验收。
+- 复现步骤或线索：
+  - 打开 `http://localhost:3000/`
+  - 查看当前 run 的 multi-agent 区域，能看到 Supervisor / Researcher / Builder / Reviewer 的静态 seed 文案。
+  - 这些文案仍然主要是阶段性示意，而不是从 `supervisor-runner` 真实事件和 helper 输出里直接派生的 UI 状态。
+- 暂不修复原因：
+  - 需要把当前 Phase 4 的 UI 对齐任务拆成独立实现项，避免一次性重写工作台。
+- 后续处理建议：
+  - 已改为由 `apps/web/src/lib/phase4-summary.ts` 从 phase4 相关 runtime events / helper 输出派生可读状态。
+  - 后续若继续扩展 multi-agent 面板，应沿用该 summary helper，而不要回到静态 seed data。

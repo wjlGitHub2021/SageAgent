@@ -137,6 +137,8 @@ BUG 记录：
 | QA-4-02 | 现状对齐 | `docs/STAGE4_SPEC.md` 与当前实现事实不冲突 | pass | 已恢复为历史 Stage 4 规格 |
 | QA-4-03 | 主链路承接 | multi-agent helper 的后续 task 能明确指向 UI / runtime / QA 承接 | pass | Phase 4 规格已改写为承接型路线图 |
 | QA-4-04 | 风险可见 | 已识别 runner/helper 重复逻辑、文档口径不一致、承接断层等风险 | pass | 已在 Phase 4 规格和 BUG 文档中列出并部分收敛 |
+| QA-4-05 | UI 真实状态 | reviewer gate / final summary gate / artifact summary 已接入真实可读状态，不再只靠 seed data 说明 | pass | Phase 4 live state 面板已直接读取 runtime events / helper 输出 |
+| QA-4-06 | 事件派生 | multi-agent 核心状态从 runtime event 派生，而不是只看静态文案 | pass | phase4 summary helper 仅汇总 phase4 相关 step / artifact / gate 结果 |
 
 ## 7. BUG 记录与退出标准
 
