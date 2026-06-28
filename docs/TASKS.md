@@ -109,6 +109,7 @@
 - [x] 建立手动 QA checklist。
 - [x] 清理 `docs/BUGS.md` 中高优先级问题。
 - [x] 修复首屏 hydration mismatch 和桌面工作台滚动容器。
+- [x] 完成 Stage 5 收口复核并补齐 QA / BUG 记录。
 
 ## Phase 2：真实 Run Loop 最小闭环
 

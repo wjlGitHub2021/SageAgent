@@ -1268,11 +1268,12 @@ export default function Home() {
 
     setIsRunBusy(false);
     setLastComposerState("cancelled");
-    appendLocalFeedbackEvent("run.status_changed", {
+    const cancelEvent = appendLocalFeedbackEvent("run.status_changed", {
       previousStatus: "running",
       status: "cancelled",
       activeAgent: "supervisor",
     });
+    setRunItems((current) => updateRunItemFromEvents(current, [cancelEvent]));
     appendLocalFeedbackMessage({
       zh: copy.zh.composerCancelledHint,
       en: copy.en.composerCancelledHint,
@@ -1332,20 +1333,20 @@ export default function Home() {
       en: copy.en.providerErrorSafeMessage,
     };
 
-    setRunEvents((current) => [
-      ...current,
-      {
-        id: `event-provider-error-${Date.now()}`,
-        runId: activeRunId,
-        type: "run.failed",
-        sequence: nextEventSequence(current, activeRunId),
-        createdAt: failedAt,
-        payload: {
-          run: failedRun,
-          error: errorMessage[locale],
-        },
+    const event: RunEvent = {
+      id: `event-provider-error-${Date.now()}`,
+      runId: activeRunId,
+      type: "run.failed",
+      sequence: nextEventSequence(runEvents, activeRunId),
+      createdAt: failedAt,
+      payload: {
+        run: failedRun,
+        error: errorMessage[locale],
       },
-    ]);
+    };
+
+    setRunEvents((current) => [...current, event]);
+    setRunItems((current) => updateRunItemFromEvents(current, [event]));
   }
 
   function handleProviderRetry() {
@@ -1361,30 +1362,29 @@ export default function Home() {
   function appendLocalFeedbackEvent(
     type: "run.status_changed",
     payload: Extract<RunEvent, { type: "run.status_changed" }>["payload"],
-  ): void;
+  ): Extract<RunEvent, { type: "run.status_changed" }>;
   function appendLocalFeedbackEvent(
     type: "message.completed",
     payload: Extract<RunEvent, { type: "message.completed" }>["payload"],
-  ): void;
+  ): Extract<RunEvent, { type: "message.completed" }>;
   function appendLocalFeedbackEvent(
     type: "run.status_changed" | "message.completed",
     payload:
       | Extract<RunEvent, { type: "run.status_changed" }>["payload"]
       | Extract<RunEvent, { type: "message.completed" }>["payload"],
-  ) {
+  ): RunEvent {
     const createdAt = new Date().toISOString();
+    const event = {
+      id: `event-local-feedback-${Date.now()}`,
+      runId: activeRunId,
+      type,
+      sequence: nextEventSequence(runEvents, activeRunId),
+      createdAt,
+      payload,
+    } as RunEvent;
 
-    setRunEvents((current) => [
-      ...current,
-      {
-        id: `event-local-feedback-${Date.now()}`,
-        runId: activeRunId,
-        type,
-        sequence: nextEventSequence(current, activeRunId),
-        createdAt,
-        payload,
-      } as RunEvent,
-    ]);
+    setRunEvents((current) => [...current, event]);
+    return event;
   }
 
   function appendLocalFeedbackMessage(body: Message["body"]) {
@@ -2844,9 +2844,11 @@ function getProviderError(
       : "System",
     status: failedEvent.payload.run.status,
     message:
-      locale === "zh"
-        ? copy.zh.providerErrorSafeMessage
-        : copy.en.providerErrorSafeMessage,
+      failedEvent.payload.error.trim().length > 0
+        ? failedEvent.payload.error
+        : locale === "zh"
+          ? copy.zh.providerErrorSafeMessage
+          : copy.en.providerErrorSafeMessage,
   };
 }
 

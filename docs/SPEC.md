@@ -272,7 +272,7 @@ Phase 2.3 起，Supervisor route 的默认响应升级为 live SSE：
 - 前端边读 SSE 边应用 events；`message.delta` 创建或追加当前 Supervisor message，`message.completed` 固化最终内容。
 - 失败事件也通过同一条 stream 返回，确保 UI 和 runtime audit 不断链。
 
-Phase 2.4 起，Supervisor route 在调用 DeepSeek 前执行最小只读文件 context pass：
+只读文件上下文由 Supervisor route 在调用 DeepSeek 前执行最小 context pass：
 
 - 当用户目标中明确提到项目相对路径，例如 `README.md`、`docs/SPEC.md`、`packages/runtime/src/tools.ts`，后端使用 `read_project_file` 工具尝试读取这些路径。
 - workspace root 默认从 monorepo root 推导；部署或特殊启动方式可用 `SAGE_WORKSPACE_ROOT` 显式固定。

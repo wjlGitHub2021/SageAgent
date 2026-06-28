@@ -180,3 +180,16 @@ BUG 记录：
 - BUG 记录：`BUG-0001` 已 fixed，无新增 P0/P1
 - Phase 2.5 契约审查：已补齐 Supervisor plan event、read-only file tool 所属 Step、multi-agent planning failure 的 `run.failed`、Reviewer gate 非 pass 阻塞，以及 streaming 空输出失败测试。
 - 备注：桌面首屏 composer 可见，inspector 内部滚动正常；移动端无横向溢出，页面可继续向下浏览，未见 hydration / recoverable console error
+
+## 2026-06-28 Stage 5 收口复核
+
+- 日期：2026-06-28
+- 执行者：Codex
+- Commit：本次复核随当前工作区改动记录，尚未提交
+- 环境：`http://localhost:3000`，Next.js 本地 dev server
+- 浏览器：in-app browser
+- 结论：pass
+- 自动化门禁：`rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check` 通过
+- 主要风险：未在真实 DeepSeek 网络可用环境下复跑在线连接；当前验证覆盖本地 UI、run/audit、cancel/retry、provider error、Settings 与响应式状态
+- BUG 记录：本次复核未新增 P0/P1；已修复真实 provider error 透传与本地 cancel/provider error 的 run history 状态同步
+- 备注：桌面首屏三栏可见，Settings 双语切换正常，Cancel / Retry / Provider Error 交互有明确反馈，左侧 run 状态与审计轨迹同步更新

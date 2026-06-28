@@ -115,7 +115,7 @@ Phase 2 采用渐进闭环：
 范围：
 
 - 增加只读项目文件工具 `read_project_file`，用于把明确指定的项目文本文件作为 Supervisor 上下文。
-- Phase 2.4 只支持显式路径触发，例如用户输入“读取 `docs/SPEC.md` 并总结”或“分析 `README.md`”。暂不做全仓库自动搜索或 LLM 自主选择任意文件。
+- 只读文件上下文只支持显式路径触发，例如用户输入“读取 `docs/SPEC.md` 并总结”或“分析 `README.md`”。暂不做全仓库自动搜索或 LLM 自主选择任意文件。
 - 工具调用必须产生日志化 `tool.started` / `tool.completed` / `tool.failed` events；事件进入同一条 run stream，并在 UI tool calls / timeline / audit 中可见。
 - 只允许读取项目根目录内的文本文件。路径必须先标准化、resolve，再确认仍位于 workspace root 内。
 - 禁止路径穿越、绝对路径越界、目录读取、隐藏敏感文件、依赖/构建产物目录和二进制/过大文件：

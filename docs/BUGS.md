@@ -158,4 +158,20 @@
   - 需要把当前 Phase 4 的 UI 对齐任务拆成独立实现项，避免一次性重写工作台。
 - 后续处理建议：
   - 已改为由 `apps/web/src/lib/phase4-summary.ts` 从 phase4 相关 runtime events / helper 输出派生可读状态。
-  - 后续若继续扩展 multi-agent 面板，应沿用该 summary helper，而不要回到静态 seed data。
+- 后续若继续扩展 multi-agent 面板，应沿用该 summary helper，而不要回到静态 seed data。
+
+### 2026-06-28 Stage 5 收口复核
+
+- 状态：`fixed`
+- 严重级别：`P1`
+- 发现阶段：QA
+- 影响范围：`apps/web/src/app/page.tsx` 的 provider error 展示与本地 cancel / provider error 反馈状态同步。
+- 复现步骤或线索：
+  - 在 Stage 5 收口复核中，真实 `run.failed` 事件会被页面展示为本地模拟错误文案，而不是后端返回的安全错误内容。
+  - 本地 cancel / provider error 事件会更新审计轨迹，但左侧 run history 可能不同步成 `已取消` 或 `失败`。
+- 修复方式：
+  - `run.failed` 优先透传 `payload.error`，仅在空值时 fallback 到本地安全文案。
+  - 本地 cancel / provider error 追加事件后同步调用 run history reducer 更新左侧状态。
+- 验证结论：
+  - 已通过 `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check`。
+  - Browser QA 复核后，Cancel / Retry / Provider Error 的提示与左侧 run 状态同步更新。
