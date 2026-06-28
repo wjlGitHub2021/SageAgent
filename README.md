@@ -79,6 +79,8 @@ rtk pnpm build
 ## 文档入口
 
 - [PLAN](docs/PLAN.md)：当前路线图和 v1 收口边界
+- [HERMES_ROADMAP](docs/HERMES_ROADMAP.md)：Hermes 对照与下一版产品路线图
+- [DECISIONS](docs/DECISIONS.md)：架构与产品边界决策记录
 - [SPEC](docs/SPEC.md)：产品与系统规格
 - [TASKS](docs/TASKS.md)：当前可执行任务
 - [QA_CHECKLIST](docs/QA_CHECKLIST.md)：手动验收清单

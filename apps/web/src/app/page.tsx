@@ -1332,12 +1332,13 @@ export default function Home() {
       zh: copy.zh.providerErrorSafeMessage,
       en: copy.en.providerErrorSafeMessage,
     };
+    const nextSequence = nextEventSequence(runEvents, activeRunId);
 
     const event: RunEvent = {
-      id: `event-provider-error-${Date.now()}`,
+      id: `event-provider-error-${activeRunId}-${nextSequence}`,
       runId: activeRunId,
       type: "run.failed",
-      sequence: nextEventSequence(runEvents, activeRunId),
+      sequence: nextSequence,
       createdAt: failedAt,
       payload: {
         run: failedRun,
@@ -1417,13 +1418,31 @@ export default function Home() {
     <main className="min-h-screen bg-[var(--app-bg)] text-[var(--text-main)]">
       <div className="app-shell">
         <aside className="sidebar">
-          <div className="brand-row">
-            <div className="brand-mark">S</div>
-            <div>
-              <p className="brand-name">Sage Agent</p>
-              <p className="brand-subtitle">{t.localWorkbench}</p>
+          <section className="sidebar-hero" aria-label={t.localWorkbench}>
+            <div className="brand-row">
+              <div className="brand-mark">S</div>
+              <div>
+                <p className="brand-name">Sage Agent</p>
+                <p className="brand-subtitle">{t.localWorkbench}</p>
+              </div>
             </div>
-          </div>
+            <div className="sidebar-hero-copy">
+              <div className="sidebar-hero-heading">
+                <span>{t.currentRun}</span>
+                <strong>{activeRun?.title[locale] ?? t.headerFallback}</strong>
+              </div>
+              <p>{activeRun?.goal ?? t.headerDescription}</p>
+            </div>
+            <div className="sidebar-hero-meta" aria-label={t.currentConfiguration}>
+              <span>
+                {threadItems.length} {t.threads}
+              </span>
+              <span>
+                {runItems.length} {t.runs}
+              </span>
+              <span>{t.readDraftMode}</span>
+            </div>
+          </section>
 
           <section className="settings-strip" aria-label={t.settings}>
             <button
@@ -1494,10 +1513,15 @@ export default function Home() {
 
         <section className="workspace">
           <header className="workspace-header">
-            <div>
-              <p className="section-label">{t.currentRun}</p>
+            <div className="workspace-header-copy">
+              <p className="section-label">
+                {activeThread?.title[locale] ?? t.currentRun}
+              </p>
               <h1>{activeRun?.title[locale] ?? t.headerFallback}</h1>
-              <p>{activeRun?.goal ?? `${activeThread?.title[locale]} ${t.headerDescription}`}</p>
+              <p>
+                {activeRun?.goal ??
+                  `${activeThread?.title[locale]} ${t.headerDescription}`}
+              </p>
             </div>
 
             <div className="model-controls" aria-label={t.modelSettings}>
@@ -1512,6 +1536,29 @@ export default function Home() {
               </span>
             </div>
           </header>
+
+          <section className="workspace-launchpad" aria-label={t.currentConfiguration}>
+            <div className="launchpad-card">
+              <span>{t.currentRun}</span>
+              <strong>{activeRun?.id ?? t.notConfigured}</strong>
+              <small>
+                {activeRun ? formatRunStatusLabel(activeRun.status, t) : t.notConfigured}
+                {activeRun ? ` · ${activeRun.time}` : ""}
+              </small>
+            </div>
+            <div className="launchpad-card">
+              <span>{t.threads}</span>
+              <strong>{activeThread?.title[locale] ?? t.notConfigured}</strong>
+              <small>{activeThread?.subtitle[locale] ?? t.notConfigured}</small>
+            </div>
+            <div className="launchpad-card">
+              <span>{t.modelSettings}</span>
+              <strong>{model}</strong>
+              <small>
+                {thinkingEnabled ? t.enabled : t.disabled} · {reasoningEffort}
+              </small>
+            </div>
+          </section>
 
           <div className="conversation">
             {activeMessages.map((message, index) => (

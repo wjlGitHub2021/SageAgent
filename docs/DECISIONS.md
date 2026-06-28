@@ -296,3 +296,23 @@ Settings 初始承载：
 
 - v1 尚未完全收口时继续展开新平台能力，会让文档、QA 和实现口径再次漂移。
 - 先把本地单用户产品稳定下来，后续扩展才有清晰基线。
+
+## DEC-0016：目标是做小型 Hermes Agent
+
+状态：accepted
+
+决策：
+
+Sage Agent 的长期产品方向是“小型 Hermes Agent”：先做 Web，后做 Desktop；先做 DeepSeek-only，后做多 provider；先做可审计的核心 shell，后做 memory、skills、profiles、cron、voice、gateway 等扩展能力。
+
+约束：
+
+- v1 保持 local single-user、Web First、DeepSeek-only。
+- memory 和 skills 是下一阶段核心能力，不再只是附属功能。
+- desktop 是明确方向，但只在 web 壳层稳定后再进入。
+- 自动更新、远程登录、cron、voice、profiles、skills hub、gateway 不进入当前主线。
+
+理由：
+
+- Hermes 的价值在于把 agent core 变成跨 surface、跨 session、跨能力的平台。
+- 我们要保留这个方向，但用更小的步子推进，先交付一个稳定的本地产品。

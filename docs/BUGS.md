@@ -188,3 +188,19 @@
   - 已通过 `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check`。
   - Browser QA 复核后，Cancel / Retry / Provider Error 的提示与左侧 run 状态同步更新。
   - `GET /api/settings/deepseek` 与 `POST /api/settings/deepseek` 在线检查均返回 provider ready / connection test succeeded。
+
+### 2026-06-28 V2.1 壳层复核
+
+- 状态：`fixed`
+- 严重级别：`P2`
+- 发现阶段：implementation / QA
+- 影响范围：`apps/web` 的首页态组织、composer 固定感、窄屏可读性。
+- 复现步骤或线索：
+  - V2.1 壳层改造后，首屏会更明显地展示 sidebar home/overview、workspace 分层和 launchpad 卡片。
+  - 在 390px 视口下，如果壳层布局压得过紧，composer 的贴底感和 launchpad 视觉节奏可能受影响。
+- 修复方式：
+  - 通过 CSS 调整 `sidebar-hero`、`workspace-launchpad` 和 `composer` 的布局密度，保留现有 run 流和 inspector。
+- 验证结论：
+  - `rtk pnpm --filter web lint` 通过。
+  - `rtk pnpm --filter web build` 通过。
+  - 浏览器核对确认桌面视口和窄屏视口均保持可读，无明显 runtime error。

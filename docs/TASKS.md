@@ -48,6 +48,18 @@
 - [x] 收口当前文档中的悬空表达，避免 v1 继续向外发散。
 - [x] 验收标准：路线图有清晰的 v1 / v2 分界。
 
+### Task V2.1：Web 壳层对齐
+
+- [x] 把当前 Web 界面整理成 Hermes-like 的工作台壳。
+- [x] 左侧保留长期导航和对象列表。
+- [x] 中间保留当前 run 工作区。
+- [x] 底部固定 composer。
+- [x] 右侧保留 timeline、tool calls、approvals、artifacts。
+- [x] 强化空态首页，让它像一个 agent home，不像普通 dashboard。
+- [x] 保持 run 进入后和 empty state 的视觉切换清楚。
+- [x] 统一 desktop 与 mobile 的壳层行为。
+- [x] 验收标准：Web shell 更接近 Hermes-like 布局，同时不破坏现有 run 流和 inspector 信息。
+
 ## 已完成基线
 
 - [x] Stage 0：项目地基

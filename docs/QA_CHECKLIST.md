@@ -74,6 +74,16 @@ BUG 记录：
 | QA-SMOKE-04 | 语言切换 | Settings 可切换中文 / English | pass | smoke check 的最低门槛之一 |
 | QA-SMOKE-05 | 安全边界提示 | README 和 UI 都说明 `.env.local`、API key 和 read-only 边界 | pass | 不要求真实 API key 才能完成 smoke check |
 
+## 1.6 Hermes-like 壳层 QA
+
+| ID | 检查项 | 期望 | 状态 | 备注 |
+| --- | --- | --- | --- | --- |
+| QA-SHELL-01 | sidebar 首页态 | 左侧有更强的 home / overview 组织，但不新增多余入口 | pass | 由 browser QA 复核 |
+| QA-SHELL-02 | workspace 分层 | 中间区域存在更明确的 agent home / current run 分层 | pass | 由 browser QA 复核 |
+| QA-SHELL-03 | composer 锚点 | composer 在 desktop 下稳定贴底，滚动时仍保持可见性 | pass | `web` lint/build 后浏览器核对通过 |
+| QA-SHELL-04 | 既有状态保留 | run、timeline、approvals、artifacts、provider error 不丢失 | pass | 浏览器核对无回归 |
+| QA-SHELL-05 | 窄屏回归 | 390px 宽度下仍保持可读，不出现明显 runtime error | pass | 浏览器核对无明显异常 |
+
 ## 2. UI 工作台与双语
 
 验证 URL：`http://localhost:3000`
@@ -174,6 +184,7 @@ BUG 记录：
 
 - `QA-AUTO-01` 到 `QA-AUTO-05` 全部 pass。
 - `QA-SMOKE-01` 到 `QA-SMOKE-05` 全部 pass。
+- `QA-SHELL-01` 到 `QA-SHELL-05` 全部 pass。
 - `QA-UI-03` 到 `QA-UI-08` 全部 pass。
 - `QA-RUN-02`、`QA-RUN-03`、`QA-RUN-08` 全部 pass。
 - `QA-SAFE-01` 到 `QA-SAFE-07` 全部 pass 或有明确 blocked 记录。
