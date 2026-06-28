@@ -212,6 +212,64 @@ describe("runtime flows", () => {
     });
   });
 
+  it("keeps terminal status events idempotent for local cancel feedback", () => {
+    const store = createMemoryRuntimeStore(createEmptyRuntimeSnapshot());
+    store.upsertThread(thread);
+    store.appendEvent({
+      id: "event-run-created-for-cancel",
+      runId: run.id,
+      type: "run.created",
+      sequence: 1,
+      createdAt,
+      payload: { run },
+    });
+
+    const cancelledAt = "2026-06-24T01:00:04.000Z";
+    const cancelEvent: RunEvent = {
+      id: "event-run-cancelled",
+      runId: run.id,
+      type: "run.status_changed",
+      sequence: 2,
+      createdAt: cancelledAt,
+      payload: {
+        previousStatus: "running",
+        status: "cancelled",
+        activeAgent: "supervisor",
+      },
+    };
+
+    store.appendEvent(cancelEvent);
+    store.appendEvent({
+      ...cancelEvent,
+      id: "event-run-reopened-after-cancel",
+      sequence: 3,
+      createdAt: "2026-06-24T01:00:05.000Z",
+      payload: {
+        previousStatus: "cancelled",
+        status: "running",
+        activeAgent: "supervisor",
+      },
+    });
+
+    expect(store.getRun(run.id)).toMatchObject({
+      status: "cancelled",
+      activeAgent: "supervisor",
+      completedAt: cancelledAt,
+    });
+    expect(store.getEventsByRun(run.id).map((event) => event.id)).toEqual([
+      "event-run-created-for-cancel",
+      "event-run-cancelled",
+      "event-run-reopened-after-cancel",
+    ]);
+    expect(store.getEventsByRun(run.id, 2).map((event) => event.id)).toEqual([
+      "event-run-reopened-after-cancel",
+    ]);
+    expect(store.getEventsByRun(run.id, 1).map((event) => event.id)).toEqual([
+      "event-run-cancelled",
+      "event-run-reopened-after-cancel",
+    ]);
+  });
+
   it("keeps approval flow explicit for side-effect actions", () => {
     expect(requiresApprovalForAction("write_file")).toBe(true);
     expect(requiresApprovalForAction("run_shell")).toBe(true);

@@ -108,6 +108,7 @@ Stage 5 必须继续遵守：
 
 - 根目录提供 `rtk pnpm test`。
 - 单元测试覆盖 provider / runtime / agents 的关键商业化风险点。
+- Runtime store 测试需要覆盖 terminal run status 与重复事件幂等性，避免 cancel / retry 这类本地反馈事件污染审计状态。
 - 测试不能依赖外部网络或本机私有环境变量。
 - `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
 

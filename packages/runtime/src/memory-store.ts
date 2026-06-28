@@ -235,6 +235,12 @@ class MemoryRuntimeStore implements RuntimeStore {
   ): void {
     const currentRun = this.runs.get(event.runId);
     if (!currentRun) return;
+    if (
+      isTerminalRunStatus(currentRun.status) &&
+      !isTerminalRunStatus(event.payload.status)
+    ) {
+      return;
+    }
 
     this.upsertRun({
       ...currentRun,
