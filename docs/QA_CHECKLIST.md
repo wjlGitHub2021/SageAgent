@@ -113,8 +113,8 @@ BUG 记录：
 | QA-DS-02 | 可选模型 | 只暴露 `deepseek-v4-flash` 和 `deepseek-v4-pro` |  |  |
 | QA-DS-03 | thinking 默认 | 默认 thinking enabled |  |  |
 | QA-DS-04 | reasoning effort | UI 只暴露 `high` / `max`，默认 `high` |  |  |
-| QA-DS-05 | base URL | 默认 `https://api.deepseek.com`，拒绝 insecure URL；可用 `rtk pnpm test -- tests/deepseek-provider.test.ts` 验证配置规则 |  |  |
-| QA-DS-06 | 无 API key 行为 | 无 key 时不发真实请求，提示安全可理解 |  |  |
+| QA-DS-05 | base URL | 默认 `https://api.deepseek.com`，拒绝 insecure URL；可用 `rtk pnpm test -- tests/deepseek-provider.test.ts` 验证配置规则 | pass | Task 3.3 tests + 2026-06-28 online connection check |
+| QA-DS-06 | 无 API key 行为 | 无 key 时不发真实请求，提示安全可理解 | pass | Task 3.3 tests + 2026-06-28 browser/settings connection check |
 
 ## 6.5 Phase 3 Settings
 
@@ -191,5 +191,6 @@ BUG 记录：
 - 结论：pass
 - 自动化门禁：`rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check` 通过
 - 主要风险：未在真实 DeepSeek 网络可用环境下复跑在线连接；当前验证覆盖本地 UI、run/audit、cancel/retry、provider error、Settings 与响应式状态
+- 主要风险：当前连接测试依赖本机服务端环境变量；本轮已通过本地 `/api/settings/deepseek` 在线检查确认 provider ready
 - BUG 记录：本次复核未新增 P0/P1；已修复真实 provider error 透传与本地 cancel/provider error 的 run history 状态同步
-- 备注：桌面首屏三栏可见，Settings 双语切换正常，Cancel / Retry / Provider Error 交互有明确反馈，左侧 run 状态与审计轨迹同步更新
+- 备注：桌面首屏三栏可见，Settings 双语切换正常，Cancel / Retry / Provider Error 交互有明确反馈，左侧 run 状态与审计轨迹同步更新，DeepSeek 连接测试成功

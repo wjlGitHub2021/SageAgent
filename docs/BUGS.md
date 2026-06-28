@@ -175,3 +175,4 @@
 - 验证结论：
   - 已通过 `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check`。
   - Browser QA 复核后，Cancel / Retry / Provider Error 的提示与左侧 run 状态同步更新。
+  - `GET /api/settings/deepseek` 与 `POST /api/settings/deepseek` 在线检查均返回 provider ready / connection test succeeded。
