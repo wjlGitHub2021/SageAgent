@@ -6,7 +6,7 @@
 
 - [ ] 先更新相关文档，明确目标、边界和验收标准。
 - [ ] 再实现当前 task，不做无关扩展。
-- [ ] 做 QA 审查；复杂 task 分派独立 QA 子 agent。
+- [ ] 做 QA 审查，复杂 task 分派独立 QA 子 agent。
 - [ ] 当前可修复 bug 当下修复；暂不修复 bug 记录到 `docs/BUGS.md`。
 - [ ] task 完成后使用中文提交一次 git。
 
@@ -16,119 +16,51 @@
 - 单个 task 应能在一次上下文内完成文档、实现、QA、提交。
 - 如果任务跨越多个阶段，先拆分再执行。
 
-## Stage 0：项目地基
+## 当前主线：本地单用户 v1 收口
 
-- [x] 初始化 `main` 分支本地 git 仓库。
-- [x] 添加 `.gitignore`。
-- [x] 添加 `AGENTS.md`。
-- [x] 添加 `README.md`。
-- [x] 添加 `docs/PLAN.md`。
-- [x] 添加 `docs/SPEC.md`。
-- [x] 添加 `docs/TASKS.md`。
-- [x] 添加 `docs/DECISIONS.md`。
-- [x] 添加 `docs/BUGS.md`。
-- [x] 创建初始化 commit。
-- [x] 将项目治理文档统一为中文，并补充商业化、子 agent、QA、BUG 跟踪和中文提交规范。
+说明：以下任务是当前 active phase。历史 Stage / Phase 已完成，只保留为基线，不再继续扩展成新阶段任务。
 
-## Stage 1：Product Shell
+### Task V1.1：统一路线图与文档口径
 
-- [x] 锁定 Stage 1 技术选型与验收标准。
-- [x] 选择 package manager 和 workspace layout。
-- [x] Scaffold `apps/web`。
-- [x] 添加 TypeScript configuration。
-- [x] 选择 UI styling approach。
-- [x] 建立 Codex desktop-inspired app shell。
-- [x] 添加 threads、runs、events、tools、approvals、artifacts 静态 seed data。
-- [x] 添加 `.env.example`。
-- [x] 为 Stage 1 关键控件添加本地交互反馈。
-- [x] 添加 Settings 中文/English 界面切换，并建立双语文案约束。
-- [x] 优化 Settings 移动端视觉，使语言切换更紧凑、对齐且符合商业化设置项质感。
-- [x] 根据浏览器视觉反馈 polish Settings 侧栏区域。
-- [x] 根据浏览器选区反馈再次 polish Settings 语言切换区域。
-- [x] 验证 desktop layout。
-- [x] 验证 mobile layout。
+- [x] 更新 `docs/PLAN.md`、`docs/TASKS.md`、`docs/SPEC.md`、`docs/QA_CHECKLIST.md`、`docs/BUGS.md` 对当前 active scope 的描述。
+- [x] 收束 Stage / Phase 混用的命名，让新读者一眼看懂历史基线和当前主线。
+- [x] 将历史已完成阶段折叠成可追溯的基线说明，避免继续堆叠旧任务。
+- [x] 验收标准：路线图能清楚说明 v1 当前做什么、不做什么、下一步是什么。
 
-## Stage 2：Run System 与 Event Flow
+### Task V1.2：清理剩余 P0 / P1 与高风险回归
 
-- [x] 编写 `docs/STAGE2_SPEC.md`，锁定 Stage 2 分块策略与 Task 2.1 验收标准。
-- [x] 定义 shared domain types。
-- [x] 添加 local runtime state store。
-- [x] 编写 Task 2.3 create-run API 范围与验收标准。
-- [x] 添加 create-run API。
-- [x] 编写 Task 2.4 SSE event endpoint 范围与验收标准。
-- [x] 添加 SSE event endpoint。
-- [x] 编写 Task 2.5 event-driven timeline 范围与验收标准。
-- [x] 渲染 event-driven timeline。
-- [x] 编写 Task 2.6 inspector event-derived panels 范围与验收标准。
-- [x] 在 inspector 中渲染 tool calls、approvals、artifacts。
+- [x] 审查 `docs/BUGS.md` 和当前实现中的高优先级风险。
+- [x] 修复当前可解决的问题，不顺手引入新功能。
+- [x] 暂不修复的问题必须记录到 `docs/BUGS.md`，并写清楚阻塞原因和后续建议。
+- [x] 验收标准：无未处理的 P0 / P1，或者所有阻塞项都有明确说明。
 
-## Stage 3：DeepSeek V4 Provider
+### Task V1.3：发布门禁与 QA 收口
 
-说明：本节是已完成的历史 Stage 3 provider 任务记录；当前 Phase 3 任务以本文件下方 “Phase 3：产品化设置与本地配置体系” 章节和 `docs/PHASE3_SPEC.md` 为准。
+- [x] 整理自动化门禁、手动 QA checklist 和浏览器回归步骤。
+- [x] 补齐 README、启动说明、环境变量和安全边界说明的一致性。
+- [x] 确认新成员按文档可以完成安装、启动和一次基础 smoke check。
+- [x] 验收标准：v1 的安装、启动、基础验证路径清楚且可复现。
 
-- [x] 编写 `docs/STAGE3_SPEC.md`，锁定 Stage 3 分块策略与 Task 3.1 验收标准。
-- [x] 添加 provider configuration。
-- [x] 编写 Task 3.2 API key environment handling 范围与验收标准。
-- [x] 添加 API key environment handling。
-- [x] 编写 Task 3.3 DeepSeek V4 adapter 范围与验收标准。
-- [x] 实现 DeepSeek V4 adapter。
-- [x] 编写 Task 3.4 model selector 范围与验收标准。
-- [x] 添加 model selector。
-- [x] 编写 Task 3.5 thinking mode toggle 范围与验收标准。
-- [x] 添加 thinking mode toggle。
-- [x] 编写 Task 3.6 reasoning effort selector 范围与验收标准。
-- [x] 添加 `high` / `max` reasoning effort selector。
-- [x] 编写 Task 3.7 streamed output run events 范围与验收标准。
-- [x] 将 streamed model output 写入 run events。
-- [x] 编写 Task 3.8 provider error display 范围与验收标准。
-- [x] 在 UI 中清楚展示 provider errors。
+### Task V1.4：冻结 v1 范围并准备下一阶段提案
 
-## Phase 4：Multi-Agent 产品化承接
+- [x] 明确 v1 不做事项和 v2 候选范围。
+- [x] 给未来的新阶段留出提案入口，但不在当前主线展开实现。
+- [x] 收口当前文档中的悬空表达，避免 v1 继续向外发散。
+- [x] 验收标准：路线图有清晰的 v1 / v2 分界。
 
-说明：本节是当前 active phase；Phase 4 聚焦把现有 multi-agent 纯函数、approval helper、artifact helper 和 final summary gate 串成可审计、可接 UI 的产品化闭环。
+## 已完成基线
 
-- [x] 编写 `docs/PHASE4_SPEC.md`，锁定 Phase 4 的现状、目标和任务拆分。
-- [x] 对齐 `docs/STAGE4_SPEC.md`、`docs/PLAN.md`、`docs/SPEC.md` 与当前实现口径。
-- [x] 明确 `apps/web/src/lib/supervisor-runner.ts` 与 `packages/runtime` 的 source of truth 分工。
-- [x] 明确 multi-agent 事件流、approval / artifact / final summary 的主链路承接任务。
-- [x] 将 Phase 4 的 reviewer gate / final summary gate / artifact summary 接入 UI 可读状态。
-- [x] 将 Phase 4 的 multi-agent 状态从 seed 说明迁移到 runtime event 派生。
-- [x] 检查并修复 UI / runtime / QA 中 Phase 4 的承接断层。
-- [x] 完成 Phase 4 QA、BUG 复核和阶段收尾。
+- [x] Stage 0：项目地基
+- [x] Stage 1：Product Shell
+- [x] Stage 2：Run System 与 Event Flow
+- [x] Stage 3：DeepSeek V4 Provider
+- [x] Phase 2：真实 Run Loop 最小闭环
+- [x] Phase 3：产品化设置与本地配置体系
+- [x] Phase 4：Multi-Agent 产品化承接
+- [x] Stage 5：商业化质量加固
 
-## Stage 5：商业化质量加固
+## 执行原则
 
-说明：本节是当前 active phase；Stage 5 聚焦把 MVP 从可演示状态继续推进到更接近商业化产品的质量基础。真实 provider、read-only tool、多 agent run 的商业化验收仍以 Phase 2 及后续 release checklist 为准。
-
-- [x] 编写 `docs/STAGE5_SPEC.md`，锁定 Stage 5 分块策略与 Task 5.1 验收标准。
-- [x] 完善 error states、empty states、loading states。
-- [x] 添加 cancel / retry 行为。
-- [x] 完善 run history 和 audit trail。
-- [x] 建立最小可行 telemetry/logging。
-- [x] 添加关键测试。
-- [x] 建立手动 QA checklist。
-- [x] 清理 `docs/BUGS.md` 中高优先级问题。
-- [x] 修复首屏 hydration mismatch 和桌面工作台滚动容器。
-- [x] 完成 Stage 5 收口复核并补齐 QA / BUG 记录。
-
-## Phase 2：真实 Run Loop 最小闭环
-
-- [x] 编写 `docs/PHASE2_SPEC.md`，锁定 Phase 2 分块策略与 Task 2.1 验收标准。
-- [x] 将 composer 接入 create-run / stream-output / events API。
-- [x] 接入 Supervisor-only DeepSeek 调用。
-- [x] 将 DeepSeek streamed output 转换为 run events。
-- [x] 文档化 read-only file tool 的触发方式、安全边界、事件顺序和验收标准。
-- [x] 添加 read-only file tool。
-- [x] 文档化 supervisor-led multi-agent run 的事件链路与验收标准。
-- [x] 扩展到 supervisor-led multi-agent run。
-
-## Phase 3：产品化设置与本地配置体系
-
-说明：本节是当前 active phase；`Task 3.x` 指 Phase 3 Settings 与本地配置体系任务，不再引用历史 `docs/STAGE3_SPEC.md` 的 provider 任务编号。
-
-- [x] Task 3.0：补齐 Phase 3 规划文档、任务拆分、设置安全策略和 QA checklist。
-- [x] Task 3.1：添加独立 Settings 入口与 Settings 页面 / 面板骨架。
-- [x] Task 3.2：将语言、默认模型、thinking、reasoning effort 集中到 Settings，并添加非敏感偏好持久化。
-- [x] Task 3.3：展示 DeepSeek provider 配置状态，并添加安全连接测试。
-- [x] Task 3.4：展示 workspace root 与 read-only file tool 安全边界说明。
-- [x] Task 3.5：完成 Phase 3 QA、BUG 复核和阶段收尾。
+- 先文档，再实现，再 QA。
+- 当前只做 v1 收口相关工作，不再新增平台级能力。
+- 安全边界、脱敏和审计链路优先于便利性。

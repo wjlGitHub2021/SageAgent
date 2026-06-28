@@ -18,6 +18,10 @@
 - 暂不修复原因。
 - 后续处理建议。
 
+## 当前主线
+
+当前规划主线是“本地单用户 v1 收口”。本文件保留历史审计记录和现存缺陷线索，后续新增问题也按 v1 的稳定性、安全边界和发布门禁口径登记。
+
 ## 当前 BUG
 
 ### BUG-0001：首屏 hydration mismatch 与桌面滚动容器不符合工作台预期
@@ -40,6 +44,14 @@
 - 验证结论：
   - `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
   - 临时 Playwright QA 验证 desktop 无 hydration / recoverable console error，composer 首屏可见，desktop 整页不滚动，mobile 无横向溢出且可纵向浏览。
+
+### 2026-06-28 V1.2 高优先级复核
+
+- 审计时间：2026-06-28 CST
+- 审计范围：`docs/BUGS.md`、`docs/TASKS.md`、`docs/PLAN.md`、`docs/SPEC.md`、`docs/QA_CHECKLIST.md`、`README.md`、`apps/web/src/app/page.tsx`、`apps/web/src/lib/supervisor-runner.ts`、`apps/web/src/lib/deepseek-provider-status.ts`、`apps/web/src/app/api/settings/deepseek/route.ts`、`apps/web/src/app/api/runs/[runId]/supervisor/route.ts`、`packages/runtime/src/read-project-file-tool.ts`、`packages/deepseek/src/config.ts`、`tests/runtime-flows.test.ts`、`tests/deepseek-provider-status.test.ts`、`tests/web-workspace-policy.test.ts`。
+- 搜索线索：`BUG`、`FIXME`、`TODO`、`P0`、`P1`、`blocked`、`HACK`、`XXX`。
+- 结论：未发现未登记的 open / blocked P0/P1；搜索结果中的 `blocked` 主要是状态枚举、read-only policy 或 reviewer gate 文案，不构成待修复缺陷。
+- 备注：现有历史 P1/P2 记录继续保留，当前主线仍围绕 v1 收口和发布门禁推进。
 
 ## 高优先级审计记录
 

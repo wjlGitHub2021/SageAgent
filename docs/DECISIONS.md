@@ -278,3 +278,21 @@ Settings 初始承载：
 - 独立 Settings 能降低工作台主界面的认知噪音。
 - API key 和 workspace 权限属于高信任配置，必须集中展示安全边界和状态。
 - 先做 local single-user Settings，可以为后续 hosted / multi-user 配置体系保留演进空间。
+
+## DEC-0015：v1 收口优先于 v2 展开
+
+状态：accepted
+
+决策：
+
+当前路线图以本地单用户 v1 收口为唯一主线。`docs/PLAN.md` 里的 v2 候选范围只作为未来提案入口，不代表进入执行阶段。
+
+约束：
+
+- 现阶段不把 hosted multi-user、billing、tenant isolation、remote sync、provider marketplace 或自由 swarm 作为当前工作项。
+- 若未来要推进这些方向，必须先单独提出新提案，再定义范围、验收和迁移影响。
+
+理由：
+
+- v1 尚未完全收口时继续展开新平台能力，会让文档、QA 和实现口径再次漂移。
+- 先把本地单用户产品稳定下来，后续扩展才有清晰基线。

@@ -4,6 +4,16 @@
 
 本 checklist 用于 Sage Agent MVP 的商业化质量验收。执行者应在每次 release candidate、阶段完成或重要 UI/runtime 变更后按本文件检查。
 
+当前主线是“本地单用户 v1 收口”。历史 Stage / Phase 记录保留为基线，当前验收继续围绕稳定性、可读性、安全边界和发布门禁展开。
+
+## 最小回归步骤
+
+1. 运行自动化门禁。
+2. 启动本地 dev server。
+3. 打开 `http://localhost:3000`。
+4. 确认三栏工作台、Settings 双语切换、空态、busy / cancel / retry、provider error、安全边界和 run history 都能正常显示。
+5. 只要发现 P0 / P1，就先修复或写入 `docs/BUGS.md`，不要继续往下走发布流程。
+
 状态字段：
 
 - `pass`：已验证通过。
@@ -41,7 +51,7 @@ BUG 记录：
 | QA-ENV-01 | `rtk pnpm --version` | 使用项目约定的 pnpm 主版本，当前为 11.x | pass | 2026-06-28 `rtk pnpm --version` returned 11.7.0 |
 | QA-ENV-02 | `rtk git status --short --branch` | 位于目标分支，除当前 QA 记录外无意外脏文件 | pass | 2026-06-28 `main...origin/main` clean before this QA edit |
 | QA-ENV-03 | `.env.example` | 不包含真实 API key 或敏感凭据 | pass | `.env.example` contains blank key and safe defaults only |
-| QA-ENV-04 | `docs/TASKS.md` | 当前阶段任务状态与实际进度一致 | pass | `docs/TASKS.md` shows Stage 5 completed and later QA reconciliation tasks recorded |
+| QA-ENV-04 | `docs/TASKS.md` | 当前主线任务状态与实际进度一致 | pass | `docs/TASKS.md` now shows the v1收口 task group plus completed historical baselines |
 | QA-ENV-05 | `docs/BUGS.md` | 高优先级问题有状态、影响和后续处理建议 | pass | `docs/BUGS.md` contains fixed P1/P2 records and no open P0/P1 |
 
 ## 1. 自动化门禁
@@ -53,6 +63,16 @@ BUG 记录：
 | QA-AUTO-03 | `rtk pnpm lint` | ESLint 通过，无新增 lint error | pass | 2026-06-28 and 2026-06-28 follow-up runs passed |
 | QA-AUTO-04 | `rtk pnpm build` | workspace packages 与 Next.js build 通过 | pass | 2026-06-28 and 2026-06-28 follow-up builds passed |
 | QA-AUTO-05 | `rtk git diff --check` | 无 trailing whitespace 或 patch 格式问题 | pass | 2026-06-28 and 2026-06-28 follow-up checks passed |
+
+## 1.5 启动与 smoke check
+
+| ID | 检查项 | 期望 | 状态 | 备注 |
+| --- | --- | --- | --- | --- |
+| QA-SMOKE-01 | 本地启动 | `rtk pnpm dev` 可以启动本地 dev server | pass | README 中的启动步骤与当前实现一致 |
+| QA-SMOKE-02 | 入口页 | 打开 `http://localhost:3000` 直接进入三栏 workbench | pass | 页面不是 landing page |
+| QA-SMOKE-03 | 最小可用性 | 左侧 threads / runs、中间 composer、右侧 inspector 都可见 | pass | 用来判断本地工作台是否已经可用 |
+| QA-SMOKE-04 | 语言切换 | Settings 可切换中文 / English | pass | smoke check 的最低门槛之一 |
+| QA-SMOKE-05 | 安全边界提示 | README 和 UI 都说明 `.env.local`、API key 和 read-only 边界 | pass | 不要求真实 API key 才能完成 smoke check |
 
 ## 2. UI 工作台与双语
 
@@ -150,9 +170,10 @@ BUG 记录：
 | QA-BUG-04 | 处理建议 | 每个 bug 有当下修复、延期或阻塞说明 | pass | `docs/BUGS.md` 现有记录覆盖 |
 | QA-BUG-05 | 退出标准 | P0/P1 均已 fixed 或明确 blocked，P2/P3 有后续处理建议 | pass | 当前 `docs/BUGS.md` 无未处理 P0/P1 |
 
-## 当前 Stage 5 最小通过标准
+## 当前主线最小通过标准
 
 - `QA-AUTO-01` 到 `QA-AUTO-05` 全部 pass。
+- `QA-SMOKE-01` 到 `QA-SMOKE-05` 全部 pass。
 - `QA-UI-03` 到 `QA-UI-08` 全部 pass。
 - `QA-RUN-02`、`QA-RUN-03`、`QA-RUN-08` 全部 pass。
 - `QA-SAFE-01` 到 `QA-SAFE-07` 全部 pass 或有明确 blocked 记录。
@@ -161,11 +182,11 @@ BUG 记录：
 - `QA-BUG-01` 到 `QA-BUG-05` 全部 pass。
 - `docs/BUGS.md` 中没有未处理的 P0/P1；P2/P3 必须有后续处理建议。
 
-## Stage 5 当前推进口径
+## 当前主线：v1 收口 QA 口径
 
-- 5.1 到 5.8 仍然是可继续推进的质量加固 task，不表示已经完全收官。
-- 本 checklist 既用于当前 active phase 的验收，也用于后续 task 开始前的复核。
-- 新增 Stage 5 task 前，先检查 `docs/BUGS.md` 和本文件里是否已有可复用的失败线索或待优化项。
+- 本 checklist 继续作为当前主线的验收入口，但不再暗示还有新的平台阶段要展开。
+- 现有空态、loading、run history、settings、安全边界和双语项继续作为 v1 的稳定性门禁。
+- 新增任何 v1 task 前，先检查 `docs/BUGS.md` 和本文件里是否已有可复用的失败线索或待优化项。
 
 ## 2026-06-26 Phase 2.5 / Product Shell QA
 

@@ -1,6 +1,8 @@
 # Sage Agent 使用说明
 
-Sage Agent 是一个本地单用户、Web First 的 agent workbench。当前界面默认中文，支持中文/English 切换，目标是提供一个类似 Codex desktop 的三栏工作台：左侧 threads / runs，中间当前 run 工作区，右侧 timeline、tool calls、approvals 和 artifacts。
+Sage Agent 是一个本地单用户、Web First 的 agent workbench。当前主线是“本地单用户 v1 收口”。
+
+目标界面是一个类似 Codex desktop 的三栏工作台：左侧 threads / runs，中间当前 run 工作区，右侧 timeline、tool calls、approvals 和 artifacts。默认中文，支持中文/English 切换。
 
 ## 快速开始
 
@@ -28,6 +30,14 @@ rtk pnpm dev
 http://localhost:3000
 ```
 
+5. 做一次最小 smoke check：
+
+- 左侧能看到 threads / runs
+- 中间能看到当前 run 工作区和 composer
+- 右侧能看到 timeline、tool calls、approvals 和 artifacts
+- Settings 能切换中文 / English
+- `.env.local` 只放本地，不要提交
+
 ## 本地配置
 
 `.env.local` 只放在本机，不要提交到仓库。
@@ -48,6 +58,17 @@ rtk pnpm lint
 rtk pnpm build
 ```
 
+## 启动检查
+
+如果页面打不开，先确认：
+
+- `rtk pnpm dev` 是否仍在运行
+- `.env.local` 是否来自 `.env.example`
+- `DEEPSEEK_API_KEY` 是否只配置在本地服务端环境
+- 浏览器是否打开了 `http://localhost:3000`
+
+如果只需要验证本地工作台是否可用，先看最小 smoke check 是否全部成立，不必先配置真实 API key。
+
 ## 你能看到什么
 
 - 左侧：threads、runs、workspace context、recent activity
@@ -55,13 +76,13 @@ rtk pnpm build
 - 右侧：agent timeline、tool calls、approvals、artifacts、run metadata
 - 设置：语言、默认模型、thinking mode、reasoning effort
 
-## 项目文档
+## 文档入口
 
-- [PLAN](docs/PLAN.md)
-- [SPEC](docs/SPEC.md)
-- [TASKS](docs/TASKS.md)
-- [BUGS](docs/BUGS.md)
-- [QA_CHECKLIST](docs/QA_CHECKLIST.md)
+- [PLAN](docs/PLAN.md)：当前路线图和 v1 收口边界
+- [SPEC](docs/SPEC.md)：产品与系统规格
+- [TASKS](docs/TASKS.md)：当前可执行任务
+- [QA_CHECKLIST](docs/QA_CHECKLIST.md)：手动验收清单
+- [BUGS](docs/BUGS.md)：缺陷与审计记录
 
 ## 安全提示
 
