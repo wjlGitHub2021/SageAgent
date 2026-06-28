@@ -1432,6 +1432,17 @@ code {
   min-width: 0;
 }
 
+.provider-registry-panel .settings-summary + .provider-list,
+.provider-registry-panel .provider-list + .policy-chip-list {
+  margin-top: 2px;
+}
+
+.provider-registry-panel .policy-chip-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
 .provider-list {
   display: grid;
   gap: 8px;
@@ -1479,6 +1490,10 @@ code {
 
 .provider-item code {
   white-space: normal;
+}
+
+.provider-item + .state-block {
+  margin-top: 0;
 }
 
 .provider-status-header {

@@ -8,13 +8,15 @@ import {
 import {
   createEntrySurfaceSnapshot,
   createProviderRegistrySnapshot,
+  createPlatformExtensionSnapshot,
 } from "@sage/runtime";
 import type {
   DeepSeekModel,
-  EntrySurfaceSnapshot,
   ProviderRegistryAuditRecord,
   ProviderRegistrySnapshot,
   ReasoningEffort,
+  EntrySurfaceSnapshot,
+  PlatformExtensionSnapshot,
 } from "@sage/shared";
 
 export type DeepSeekProviderConfigStatus = "valid" | "invalid";
@@ -50,12 +52,14 @@ export type DeepSeekProviderStatusResponse = {
   readonly status: DeepSeekProviderStatusSummary;
   readonly providerRegistry: ProviderRegistrySnapshot;
   readonly entrySurfaces: EntrySurfaceSnapshot;
+  readonly platformExtensions: PlatformExtensionSnapshot;
 };
 
 export type DeepSeekProviderConnectionTestResponse = {
   readonly status: DeepSeekProviderStatusSummary;
   readonly providerRegistry: ProviderRegistrySnapshot;
   readonly entrySurfaces: EntrySurfaceSnapshot;
+  readonly platformExtensions: PlatformExtensionSnapshot;
   readonly result: DeepSeekConnectionTestResult;
 };
 
@@ -129,6 +133,10 @@ export function createProviderRuntimeStatusResponse(input: {
       auditAction: input.auditAction,
     }),
     entrySurfaces: createEntrySurfaceSnapshot(),
+    platformExtensions: createPlatformExtensionSnapshot({
+      checkedAt,
+      auditAction: input.auditAction,
+    }),
   };
 }
 

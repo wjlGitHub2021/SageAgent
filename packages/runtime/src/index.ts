@@ -33,6 +33,10 @@ export {
   type CreateProviderRegistrySnapshotInput,
 } from "./provider-registry.js";
 export {
+  createPlatformExtensionSnapshot,
+  type CreatePlatformExtensionSnapshotInput,
+} from "./platform-extension.js";
+export {
   createSkillContextMessage,
   type CreateSkillContextMessageInput,
 } from "./skill-context.js";

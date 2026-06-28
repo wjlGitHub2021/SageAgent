@@ -103,11 +103,12 @@ Hermes 的关键特征是“同一个 agent core，跑在 CLI、desktop、gatewa
 - 自动 fallback 显示为 disabled，直到后续 task 引入第二个已审批 provider。
 - Desktop 只登记为 planned surface，不在 V2.4 内实现桌面壳。
 
-### V2.5：平台扩展
+### V2.5：平台扩展登记面板
 
 目标：
 
-- 在核心 shell、记忆、技能、provider 稳定后，再加入 Hermes 已经覆盖的扩展面。
+- 在核心 shell、记忆、技能、provider 稳定后，把 Hermes 已经覆盖的扩展面先做成只读登记面板。
+- 只展示候选 surface、当前状态和边界说明，不把这些能力伪装成已经可执行的产品功能。
 
 候选项：
 
@@ -117,6 +118,12 @@ Hermes 的关键特征是“同一个 agent core，跑在 CLI、desktop、gatewa
 - remote login
 - gateway / messaging
 - 自动更新
+
+当前实现口径：
+
+- 这些 surface 只作为未来扩展的登记对象，默认状态是 `planned`。
+- Settings 里只负责可读展示和边界说明，不提供调度、语音、网关、远程登录或自动更新执行。
+- 任何真正的执行能力都必须先走单独提案，再进入后续实现。
 
 ## 约束
 

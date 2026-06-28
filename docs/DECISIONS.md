@@ -381,3 +381,23 @@ V2.4 不直接接入第二个真实 provider，也不实现 desktop app。当前
 - 直接引入第二 provider 会扩大密钥、错误脱敏、模型能力映射和 fallback 策略风险。
 - 先建立共享合同，可以让后续 provider adapter、fallback 和 desktop shell 在同一状态模型上演进。
 - 用户现在需要看到真实边界：当前可用的是 DeepSeek，后续扩展点已经可审计但尚未启用。
+
+## DEC-0020：V2.5 先落平台扩展登记面板
+
+状态：accepted
+
+决策：
+
+V2.5 不实现 cron、voice、profiles、remote login、gateway / messaging 或 auto update 的真实执行能力。当前只在 Settings 中增加一个只读的平台扩展登记面板，用来公开这些 Hermes 风格 surface 的状态、边界和下一步提案入口。
+
+约束：
+
+- 登记对象默认只读，不产生调度、连接、授权或外部副作用。
+- `planned` 只表示未来可能接入，不表示功能可用。
+- `blocked` 必须带清晰原因，避免把 v1 收口阶段的“不做”伪装成已完成。
+- 若未来要做真实执行能力，必须单独写提案并重新拆 task。
+
+理由：
+
+- V2.5 的价值是在不扩大执行面和安全风险的前提下，把后续平台扩展先变成可审计、可解释的产品信息。
+- 这样可以让 Settings 继续承担“产品边界的事实来源”，避免平台扩展只停留在路线图文字里。

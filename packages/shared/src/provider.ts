@@ -128,3 +128,5 @@ export function createDefaultEntrySurfaceSnapshot(): EntrySurfaceSnapshot {
     ],
   };
 }
+
+export type PlatformEntrySurfaceSnapshot = EntrySurfaceSnapshot;

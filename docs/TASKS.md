@@ -82,6 +82,13 @@
 - [x] 在 Settings 中展示 provider registry、fallback disabled 状态，以及 Web active / Desktop planned 的共享入口模型。
 - [x] 验收标准：当前仍只有 DeepSeek 一个真实 provider，但 UI / API / shared types 已不再是只能承载单 DeepSeek 状态槽；自动 fallback 和真实 desktop app 保留到后续 task。
 
+### Task V2.5：平台扩展登记面板
+
+- [x] 定义平台扩展登记对象、状态和边界说明的共享类型。
+- [x] 在 Settings 中只读展示 cron、voice、profiles、remote login、gateway / messaging、auto update 等候选 surface。
+- [x] 这些 surface 只作为未来提案的可审计登记对象，不实现真实调度、语音、网关、远程登录或自动更新执行。
+- [x] 验收标准：用户能在 Settings 里看见未来平台扩展的登记面板，明确当前哪些是 planned、哪些仍不做，以及下一步必须先走单独提案。
+
 ## 已完成基线
 
 - [x] Stage 0：项目地基

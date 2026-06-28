@@ -193,6 +193,16 @@ BUG 记录：
 | QA-PROVIDER-04 | Entry surfaces | UI 展示 Web active / Desktop planned，且声明共享 run/provider/state 模型 | pass | V2.4 Settings UI 覆盖 |
 | QA-PROVIDER-05 | 双语与响应式 | Provider registry 和 entry surface 文案支持中文/English，Settings 窄屏可读 | pass | 2026-06-28 Browser QA 覆盖 desktop / 390px mobile；无横向溢出 |
 
+## 6.8 V2.5 平台扩展登记面板
+
+| ID | 检查项 | 期望 | 状态 | 备注 |
+| --- | --- | --- | --- | --- |
+| QA-EXT-01 | Registry 快照 | Settings 中显示 cron、voice、profiles、remote login、gateway / messaging、auto update 的只读登记信息 | pass | 2026-06-28 browser DOM QA confirmed platform extension panel renders in Settings |
+| QA-EXT-02 | 状态表达 | 条目状态明确标出 planned / blocked / proposed，且不伪装成已实现 | pass | `tests/platform-extension.test.ts` locks the registry shape and statuses |
+| QA-EXT-03 | 双语文案 | 中文 / English 都能看到平台扩展登记标题、边界说明和未实现提示 | pass | `tests/platform-extension-ui.test.ts` checks both locales in `apps/web/src/app/page.tsx` |
+| QA-EXT-04 | 安全边界 | 面板只读展示，不提供调度、语音、网关、远程登录或自动更新执行入口 | pass | 2026-06-28 browser DOM QA confirmed read-only snapshot-only copy |
+| QA-EXT-05 | 与现有入口分离 | V2.5 registry 不覆盖 V2.4 entry surfaces，两个合同同时存在且可读 | pass | `apps/web/src/lib/deepseek-provider-status.ts` now returns `entrySurfaces` and `platformExtensions` separately |
+
 ## 7. BUG 记录与退出标准
 
 | ID | 检查项 | 期望 | 状态 | 备注 |

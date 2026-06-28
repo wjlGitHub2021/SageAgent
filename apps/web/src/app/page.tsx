@@ -6,6 +6,7 @@ import type {
   Approval,
   ApprovalStatus,
   Artifact,
+  EntrySurfaceSnapshot,
   MemoryEntry,
   MemorySnapshot,
   MemoryScope,
@@ -18,8 +19,8 @@ import type {
   SkillStatus,
   Thread,
   ToolCall,
-  EntrySurfaceSnapshot,
   ProviderRegistrySnapshot,
+  PlatformExtensionSnapshot,
 } from "@sage/shared";
 import { MEMORY_SCOPES, SKILL_SOURCES } from "@sage/shared";
 import {
@@ -179,6 +180,30 @@ const copy = {
       "Web 是当前入口；Desktop 先登记为 planned，并复用同一 run/provider/state 模型。",
     entrySurfaceActive: "已启用",
     entrySurfacePlanned: "计划中",
+    platformExtensions: "平台扩展登记",
+    platformExtensionsDetail:
+      "这里只登记 V2.5 候选扩展，不在当前版本实现真实 cron、voice、gateway 或自动更新能力。",
+    extensionCurrentState: "当前状态",
+    extensionCandidateSurfaces: "候选扩展面",
+    extensionNotImplemented: "仍不实现",
+    extensionScopeNote: "边界说明",
+    extensionCandidateReason:
+      "先保留入口和审计位置，等单独提案、审批和安全边界齐备后再进入实现。",
+    extensionCandidateCron: "Cron / 定时触发",
+    extensionCandidateVoice: "Voice / 语音输入输出",
+    extensionCandidateGateway: "Gateway / messaging",
+    extensionCandidateUpdate: "Update / 自动更新",
+    extensionNotBuiltTitle: "这些能力当前仍不做",
+    extensionNotBuiltDetail:
+      "cron、voice、gateway 和自动更新都不在本版本实现；UI 只展示候选登记和边界，避免把路线图误读成已交付功能。",
+    extensionPlanned: "计划中",
+    extensionBlocked: "已阻断",
+    extensionProposed: "待提案",
+    extensionAutomation: "自动化",
+    extensionInteraction: "交互",
+    extensionIdentity: "身份",
+    extensionMessaging: "消息",
+    extensionMaintenance: "维护",
     providerConfigStatus: "配置状态",
     providerStatusLoading: "正在读取 DeepSeek 配置状态...",
     providerStatusFailed: "无法读取 DeepSeek 配置状态。",
@@ -461,6 +486,30 @@ const copy = {
       "Web is active. Desktop is registered as planned and will reuse the same run/provider/state model.",
     entrySurfaceActive: "Active",
     entrySurfacePlanned: "Planned",
+    platformExtensions: "Platform extension registry",
+    platformExtensionsDetail:
+      "This only registers V2.5 candidate extensions; real cron, voice, gateway, and auto-update work is not implemented in the current version.",
+    extensionCurrentState: "Current state",
+    extensionCandidateSurfaces: "Candidate extension surfaces",
+    extensionNotImplemented: "Not implemented yet",
+    extensionScopeNote: "Boundary note",
+    extensionCandidateReason:
+      "We keep the entry and audit slots reserved until a separate proposal, approval, and safety boundary are ready.",
+    extensionCandidateCron: "Cron / scheduled triggers",
+    extensionCandidateVoice: "Voice / input-output",
+    extensionCandidateGateway: "Gateway / messaging",
+    extensionCandidateUpdate: "Update / auto-update",
+    extensionNotBuiltTitle: "What still does not ship",
+    extensionNotBuiltDetail:
+      "Cron, voice, gateway, and auto-update are outside the current release; this UI only shows the candidate registry and boundaries so the roadmap is not mistaken for shipped functionality.",
+    extensionPlanned: "Planned",
+    extensionBlocked: "Blocked",
+    extensionProposed: "Proposed",
+    extensionAutomation: "Automation",
+    extensionInteraction: "Interaction",
+    extensionIdentity: "Identity",
+    extensionMessaging: "Messaging",
+    extensionMaintenance: "Maintenance",
     providerConfigStatus: "Config status",
     providerStatusLoading: "Reading DeepSeek configuration status...",
     providerStatusFailed: "Could not read DeepSeek configuration status.",
@@ -1292,6 +1341,38 @@ function getEntrySurfaceStatusLabel(
   }
 }
 
+function getPlatformExtensionStatusLabel(
+  status: PlatformExtensionSnapshot["entries"][number]["status"],
+  t: (typeof copy)[Locale],
+): string {
+  switch (status) {
+    case "planned":
+      return t.extensionPlanned;
+    case "blocked":
+      return t.extensionBlocked;
+    case "proposed":
+      return t.extensionProposed;
+  }
+}
+
+function getPlatformExtensionCategoryLabel(
+  category: PlatformExtensionSnapshot["entries"][number]["category"],
+  t: (typeof copy)[Locale],
+): string {
+  switch (category) {
+    case "automation":
+      return t.extensionAutomation;
+    case "interaction":
+      return t.extensionInteraction;
+    case "identity":
+      return t.extensionIdentity;
+    case "messaging":
+      return t.extensionMessaging;
+    case "maintenance":
+      return t.extensionMaintenance;
+  }
+}
+
 function getBlockedPathPolicyDetail(t: (typeof copy)[Locale]): string {
   return `${t.blockedPathPolicyDetail} ${READ_PROJECT_FILE_BLOCKED_PATHS.join(", ")}`;
 }
@@ -1319,6 +1400,8 @@ export default function Home() {
     useState<ProviderRegistrySnapshot | null>(null);
   const [entrySurfaces, setEntrySurfaces] =
     useState<EntrySurfaceSnapshot | null>(null);
+  const [platformExtensions, setPlatformExtensions] =
+    useState<PlatformExtensionSnapshot | null>(null);
   const [providerStatusError, setProviderStatusError] = useState<string | null>(
     null,
   );
@@ -1382,6 +1465,7 @@ export default function Home() {
       setProviderStatus(response.status);
       setProviderRegistry(response.providerRegistry);
       setEntrySurfaces(response.entrySurfaces);
+      setPlatformExtensions(response.platformExtensions);
     } catch (error) {
       if (!isAbortError(error)) {
         setProviderStatusError(toSafeErrorMessage(error));
@@ -1683,6 +1767,7 @@ export default function Home() {
       setProviderStatus(response.status);
       setProviderRegistry(response.providerRegistry);
       setEntrySurfaces(response.entrySurfaces);
+      setPlatformExtensions(response.platformExtensions);
       setLastProviderTestResult(response.result);
     } catch (error) {
       setProviderStatusError(toSafeErrorMessage(error));
@@ -3363,6 +3448,65 @@ export default function Home() {
                         ) : (
                           <StateBlock
                             title={t.entrySurfaces}
+                            detail={
+                              isProviderStatusLoading
+                                ? t.providerStatusLoading
+                                : t.notConfigured
+                            }
+                          />
+                        )}
+                      </div>
+
+                      <div className="provider-registry-panel">
+                        <div>
+                          <p>{t.platformExtensions}</p>
+                          <small>{t.platformExtensionsDetail}</small>
+                        </div>
+                        {platformExtensions ? (
+                          <>
+                            <dl className="settings-summary provider-summary">
+                              <div>
+                                <dt>{t.extensionCurrentState}</dt>
+                                <dd>
+                                  {platformExtensions.checkedAt} · {t.extensionNotImplemented}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt>{t.extensionScopeNote}</dt>
+                                <dd>{t.extensionCandidateReason}</dd>
+                              </div>
+                            </dl>
+                            <div className="provider-list">
+                              {platformExtensions.entries.map((surface) => (
+                                  <article className="provider-item" key={surface.id}>
+                                    <div>
+                                      <strong>{surface.label}</strong>
+                                      <small>
+                                        {getPlatformExtensionStatusLabel(surface.status, t)} ·{" "}
+                                        {getPlatformExtensionCategoryLabel(surface.category, t)}
+                                      </small>
+                                    </div>
+                                    <span>
+                                      {surface.detail} {surface.boundary} {surface.nextStep}
+                                    </span>
+                                  </article>
+                              ))}
+                              <StateBlock
+                                eyebrow={t.extensionNotImplemented}
+                                title={t.extensionNotBuiltTitle}
+                                detail={t.extensionNotBuiltDetail}
+                              />
+                            </div>
+                            <ul className="policy-chip-list" aria-label={t.extensionCandidateSurfaces}>
+                              <li>{t.extensionCandidateCron}</li>
+                              <li>{t.extensionCandidateVoice}</li>
+                              <li>{t.extensionCandidateGateway}</li>
+                              <li>{t.extensionCandidateUpdate}</li>
+                            </ul>
+                          </>
+                        ) : (
+                          <StateBlock
+                            title={t.platformExtensions}
                             detail={
                               isProviderStatusLoading
                                 ? t.providerStatusLoading
