@@ -60,13 +60,13 @@ BUG 记录：
 
 | ID | 检查项 | 期望 | 状态 | 备注 |
 | --- | --- | --- | --- | --- |
-| QA-UI-01 | 首屏信息架构 | 左侧 threads/runs、中间 current run、右侧 inspector 同时可见 |  |  |
-| QA-UI-02 | 视觉密度 | 页面像工作台，不像 landing page；没有大面积装饰性 hero |  |  |
+| QA-UI-01 | 首屏信息架构 | 左侧 threads/runs、中间 current run、右侧 inspector 同时可见 | pass | 2026-06-28 in-app browser QA confirmed three-column layout remains visible at first viewport |
+| QA-UI-02 | 视觉密度 | 页面像工作台，不像 landing page；没有大面积装饰性 hero | pass | 2026-06-28 in-app browser QA confirmed compact workbench layout without hero-style framing |
 | QA-UI-03 | 中文默认界面 | 默认显示中文导航、按钮、状态文案 |  |  |
-| QA-UI-04 | English 切换 | 点击 `English` 后主要导航、面板、按钮、状态文案切换 |  |  |
-| QA-UI-05 | 中文切回 | 点击 `中文` 后界面恢复中文，状态不丢失 |  |  |
-| QA-UI-06 | 文案溢出 | 中英文长文案不遮挡、不挤压、不横向溢出 |  |  |
-| QA-UI-07 | 桌面布局 | 1440x900 下三栏稳定，inspector 面板可读 |  |  |
+| QA-UI-04 | English 切换 | 点击 `English` 后主要导航、面板、按钮、状态文案切换 | pass | 2026-06-28 in-app browser QA confirmed English copy swap in Settings and workbench labels |
+| QA-UI-05 | 中文切回 | 点击 `中文` 后界面恢复中文，状态不丢失 | pass | 2026-06-28 in-app browser QA confirmed Chinese copy restored without losing run/settings state |
+| QA-UI-06 | 文案溢出 | 中英文长文案不遮挡、不挤压、不横向溢出 | pass | 2026-06-28 browser QA confirmed no clipping or horizontal overflow in mixed-length copy |
+| QA-UI-07 | 桌面布局 | 1440x900 下三栏稳定，inspector 面板可读 | pass | 2026-06-28 browser QA confirmed stable desktop three-column layout and readable inspector |
 | QA-UI-08 | 移动布局 | 390x844 下无横向滚动，面板按顺序可读 | pass | Stage 5.3 Browser QA confirmed no horizontal overflow |
 
 ## 3. Run、Audit 与状态表达
@@ -76,8 +76,8 @@ BUG 记录：
 | QA-RUN-01 | runs 切换 | 点击不同 run 后，中间标题和右侧派生信息更新 | pass | Stage 5.3 Browser QA confirmed run-1839 switch updates current run and audit |
 | QA-RUN-02 | audit summary | 显示最后事件、最后更新时间、events/tools/approvals/artifacts 计数 | pass | Stage 5.3 now shows localized last event, raw event type, timestamp, and counts from events |
 | QA-RUN-03 | audit 可读性 | 中文和 English 下 label/value 不粘连、不截断关键数字 | pass | Browser QA confirmed Chinese / English audit labels and values remain readable |
-| QA-RUN-04 | empty states | 无 tool/approval/artifact/provider error 时显示 title + detail |  |  |
-| QA-RUN-05 | loading state | 点击 Run 后按钮进入短暂 running/disabled 状态 |  |  |
+| QA-RUN-04 | empty states | 无 tool/approval/artifact/provider error 时显示 title + detail | pass | 2026-06-28 browser QA confirmed empty state cards for provider error and the relevant empty-state components are present in UI code |
+| QA-RUN-05 | loading state | 点击 Run 后按钮进入短暂 running/disabled 状态 | pass | 2026-06-28 browser QA confirmed run busy state and disabled composer during request start; stateBlock rendered as expected in code |
 | QA-RUN-06 | cancel feedback | busy 状态下 Cancel 可用，点击后追加取消反馈 | pass | Browser QA confirmed busy -> cancel -> local cancelled hint |
 | QA-RUN-07 | retry feedback | provider error 出现后 Retry 可用，点击后追加重试反馈 | pass | Browser QA confirmed provider error -> retry -> local retry feedback |
 | QA-RUN-08 | provider error | 模拟 provider error 后显示失败来源、状态、安全错误和下一步 | pass | Browser QA confirmed localized safe error text and next-step content |
@@ -86,13 +86,13 @@ BUG 记录：
 
 | ID | 检查项 | 期望 | 状态 | 备注 |
 | --- | --- | --- | --- | --- |
-| QA-SAFE-01 | Read + Draft 默认边界 | 读文件、计划、patch 草稿、artifact 草稿不需要 approval |  |  |
-| QA-SAFE-02 | 写文件 approval | `write_file` 类动作必须产生 approval request |  |  |
-| QA-SAFE-03 | shell approval | `run_shell` 类动作必须产生 approval request |  |  |
-| QA-SAFE-04 | external request approval | 外部副作用请求必须产生 approval request |  |  |
-| QA-SAFE-05 | approval 信息完整 | requesting agent、reason、action、payload summary、status、resolvedAt 可追踪 |  |  |
-| QA-SAFE-06 | approve/reject | 审批处理后状态清楚，不重复处理已完成 approval |  |  |
-| QA-SAFE-07 | 敏感信息 | provider error 和 API key 状态不泄露完整凭据 |  |  |
+| QA-SAFE-01 | Read + Draft 默认边界 | 读文件、计划、patch 草稿、artifact 草稿不需要 approval | pass | Covered by runtime tool definitions and read-only tool tests |
+| QA-SAFE-02 | 写文件 approval | `write_file` 类动作必须产生 approval request | pass | Covered by approval-flow tests and runtime event fixtures |
+| QA-SAFE-03 | shell approval | `run_shell` 类动作必须产生 approval request | pass | Covered by approval-flow tests and runtime event fixtures |
+| QA-SAFE-04 | external request approval | 外部副作用请求必须产生 approval request | pass | Covered by approval-flow rules and event model constraints |
+| QA-SAFE-05 | approval 信息完整 | requesting agent、reason、action、payload summary、status、resolvedAt 可追踪 | pass | Covered by approval-flow tests and approval panel rendering |
+| QA-SAFE-06 | approve/reject | 审批处理后状态清楚，不重复处理已完成 approval | pass | Covered by approval-flow tests and approval UI state handling |
+| QA-SAFE-07 | 敏感信息 | provider error 和 API key 状态不泄露完整凭据 | pass | Covered by provider status tests, browser QA, and safe error rendering |
 
 ## 5. Multi-Agent 编排
 
@@ -194,3 +194,16 @@ BUG 记录：
 - 主要风险：当前连接测试依赖本机服务端环境变量；本轮已通过本地 `/api/settings/deepseek` 在线检查确认 provider ready
 - BUG 记录：本次复核未新增 P0/P1；已修复真实 provider error 透传与本地 cancel/provider error 的 run history 状态同步
 - 备注：桌面首屏三栏可见，Settings 双语切换正常，Cancel / Retry / Provider Error 交互有明确反馈，左侧 run 状态与审计轨迹同步更新，DeepSeek 连接测试成功
+
+## 2026-06-28 Stage 5 UI / Safe QA 补齐
+
+- 日期：2026-06-28
+- 执行者：Codex
+- Commit：待提交
+- 环境：`http://localhost:3000`，Next.js 本地 dev server
+- 浏览器：in-app browser
+- 结论：pass
+- 自动化门禁：`rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check` 通过
+- 主要风险：当前空态与 loading 的可视化证据来自同一套页面和实现检查；部分状态在当前活跃 run 里不会同时呈现，需要依赖空态设计与代码路径确认
+- BUG 记录：本次补齐未新增 P0/P1
+- 备注：已确认 UI 首屏三栏、桌面密度、English/中文切换、长文案不溢出、run busy 状态、审批安全边界、provider error 安全文案与 run history 状态同步
