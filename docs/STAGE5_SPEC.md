@@ -1,5 +1,7 @@
 # Stage 5 实施规格
 
+> 说明：本文档是当前 Stage 5 的 authoritative source，记录的是持续推进中的商业化质量加固任务，不是历史收尾记录。
+
 ## 目标
 
 Stage 5 的目标是把 Sage Agent 从可演示 MVP 推进到更接近商业化产品的质量基础。重点是让状态表达、错误处理、审计链路、测试和 QA 记录更可靠、更一致。
@@ -28,6 +30,7 @@ Stage 5 必须继续遵守：
 - Run 点击后按钮短暂进入 busy/disabled 状态，并恢复可操作。
 - 中文和 English 切换后，empty / loading / error 文案都能同步切换。
 - `rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+- 页面中的空态、provider error 和 busy/loading 反馈在 desktop 与 mobile 上都应维持统一的状态层级，不再只是普通灰块。
 
 暂不做：
 
@@ -52,6 +55,7 @@ Stage 5 必须继续遵守：
 - Provider error 出现后，Retry 可见且可点击，点击后追加重试反馈并保留原 provider error 审计信息。
 - 中文和 English 切换后，Cancel / Retry 相关文案同步切换。
 - `rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+- Browser QA 已确认中文界面下 `取消`、`重试`、provider error 安全文案都可见，Cancel 会结束 busy 并追加本地取消反馈，Retry 会追加本地重试反馈。
 
 暂不做：
 

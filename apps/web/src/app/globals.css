@@ -860,6 +860,19 @@ code {
   padding: 10px;
 }
 
+.state-block.neutral {
+  border-color: #dbe3ef;
+  background: linear-gradient(180deg, #fbfcfe 0%, var(--panel-muted) 100%);
+}
+
+.state-block-eyebrow {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
 .state-block p {
   margin: 0;
   color: var(--text-main);
@@ -878,6 +891,10 @@ code {
 .state-block.danger {
   border-color: #fecdd3;
   background: #fff1f2;
+}
+
+.state-block + .state-block {
+  margin-top: 2px;
 }
 
 .approval-box,

@@ -98,7 +98,7 @@
 
 ## Stage 5：商业化质量加固
 
-说明：本节记录的是 Stage 5 已完成的本地质量基础；真实 provider、read-only tool、多 agent run 的商业化验收仍以 Phase 2 及后续 release checklist 为准。
+说明：本节是当前 active phase；Stage 5 聚焦把 MVP 从可演示状态继续推进到更接近商业化产品的质量基础。真实 provider、read-only tool、多 agent run 的商业化验收仍以 Phase 2 及后续 release checklist 为准。
 
 - [x] 编写 `docs/STAGE5_SPEC.md`，锁定 Stage 5 分块策略与 Task 5.1 验收标准。
 - [x] 完善 error states、empty states、loading states。

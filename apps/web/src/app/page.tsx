@@ -209,6 +209,7 @@ const copy = {
     noProviderError: "当前任务暂无 provider error",
     noProviderErrorDetail:
       "如果 provider 调用失败，失败来源、状态和安全错误说明会显示在这里。",
+    noProviderErrorEyebrow: "Provider",
     simulateProviderError: "模拟错误",
     providerErrorSafeMessage:
       "DeepSeek provider 返回了本地模拟错误；敏感凭据已隐藏。",
@@ -241,10 +242,16 @@ const copy = {
     runFailed: "run 失败",
     noToolCalls: "当前任务暂无工具调用",
     noToolCallsDetail: "当 Researcher、Builder 或 Reviewer 使用工具时，会在这里显示调用记录。",
+    noToolCallsEyebrow: "Tool calls",
     noApproval: "当前任务暂无待处理审批",
     noApprovalDetail: "写文件、shell、外部请求等副作用操作会先进入审批流。",
+    noApprovalEyebrow: "Approvals",
     noArtifacts: "当前任务暂无产物",
     noArtifactsDetail: "计划、patch 草稿、文档或最终总结会在生成后出现在这里。",
+    noArtifactsEyebrow: "Artifacts",
+    composerBusyEyebrow: "Run",
+    composerBusyTitle: "正在创建后端 run",
+    composerBusyDetail: "当前任务正在被 Supervisor 流式处理，请稍候。",
     writeFileRequest: "Builder 请求写入文件",
     composerInput: "任务输入",
     composerPlaceholder: "描述你希望 Sage Agent 完成的任务...",
@@ -399,6 +406,7 @@ const copy = {
     noProviderError: "No provider error for this run",
     noProviderErrorDetail:
       "Provider failures will show the source, status, and safe error details here.",
+    noProviderErrorEyebrow: "Provider",
     simulateProviderError: "Simulate error",
     providerErrorSafeMessage:
       "DeepSeek provider returned a local simulated error; sensitive credentials are hidden.",
@@ -432,12 +440,18 @@ const copy = {
     noToolCalls: "No tool calls for this run",
     noToolCallsDetail:
       "Tool calls from Researcher, Builder, or Reviewer will appear here.",
+    noToolCallsEyebrow: "Tool calls",
     noApproval: "No pending approval for this run",
     noApprovalDetail:
       "File writes, shell commands, and external requests enter approval first.",
+    noApprovalEyebrow: "Approvals",
     noArtifacts: "No artifacts for this run",
     noArtifactsDetail:
       "Plans, patch drafts, documents, or final summaries will appear here.",
+    noArtifactsEyebrow: "Artifacts",
+    composerBusyEyebrow: "Run",
+    composerBusyTitle: "Creating backend run",
+    composerBusyDetail: "Supervisor is processing the task in streaming mode. Please wait.",
     writeFileRequest: "Builder requests file write",
     composerInput: "Task input",
     composerPlaceholder: "Describe what you want Sage Agent to do...",
@@ -906,16 +920,19 @@ function Panel({
 }
 
 function StateBlock({
+  eyebrow,
   title,
   detail,
   tone = "neutral",
 }: {
+  eyebrow?: string;
   title: string;
   detail: string;
   tone?: "neutral" | "danger";
 }) {
   return (
     <div className={`state-block ${tone}`}>
+      {eyebrow ? <span className="state-block-eyebrow">{eyebrow}</span> : null}
       <p>{title}</p>
       <small>{detail}</small>
     </div>
@@ -1095,7 +1112,7 @@ export default function Home() {
   const activeToolCalls = getToolCallRows(runEvents, activeRunId);
   const activeApproval = getActiveApproval(runEvents, activeRunId);
   const activeArtifacts = getArtifactRows(runEvents, activeRunId);
-  const activeProviderError = getProviderError(runEvents, activeRunId);
+  const activeProviderError = getProviderError(runEvents, activeRunId, locale);
   const activeAuditSummary = getAuditSummary(runEvents, activeRunId);
   const activePhase4Summary = getPhase4RunSummary(runEvents, activeRunId);
   const activeMessages = messages.filter((message) => message.runId === activeRunId);
@@ -1210,6 +1227,15 @@ export default function Home() {
 
     setIsRunBusy(false);
     setLastComposerState("cancelled");
+    appendLocalFeedbackEvent("run.status_changed", {
+      previousStatus: "running",
+      status: "cancelled",
+      activeAgent: "supervisor",
+    });
+    appendLocalFeedbackMessage({
+      zh: copy.zh.composerCancelledHint,
+      en: copy.en.composerCancelledHint,
+    });
   }
 
   function handleApprovalResolution(status: ApprovalStatus) {
@@ -1260,6 +1286,11 @@ export default function Home() {
       completedAt: failedAt,
     };
 
+    const errorMessage = {
+      zh: copy.zh.providerErrorSafeMessage,
+      en: copy.en.providerErrorSafeMessage,
+    };
+
     setRunEvents((current) => [
       ...current,
       {
@@ -1270,24 +1301,75 @@ export default function Home() {
         createdAt: failedAt,
         payload: {
           run: failedRun,
-          error: copy.en.providerErrorSafeMessage,
+          error: errorMessage[locale],
         },
       },
     ]);
   }
 
   function handleProviderRetry() {
+    appendLocalFeedbackEvent("message.completed", {
+      message: createLocalFeedbackRunMessage(copy[locale].retryProviderHint),
+    });
+    appendLocalFeedbackMessage({
+      zh: copy.zh.retryProviderHint,
+      en: copy.en.retryProviderHint,
+    });
+  }
+
+  function appendLocalFeedbackEvent(
+    type: "run.status_changed",
+    payload: Extract<RunEvent, { type: "run.status_changed" }>["payload"],
+  ): void;
+  function appendLocalFeedbackEvent(
+    type: "message.completed",
+    payload: Extract<RunEvent, { type: "message.completed" }>["payload"],
+  ): void;
+  function appendLocalFeedbackEvent(
+    type: "run.status_changed" | "message.completed",
+    payload:
+      | Extract<RunEvent, { type: "run.status_changed" }>["payload"]
+      | Extract<RunEvent, { type: "message.completed" }>["payload"],
+  ) {
+    const createdAt = new Date().toISOString();
+
+    setRunEvents((current) => [
+      ...current,
+      {
+        id: `event-local-feedback-${Date.now()}`,
+        runId: activeRunId,
+        type,
+        sequence: nextEventSequence(current, activeRunId),
+        createdAt,
+        payload,
+      } as RunEvent,
+    ]);
+  }
+
+  function appendLocalFeedbackMessage(body: Message["body"]) {
     setMessages((current) => [
       ...current,
       {
         role: "Supervisor",
         runId: activeRunId,
-        body: {
-          zh: copy.zh.retryProviderHint,
-          en: copy.en.retryProviderHint,
-        },
+        body,
       },
     ]);
+  }
+
+  function createLocalFeedbackRunMessage(content: string): Extract<
+    RunEvent,
+    { type: "message.completed" }
+  >["payload"]["message"] {
+    return {
+      id: `message-feedback-${Date.now()}`,
+      threadId: activeThreadId,
+      runId: activeRunId,
+      role: "agent",
+      agent: "supervisor",
+      content,
+      createdAt: new Date().toISOString(),
+    };
   }
 
   return (
@@ -1641,8 +1723,19 @@ export default function Home() {
 
           <Panel title={t.toolCalls}>
             <div className="stack">
+              {isRunBusy ? (
+                <StateBlock
+                  eyebrow={t.composerBusyEyebrow}
+                  title={t.composerBusyTitle}
+                  detail={t.composerBusyDetail}
+                />
+              ) : null}
               {activeToolCalls.length === 0 ? (
-                <StateBlock title={t.noToolCalls} detail={t.noToolCallsDetail} />
+                <StateBlock
+                  eyebrow={t.noToolCallsEyebrow}
+                  title={t.noToolCalls}
+                  detail={t.noToolCallsDetail}
+                />
               ) : (
                 activeToolCalls.map((call) => (
                   <div className="tool-row" key={call.id}>
@@ -1684,7 +1777,11 @@ export default function Home() {
               </div>
             ) : (
               <div className="stack">
-                <StateBlock title={t.noProviderError} detail={t.noProviderErrorDetail} />
+                <StateBlock
+                  eyebrow={t.noProviderErrorEyebrow}
+                  title={t.noProviderError}
+                  detail={t.noProviderErrorDetail}
+                />
               </div>
             )}
           </Panel>
@@ -1715,7 +1812,11 @@ export default function Home() {
               </div>
             ) : (
               <div className="stack">
-                <StateBlock title={t.noApproval} detail={t.noApprovalDetail} />
+                <StateBlock
+                  eyebrow={t.noApprovalEyebrow}
+                  title={t.noApproval}
+                  detail={t.noApprovalDetail}
+                />
               </div>
             )}
           </Panel>
@@ -1723,7 +1824,11 @@ export default function Home() {
           <Panel title={t.artifacts}>
             <div className="stack">
               {activeArtifacts.length === 0 ? (
-                <StateBlock title={t.noArtifacts} detail={t.noArtifactsDetail} />
+                <StateBlock
+                  eyebrow={t.noArtifactsEyebrow}
+                  title={t.noArtifacts}
+                  detail={t.noArtifactsDetail}
+                />
               ) : (
                 activeArtifacts.map((artifact) => (
                   <div className="artifact-row" key={artifact.id}>
@@ -2671,6 +2776,7 @@ function getArtifactRows(
 function getProviderError(
   events: readonly RunEvent[],
   activeRunId: string,
+  locale: Locale,
 ): ProviderErrorState | null {
   const failedEvent = getEventsForRun(events, activeRunId)
     .filter(
@@ -2686,7 +2792,10 @@ function getProviderError(
       ? agentLabels[failedEvent.payload.run.activeAgent]
       : "System",
     status: failedEvent.payload.run.status,
-    message: failedEvent.payload.error,
+    message:
+      locale === "zh"
+        ? copy.zh.providerErrorSafeMessage
+        : copy.en.providerErrorSafeMessage,
   };
 }
 

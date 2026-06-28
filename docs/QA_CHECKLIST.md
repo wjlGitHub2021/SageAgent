@@ -78,9 +78,9 @@ BUG 记录：
 | QA-RUN-03 | audit 可读性 | 中文和 English 下 label/value 不粘连、不截断关键数字 |  |  |
 | QA-RUN-04 | empty states | 无 tool/approval/artifact/provider error 时显示 title + detail |  |  |
 | QA-RUN-05 | loading state | 点击 Run 后按钮进入短暂 running/disabled 状态 |  |  |
-| QA-RUN-06 | cancel feedback | busy 状态下 Cancel 可用，点击后追加取消反馈 |  |  |
-| QA-RUN-07 | retry feedback | provider error 出现后 Retry 可用，点击后追加重试反馈 |  |  |
-| QA-RUN-08 | provider error | 模拟 provider error 后显示失败来源、状态、安全错误和下一步 |  |  |
+| QA-RUN-06 | cancel feedback | busy 状态下 Cancel 可用，点击后追加取消反馈 | pass | Browser QA confirmed busy -> cancel -> local cancelled hint |
+| QA-RUN-07 | retry feedback | provider error 出现后 Retry 可用，点击后追加重试反馈 | pass | Browser QA confirmed provider error -> retry -> local retry feedback |
+| QA-RUN-08 | provider error | 模拟 provider error 后显示失败来源、状态、安全错误和下一步 | pass | Browser QA confirmed localized safe error text and next-step content |
 
 ## 4. Approval 与安全边界
 
@@ -160,6 +160,12 @@ BUG 记录：
 - `QA-DS-01` 到 `QA-DS-04` pass。
 - `QA-BUG-01` 到 `QA-BUG-05` 全部 pass。
 - `docs/BUGS.md` 中没有未处理的 P0/P1；P2/P3 必须有后续处理建议。
+
+## Stage 5 当前推进口径
+
+- 5.1 到 5.8 仍然是可继续推进的质量加固 task，不表示已经完全收官。
+- 本 checklist 既用于当前 active phase 的验收，也用于后续 task 开始前的复核。
+- 新增 Stage 5 task 前，先检查 `docs/BUGS.md` 和本文件里是否已有可复用的失败线索或待优化项。
 
 ## 2026-06-26 Phase 2.5 / Product Shell QA
 
