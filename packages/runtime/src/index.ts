@@ -28,6 +28,11 @@ export {
   type CreateMemoryContextMessageInput,
 } from "./memory-context.js";
 export {
+  createEntrySurfaceSnapshot,
+  createProviderRegistrySnapshot,
+  type CreateProviderRegistrySnapshotInput,
+} from "./provider-registry.js";
+export {
   createSkillContextMessage,
   type CreateSkillContextMessageInput,
 } from "./skill-context.js";

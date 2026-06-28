@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import {
   DEEPSEEK_MODELS,
   REASONING_EFFORTS,
-  type DeepSeekSettings,
+  type ProviderSettings,
   type Run,
   type RunCreatedEvent,
   type Thread,
@@ -19,7 +19,8 @@ type CreateRunRequest = {
   settings?: unknown;
 };
 
-const DEFAULT_SETTINGS: DeepSeekSettings = {
+const DEFAULT_SETTINGS: ProviderSettings = {
+  providerId: "deepseek",
   model: "deepseek-v4-flash",
   thinkingEnabled: true,
   reasoningEffort: "high",
@@ -100,6 +101,7 @@ export async function POST(request: Request) {
     metadata: {
       eventType: event.type,
       runStatus: run.status,
+      providerId: run.settings.providerId ?? "deepseek",
       model: run.settings.model,
       reasoningEffort: run.settings.reasoningEffort,
       thinkingEnabled: run.settings.thinkingEnabled,
@@ -137,7 +139,7 @@ function normalizeCreateRunRequest(
       threadId: string | null;
       threadTitle: string | null;
       title: string;
-      settings: DeepSeekSettings;
+      settings: ProviderSettings;
     }
   | { ok: false; code: string; message: string; status: 400 } {
   if (!isRecord(value)) {
@@ -193,7 +195,7 @@ function normalizeCreateRunRequest(
 function normalizeSettings(
   value: unknown,
 ):
-  | { ok: true; value: DeepSeekSettings }
+  | { ok: true; value: ProviderSettings }
   | { ok: false; code: string; message: string; status: 400 } {
   if (value === undefined) return { ok: true, value: DEFAULT_SETTINGS };
 
@@ -211,6 +213,16 @@ function normalizeSettings(
     value.reasoningEffort ?? DEFAULT_SETTINGS.reasoningEffort;
   const thinkingEnabled =
     value.thinkingEnabled ?? DEFAULT_SETTINGS.thinkingEnabled;
+  const providerId = value.providerId ?? DEFAULT_SETTINGS.providerId;
+
+  if (providerId !== "deepseek") {
+    return {
+      ok: false,
+      code: "invalid_provider",
+      message: "providerId must be deepseek.",
+      status: 400,
+    };
+  }
 
   if (!isDeepSeekModel(model)) {
     return {
@@ -242,6 +254,7 @@ function normalizeSettings(
   return {
     ok: true,
     value: {
+      providerId,
       model,
       thinkingEnabled,
       reasoningEffort,
@@ -268,7 +281,7 @@ function createRun({
   thread: Thread;
   title: string;
   goal: string;
-  settings: DeepSeekSettings;
+  settings: ProviderSettings;
   createdAt: string;
 }): Run {
   return {
@@ -359,19 +372,19 @@ function hasOwnField(value: Record<string, unknown>, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(value, key);
 }
 
-function isDeepSeekModel(value: unknown): value is DeepSeekSettings["model"] {
+function isDeepSeekModel(value: unknown): value is ProviderSettings["model"] {
   return (
     typeof value === "string" &&
-    DEEPSEEK_MODELS.includes(value as DeepSeekSettings["model"])
+    DEEPSEEK_MODELS.includes(value as ProviderSettings["model"])
   );
 }
 
 function isReasoningEffort(
   value: unknown,
-): value is DeepSeekSettings["reasoningEffort"] {
+): value is ProviderSettings["reasoningEffort"] {
   return (
     typeof value === "string" &&
-    REASONING_EFFORTS.includes(value as DeepSeekSettings["reasoningEffort"])
+    REASONING_EFFORTS.includes(value as ProviderSettings["reasoningEffort"])
   );
 }
 

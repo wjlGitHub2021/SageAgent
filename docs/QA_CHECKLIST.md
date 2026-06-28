@@ -183,6 +183,16 @@ BUG 记录：
 | QA-4-05 | UI 真实状态 | reviewer gate / final summary gate / artifact summary 已接入真实可读状态，不再只靠 seed data 说明 | pass | Phase 4 live state 面板已直接读取 runtime events / helper 输出 |
 | QA-4-06 | 事件派生 | multi-agent 核心状态从 runtime event 派生，而不是只看静态文案 | pass | phase4 summary helper 仅汇总 phase4 相关 step / artifact / gate 结果 |
 
+## 6.7 V2.4 Provider Registry 与入口
+
+| ID | 检查项 | 期望 | 状态 | 备注 |
+| --- | --- | --- | --- | --- |
+| QA-PROVIDER-01 | Registry 快照 | `/api/settings/deepseek` 返回 `providerRegistry` 和 `entrySurfaces` | pass | V2.4 route / status tests 覆盖 |
+| QA-PROVIDER-02 | 默认 provider | 新建 run 的 settings 明确包含 `providerId: deepseek` | pass | V2.4 create-run tests 覆盖 |
+| QA-PROVIDER-03 | Fallback 边界 | UI 明确显示自动 fallback 未开启，不假装存在第二 provider | pass | V2.4 Settings UI 与 docs 决策记录覆盖 |
+| QA-PROVIDER-04 | Entry surfaces | UI 展示 Web active / Desktop planned，且声明共享 run/provider/state 模型 | pass | V2.4 Settings UI 覆盖 |
+| QA-PROVIDER-05 | 双语与响应式 | Provider registry 和 entry surface 文案支持中文/English，Settings 窄屏可读 | pass | 2026-06-28 Browser QA 覆盖 desktop / 390px mobile；无横向溢出 |
+
 ## 7. BUG 记录与退出标准
 
 | ID | 检查项 | 期望 | 状态 | 备注 |

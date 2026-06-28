@@ -64,13 +64,39 @@ export async function POST(_request: Request, context: RouteContext) {
     );
   }
 
+  const providerId = run.settings.providerId ?? "deepseek";
+  if (providerId !== "deepseek") {
+    const result = appendSupervisorFailureEvent({
+      store,
+      runId: run.id,
+      safeMessage: `provider_error: unsupported_provider. ${providerId}`,
+    });
+    telemetry.record({
+      name: "api.runs.supervisor.failed",
+      level: "warn",
+      source: "api",
+      message: "Supervisor run referenced an unsupported provider.",
+      runId: run.id,
+      threadId: run.threadId,
+      metadata: {
+        ok: false,
+        providerId,
+        eventCount: result.events.length,
+        error: result.ok ? null : result.safeMessage,
+      },
+    });
+
+    return createRunEventStreamResponse(result.events);
+  }
+
   telemetry.record({
     name: "api.runs.supervisor.started",
     source: "api",
-    message: "Supervisor-only DeepSeek run started.",
+    message: "Supervisor provider run started.",
     runId: run.id,
     threadId: run.threadId,
     metadata: {
+      providerId,
       model: run.settings.model,
       reasoningEffort: run.settings.reasoningEffort,
       thinkingEnabled: run.settings.thinkingEnabled,
@@ -95,6 +121,7 @@ export async function POST(_request: Request, context: RouteContext) {
       threadId: run.threadId,
       metadata: {
         ok: false,
+        providerId,
         eventCount: result.events.length,
         error: result.ok ? null : result.safeMessage,
       },
@@ -169,6 +196,7 @@ export async function POST(_request: Request, context: RouteContext) {
           metadata: {
             ok: !clientCancelled && finalError === null,
             clientCancelled,
+            providerId,
             eventCount,
             error: finalError,
           },
@@ -189,6 +217,7 @@ export async function POST(_request: Request, context: RouteContext) {
         runId: run.id,
         threadId: run.threadId,
         metadata: {
+          providerId,
           runStatus: store.getRun(run.id)?.status ?? "unknown",
         },
       });

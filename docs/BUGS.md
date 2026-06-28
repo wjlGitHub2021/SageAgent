@@ -241,3 +241,24 @@
   - 重新运行 `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check`。
   - Browser QA 确认 `http://localhost:3000/` 首屏非空、无 framework overlay、console 无 error / warn，技能新建、启用、停用、删除和审计反馈正常。
   - `/api/skills` QA 后 `entries` 为空，只保留本地审计记录；`.sage/` 被 git ignore，不进入提交。
+
+### 2026-06-28 V2.4 Provider Registry 与入口 QA 复核
+
+- 状态：`fixed`
+- 严重级别：`P2`
+- 发现阶段：implementation / QA
+- 影响范围：`@sage/shared` provider domain、`@sage/runtime` provider registry、`apps/web` settings API / run API / supervisor route / Settings UI。
+- 复现步骤或线索：
+  - V2.4 需要确认 provider registry 不是只停留在路线图里，而是进入共享类型、settings API、run settings、supervisor dispatch 边界和工作台 Settings。
+  - 需要确认当前仍只有 DeepSeek 一个真实 provider，自动 fallback 明确 disabled，不假装存在第二 provider。
+- 修复方式：
+  - 新增 provider registry、fallback rule 和 Web active / Desktop planned entry surface 的共享类型与 runtime helper。
+  - `/api/settings/deepseek` 返回 `providerRegistry` 和 `entrySurfaces`，并保持 DeepSeek 连接测试脱敏。
+  - 新建 run 写入 `providerId: deepseek`；偏好 schema 增加 `providerId` 并兼容旧本地偏好。
+  - supervisor route 对未知 provider 生成可审计 `unsupported_provider` 失败事件，不静默 fallback 到 DeepSeek。
+  - Settings 增加 provider registry、fallback disabled、DeepSeek descriptor 和 entry surfaces 展示。
+- 验证结论：
+  - `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check` 已通过。
+  - Browser QA 确认 `http://localhost:3000/` 首屏非空、无 framework overlay、console 无 app error / warn。
+  - Settings 英文和中文均能显示 provider registry、fallback disabled、Web active / Desktop planned。
+  - 390px mobile viewport 下 Settings 无横向溢出，provider registry 面板可读。

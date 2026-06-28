@@ -36,6 +36,7 @@ http://localhost:3000
 - 中间能看到当前 run 工作区和 composer
 - 右侧能看到 timeline、tool calls、approvals 和 artifacts
 - Settings 能切换中文 / English
+- Settings 能看到 provider registry、fallback 状态和 Web / Desktop 入口状态
 - `.env.local` 只放本地，不要提交
 
 ## 本地配置
@@ -74,7 +75,7 @@ rtk pnpm build
 - 左侧：threads、runs、workspace context、recent activity
 - 中间：当前 run、消息流、最终输出、composer
 - 右侧：agent timeline、tool calls、approvals、artifacts、run metadata
-- 设置：语言、默认模型、thinking mode、reasoning effort
+- 设置：语言、provider registry、fallback 状态、Web / Desktop 入口、默认模型、thinking mode、reasoning effort
 
 ## 文档入口
 

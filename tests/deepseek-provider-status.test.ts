@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createProviderRuntimeStatusResponse,
   createDeepSeekProviderStatusSummary,
   sanitizeDeepSeekProviderText,
   testDeepSeekProviderConnection,
@@ -30,6 +31,79 @@ describe("DeepSeek provider status", () => {
       issueCodes: [],
     });
     expect(JSON.stringify(summary)).not.toContain("sk-secret-token");
+  });
+
+  it("creates provider registry and entry surface snapshots from DeepSeek status", () => {
+    const status = createDeepSeekProviderStatusSummary({
+      ok: true,
+      config: {
+        apiKey: "sk-secret-token-123456789",
+        baseUrl: "https://api.deepseek.com",
+        defaultModel: "deepseek-v4-flash",
+        defaultReasoningEffort: "high",
+        thinkingEnabled: true,
+      },
+    });
+    const response = createProviderRuntimeStatusResponse({
+      status,
+      checkedAt: "2026-06-28T10:00:00.000Z",
+    });
+
+    expect(response.providerRegistry).toMatchObject({
+      defaultProviderId: "deepseek",
+      providers: [
+        {
+          id: "deepseek",
+          status: "available",
+          isDefault: true,
+          baseUrl: "https://api.deepseek.com",
+        },
+      ],
+      fallbackRules: [
+        {
+          mode: "disabled",
+          fromProviderId: "deepseek",
+          toProviderId: "deepseek",
+        },
+      ],
+    });
+    expect(response.providerRegistry.auditTrail).toContainEqual(
+      expect.objectContaining({
+        action: "status_check",
+        providerId: "deepseek",
+      }),
+    );
+    expect(response.entrySurfaces.surfaces.map((surface) => surface.id)).toEqual([
+      "web",
+      "desktop",
+    ]);
+    expect(JSON.stringify(response)).not.toContain("sk-secret-token");
+  });
+
+  it("marks connection test registry snapshots with a connection_test audit action", () => {
+    const status = createDeepSeekProviderStatusSummary({
+      ok: true,
+      config: {
+        apiKey: "sk-secret-token-123456789",
+        baseUrl: "https://api.deepseek.com",
+        defaultModel: "deepseek-v4-flash",
+        defaultReasoningEffort: "high",
+        thinkingEnabled: true,
+      },
+    });
+    const response = createProviderRuntimeStatusResponse({
+      status,
+      checkedAt: "2026-06-28T10:00:00.000Z",
+      auditAction: "connection_test",
+    });
+
+    expect(response.providerRegistry.auditTrail).toContainEqual(
+      expect.objectContaining({
+        action: "connection_test",
+        providerId: "deepseek",
+      }),
+    );
+    expect(JSON.stringify(response)).not.toContain("sk-secret-token");
   });
 
   it("reports invalid config with issue codes only", () => {

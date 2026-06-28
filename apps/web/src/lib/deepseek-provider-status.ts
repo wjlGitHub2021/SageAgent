@@ -5,7 +5,17 @@ import {
   type DeepSeekConfigResult,
   type DeepSeekEnvironment,
 } from "@sage/deepseek";
-import type { DeepSeekModel, ReasoningEffort } from "@sage/shared";
+import {
+  createEntrySurfaceSnapshot,
+  createProviderRegistrySnapshot,
+} from "@sage/runtime";
+import type {
+  DeepSeekModel,
+  EntrySurfaceSnapshot,
+  ProviderRegistryAuditRecord,
+  ProviderRegistrySnapshot,
+  ReasoningEffort,
+} from "@sage/shared";
 
 export type DeepSeekProviderConfigStatus = "valid" | "invalid";
 export type DeepSeekApiKeyReadiness = "configured" | "missing";
@@ -38,10 +48,14 @@ export type DeepSeekConnectionTestResult = {
 
 export type DeepSeekProviderStatusResponse = {
   readonly status: DeepSeekProviderStatusSummary;
+  readonly providerRegistry: ProviderRegistrySnapshot;
+  readonly entrySurfaces: EntrySurfaceSnapshot;
 };
 
 export type DeepSeekProviderConnectionTestResponse = {
   readonly status: DeepSeekProviderStatusSummary;
+  readonly providerRegistry: ProviderRegistrySnapshot;
+  readonly entrySurfaces: EntrySurfaceSnapshot;
   readonly result: DeepSeekConnectionTestResult;
 };
 
@@ -99,6 +113,25 @@ export function createDeepSeekProviderStatusSummary(
   };
 }
 
+export function createProviderRuntimeStatusResponse(input: {
+  readonly status: DeepSeekProviderStatusSummary;
+  readonly checkedAt?: string;
+  readonly auditAction?: Extract<
+    ProviderRegistryAuditRecord["action"],
+    "status_check" | "connection_test"
+  >;
+}): Omit<DeepSeekProviderStatusResponse, "status"> {
+  const checkedAt = input.checkedAt ?? defaultNow();
+  return {
+    providerRegistry: createProviderRegistrySnapshot({
+      deepSeek: input.status,
+      checkedAt,
+      auditAction: input.auditAction,
+    }),
+    entrySurfaces: createEntrySurfaceSnapshot(),
+  };
+}
+
 export async function testDeepSeekProviderConnection({
   env,
   configResult = loadDeepSeekProviderConfig(env),
@@ -132,12 +165,15 @@ export async function testDeepSeekProviderConnection({
 
   let response: DeepSeekConnectionFetchResponse;
   try {
-    response = await fetcher(joinDeepSeekUrl(configResult.config.baseUrl, "/models"), {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${apiKey.apiKey}`,
+    response = await fetcher(
+      joinDeepSeekUrl(configResult.config.baseUrl, "/models"),
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${apiKey.apiKey}`,
+        },
       },
-    });
+    );
   } catch {
     return {
       ok: false,

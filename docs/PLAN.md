@@ -26,6 +26,9 @@ Sage Agent 当前进入“本地单用户 v1 收口”阶段。
 - Phase 3：产品化设置与本地配置体系
 - Phase 4：Multi-Agent 产品化承接
 - Stage 5：商业化质量加固
+- V2.2：跨会话记忆底座
+- V2.3：技能系统与自动生长
+- V2.4：provider registry 与 entry surface 底座
 
 这些阶段已经把基础架构、运行链路、设置面、multi-agent 承接和质量加固铺出来了。当前主线是收口，不是重新开新平台阶段。
 
@@ -59,7 +62,7 @@ Sage Agent 当前进入“本地单用户 v1 收口”阶段。
 
 以下内容只作为下一阶段候选，不是当前工作项：
 
-- 核心候选：memory（V2.2 本地 registry 已完成，后续可扩展 provider / 自动摘要）、skills、provider registry、desktop shell
+- 核心候选：memory providers / 自动摘要、skills 自动生成与同步、真实第二 provider、provider fallback、desktop shell
 - 平台候选：hosted multi-user、auth 与 tenant isolation、billing 与 plans、remote storage / sync、automation / tool ecosystem
 
 这些候选项只有在 v1 稳定后、并且有单独提案时才进入新规划。当前仍然以 v1 收口为主。详细对照和路线图见 [HERMES_ROADMAP](HERMES_ROADMAP.md)。

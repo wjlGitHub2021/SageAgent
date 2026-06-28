@@ -29,7 +29,7 @@ Hermes 的关键特征是“同一个 agent core，跑在 CLI、desktop、gatewa
 | Hermes 能力 | Hermes 的做法 | 我们当前已有 | v1 只保留 | 后续再做 |
 | --- | --- | --- | --- | --- |
 | Web + desktop + gateway + CLI 多入口 | 同一 agent core 覆盖 CLI、TUI、desktop、gateway、消息平台 | 只有 Web workbench，desktop 只是方向 | 保留 Web shell、run workspace、inspector、composer 的稳定入口 | desktop app、gateway、消息平台 |
-| 多 provider | 支持 OpenAI-compatible、云 provider、本地模型和 fallback | v1 只做 DeepSeek | 保留 provider 状态、错误脱敏和单 provider 入口 | provider registry、多 provider fallback、provider allowlist |
+| 多 provider | 支持 OpenAI-compatible、云 provider、本地模型和 fallback | V2.4 已有 provider registry 快照、DeepSeek provider descriptor、fallback disabled 规则 | 保留 provider 状态、错误脱敏和单 provider 入口 | 真实第二 provider、多 provider fallback、provider allowlist |
 | 跨会话记忆 | bounded memory、memory providers、记忆沉淀 | V2.2 已有本地 memory registry、审计和 prompt 注入 | 保留本地记忆 CRUD、审计和上下文注入 | memory providers、自动摘要、知识检索、个性化记忆 |
 | 技能自动生长 | skills 作为 on-demand knowledge docs，可创建、加载、同步、整理 | V2.3 已有本地 skill registry、人工 curation、审计和 prompt 注入 | 保留本地技能 CRUD、启用 / 停用、审计和 curated context 注入 | skills hub、自动生成、自动整理、远程同步、技能市场 |
 | 定制化 prompt / profile | profile、SOUL.md、profile distributions、独立 home 目录 | 只有当前产品级 system prompt 和 settings | 保留 prompt / settings 入口，不做 profile 体系 | profile 管理、profile distribution、模板市场 |
@@ -88,14 +88,20 @@ Hermes 的关键特征是“同一个 agent core，跑在 CLI、desktop、gatewa
 
 目标：
 
-- 从 DeepSeek-only 过渡到多 provider。
-- 从 Web-only 过渡到 Web + Desktop 的统一 core。
+- 从 DeepSeek-only 过渡到 provider registry。
+- 从 Web-only 过渡到 Web + Desktop 共享状态模型。
 
 要做的事：
 
-- 建 provider registry 和 fallback 策略。
-- 把 provider 状态、选择和错误统一成 UI 能看懂的对象。
-- 为 desktop 端做共享 shell 和共享状态模型。
+- 建 provider registry 和 fallback 策略的共享类型。
+- 把 DeepSeek 状态、选择和错误统一成 UI 能看懂的 provider descriptor。
+- 为 desktop 端登记 entry surface，并声明它复用 Web 的 run / provider / inspector 状态模型。
+
+当前完成口径：
+
+- DeepSeek 仍是唯一真实 provider。
+- 自动 fallback 显示为 disabled，直到后续 task 引入第二个已审批 provider。
+- Desktop 只登记为 planned surface，不在 V2.4 内实现桌面壳。
 
 ### V2.5：平台扩展
 

@@ -1417,6 +1417,70 @@ code {
   padding: 10px;
 }
 
+.provider-registry-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px;
+}
+
+.provider-registry-panel > div:first-child {
+  min-width: 0;
+}
+
+.provider-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.provider-item {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  border-radius: 8px;
+  background: var(--panel-muted);
+  padding: 9px;
+}
+
+.provider-item > div {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.provider-item strong,
+.provider-item code,
+.provider-item span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.provider-item strong {
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.25;
+}
+
+.provider-item small,
+.provider-item span,
+.provider-item code {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.provider-item code {
+  white-space: normal;
+}
+
 .provider-status-header {
   display: flex;
   min-width: 0;

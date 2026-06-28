@@ -5,6 +5,7 @@ import {
 } from "@sage/deepseek";
 import {
   createDeepSeekProviderStatusSummary,
+  createProviderRuntimeStatusResponse,
   testDeepSeekProviderConnection,
   type DeepSeekProviderConnectionTestResponse,
   type DeepSeekProviderStatusResponse,
@@ -15,8 +16,10 @@ export const runtime = "nodejs";
 export function GET() {
   const env = readDeepSeekEnvironment();
   const configResult = loadDeepSeekProviderConfig(env);
+  const status = createDeepSeekProviderStatusSummary(configResult, env);
   const response: DeepSeekProviderStatusResponse = {
-    status: createDeepSeekProviderStatusSummary(configResult, env),
+    status,
+    ...createProviderRuntimeStatusResponse({ status }),
   };
 
   return NextResponse.json(response, {
@@ -29,9 +32,16 @@ export function GET() {
 export async function POST() {
   const env = readDeepSeekEnvironment();
   const configResult = loadDeepSeekProviderConfig(env);
+  const status = createDeepSeekProviderStatusSummary(configResult, env);
+  const result = await testDeepSeekProviderConnection({ configResult });
   const response: DeepSeekProviderConnectionTestResponse = {
-    status: createDeepSeekProviderStatusSummary(configResult, env),
-    result: await testDeepSeekProviderConnection({ configResult }),
+    status,
+    ...createProviderRuntimeStatusResponse({
+      status,
+      checkedAt: result.checkedAt,
+      auditAction: "connection_test",
+    }),
+    result,
   };
 
   return NextResponse.json(response, {

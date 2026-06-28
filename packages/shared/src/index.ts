@@ -101,6 +101,31 @@ export interface DeepSeekSettings {
   readonly reasoningEffort: ReasoningEffort;
 }
 
+export type ProviderSettings = DeepSeekSettings & {
+  readonly providerId?: string;
+};
+
+export type {
+  AgentEntrySurface,
+  EntrySurfaceSnapshot,
+  ProviderDescriptor,
+  ProviderFallbackMode,
+  ProviderFallbackRule,
+  ProviderId,
+  ProviderKind,
+  ProviderRegistryAuditRecord,
+  ProviderRegistrySnapshot,
+  ProviderStatus,
+} from "./provider.js";
+export {
+  PROVIDER_FALLBACK_MODES,
+  PROVIDER_IDS,
+  PROVIDER_KINDS,
+  PROVIDER_STATUSES,
+  createDefaultEntrySurfaceSnapshot,
+  createEmptyProviderRegistrySnapshot,
+} from "./provider.js";
+
 export interface Thread {
   readonly id: EntityId;
   readonly title: string;
@@ -115,7 +140,7 @@ export interface Run {
   readonly goal: string;
   readonly status: RunStatus;
   readonly activeAgent: AgentRole | null;
-  readonly settings: DeepSeekSettings;
+  readonly settings: ProviderSettings;
   readonly createdAt: ISODateTimeString;
   readonly updatedAt: ISODateTimeString;
   readonly completedAt: ISODateTimeString | null;

@@ -18,6 +18,8 @@ import type {
   SkillStatus,
   Thread,
   ToolCall,
+  EntrySurfaceSnapshot,
+  ProviderRegistrySnapshot,
 } from "@sage/shared";
 import { MEMORY_SCOPES, SKILL_SOURCES } from "@sage/shared";
 import {
@@ -81,6 +83,7 @@ type CreateRunPayload = {
   title: string;
   threadTitle: string;
   settings: {
+    providerId: "deepseek";
     model: Preferences["model"];
     thinkingEnabled: boolean;
     reasoningEffort: ReasoningEffort;
@@ -151,7 +154,7 @@ const copy = {
     settingsSubtitle: "管理本地工作台的显示、Provider、工作区和安全边界。",
     settingsEntryDetail: "语言、模型与推理偏好",
     generalSettings: "通用",
-    providerSettings: "Provider / DeepSeek",
+    providerSettings: "Providers / 入口",
     workspaceSettings: "工作区",
     safetySettings: "安全边界",
     currentConfiguration: "当前配置",
@@ -160,7 +163,22 @@ const copy = {
     thinkingEnabledSetting: "Thinking 开关",
     generalSettingsDetail: "界面语言会作为非敏感偏好保存在本地浏览器。",
     providerSettingsDetail:
-      "模型、thinking 和推理强度会作为非敏感偏好持久化；API key 只从后端安全状态读取。",
+      "当前默认 Provider 是 DeepSeek；模型、thinking 和推理强度作为非敏感偏好持久化，API key 只从后端安全状态读取。",
+    providerRegistry: "Provider registry",
+    providerRegistryDetail:
+      "V2.4 先把 provider、状态和 fallback 统一成共享对象；自动 fallback 需要第二个已审批 provider 后再开启。",
+    providerDefault: "默认 Provider",
+    providerFallback: "Fallback",
+    providerFallbackDisabled: "自动 fallback 未开启",
+    providerAvailable: "可用",
+    providerDegraded: "降级",
+    providerMissingCredentials: "缺少凭据",
+    providerInvalidConfig: "配置无效",
+    entrySurfaces: "入口",
+    entrySurfacesDetail:
+      "Web 是当前入口；Desktop 先登记为 planned，并复用同一 run/provider/state 模型。",
+    entrySurfaceActive: "已启用",
+    entrySurfacePlanned: "计划中",
     providerConfigStatus: "配置状态",
     providerStatusLoading: "正在读取 DeepSeek 配置状态...",
     providerStatusFailed: "无法读取 DeepSeek 配置状态。",
@@ -390,7 +408,7 @@ const copy = {
     composerInput: "任务输入",
     composerPlaceholder: "描述你希望 Sage Agent 完成的任务...",
     composerHint:
-      "点击运行会创建真实后端 run，并流式调用 DeepSeek Supervisor；未配置 API key 会生成可审计的 provider error。",
+      "点击运行会创建真实后端 run，并通过当前 provider registry 调用 DeepSeek Supervisor；未配置 API key 会生成可审计的 provider error。",
     composerEmptyHint: "请输入任务目标后再运行。",
     composerRunningHint: "正在创建后端 run 并流式接收 DeepSeek 输出，请稍候。",
     composerCancelledHint:
@@ -417,7 +435,7 @@ const copy = {
       "Manage local workbench display, provider, workspace, and safety boundaries.",
     settingsEntryDetail: "Language, model, and reasoning preferences",
     generalSettings: "General",
-    providerSettings: "Provider / DeepSeek",
+    providerSettings: "Providers / Entries",
     workspaceSettings: "Workspace",
     safetySettings: "Safety",
     currentConfiguration: "Current configuration",
@@ -427,7 +445,22 @@ const copy = {
     generalSettingsDetail:
       "Interface language is stored locally as a non-sensitive preference.",
     providerSettingsDetail:
-      "Model, thinking, and reasoning effort are persisted as non-sensitive preferences. API key status is read from the backend only.",
+      "DeepSeek is the current default provider. Model, thinking, and reasoning effort are persisted as non-sensitive preferences. API key status is read from the backend only.",
+    providerRegistry: "Provider registry",
+    providerRegistryDetail:
+      "V2.4 normalizes providers, status, and fallback into shared objects. Automatic fallback waits for a second approved provider.",
+    providerDefault: "Default provider",
+    providerFallback: "Fallback",
+    providerFallbackDisabled: "Automatic fallback is disabled",
+    providerAvailable: "Available",
+    providerDegraded: "Degraded",
+    providerMissingCredentials: "Missing credentials",
+    providerInvalidConfig: "Invalid config",
+    entrySurfaces: "Entry surfaces",
+    entrySurfacesDetail:
+      "Web is active. Desktop is registered as planned and will reuse the same run/provider/state model.",
+    entrySurfaceActive: "Active",
+    entrySurfacePlanned: "Planned",
     providerConfigStatus: "Config status",
     providerStatusLoading: "Reading DeepSeek configuration status...",
     providerStatusFailed: "Could not read DeepSeek configuration status.",
@@ -661,7 +694,7 @@ const copy = {
     composerInput: "Task input",
     composerPlaceholder: "Describe what you want Sage Agent to do...",
     composerHint:
-      "Click Run to create a real backend run and stream the DeepSeek Supervisor. Missing API keys create auditable provider errors.",
+      "Click Run to create a real backend run and stream the DeepSeek Supervisor through the current provider registry. Missing API keys create auditable provider errors.",
     composerEmptyHint: "Enter a task goal before running.",
     composerRunningHint:
       "Creating a backend run and streaming DeepSeek output. Please wait.",
@@ -1231,6 +1264,34 @@ function getConnectionTestNextStep(
   }
 }
 
+function getProviderStatusLabel(
+  status: ProviderRegistrySnapshot["providers"][number]["status"],
+  t: (typeof copy)[Locale],
+): string {
+  switch (status) {
+    case "available":
+      return t.providerAvailable;
+    case "degraded":
+      return t.providerDegraded;
+    case "missing_credentials":
+      return t.providerMissingCredentials;
+    case "invalid_config":
+      return t.providerInvalidConfig;
+  }
+}
+
+function getEntrySurfaceStatusLabel(
+  status: EntrySurfaceSnapshot["surfaces"][number]["status"],
+  t: (typeof copy)[Locale],
+): string {
+  switch (status) {
+    case "active":
+      return t.entrySurfaceActive;
+    case "planned":
+      return t.entrySurfacePlanned;
+  }
+}
+
 function getBlockedPathPolicyDetail(t: (typeof copy)[Locale]): string {
   return `${t.blockedPathPolicyDetail} ${READ_PROJECT_FILE_BLOCKED_PATHS.join(", ")}`;
 }
@@ -1240,6 +1301,7 @@ export default function Home() {
   const [hasLoadedStoredPreferences, setHasLoadedStoredPreferences] =
     useState(false);
   const locale = preferences.locale;
+  const providerId = preferences.providerId;
   const model = preferences.model;
   const thinkingEnabled = preferences.thinkingEnabled;
   const reasoningEffort = preferences.reasoningEffort;
@@ -1253,6 +1315,10 @@ export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [providerStatus, setProviderStatus] =
     useState<DeepSeekProviderStatusSummary | null>(null);
+  const [providerRegistry, setProviderRegistry] =
+    useState<ProviderRegistrySnapshot | null>(null);
+  const [entrySurfaces, setEntrySurfaces] =
+    useState<EntrySurfaceSnapshot | null>(null);
   const [providerStatusError, setProviderStatusError] = useState<string | null>(
     null,
   );
@@ -1314,6 +1380,8 @@ export default function Home() {
     try {
       const response = await fetchDeepSeekProviderStatus(signal);
       setProviderStatus(response.status);
+      setProviderRegistry(response.providerRegistry);
+      setEntrySurfaces(response.entrySurfaces);
     } catch (error) {
       if (!isAbortError(error)) {
         setProviderStatusError(toSafeErrorMessage(error));
@@ -1613,6 +1681,8 @@ export default function Home() {
     try {
       const response = await testDeepSeekProviderConnectionApi();
       setProviderStatus(response.status);
+      setProviderRegistry(response.providerRegistry);
+      setEntrySurfaces(response.entrySurfaces);
       setLastProviderTestResult(response.result);
     } catch (error) {
       setProviderStatusError(toSafeErrorMessage(error));
@@ -1677,6 +1747,7 @@ export default function Home() {
           title: deriveTitle(goal),
           threadTitle: deriveTitle(goal),
           settings: {
+            providerId,
             model,
             thinkingEnabled,
             reasoningEffort,
@@ -1793,6 +1864,7 @@ export default function Home() {
       status: "failed",
       activeAgent: "supervisor",
       settings: {
+        providerId,
         model,
         thinkingEnabled,
         reasoningEffort,
@@ -3216,6 +3288,89 @@ export default function Home() {
                           detail={t.connectionNotTested}
                         />
                       )}
+
+                      <div className="provider-registry-panel">
+                        <div>
+                          <p>{t.providerRegistry}</p>
+                          <small>{t.providerRegistryDetail}</small>
+                        </div>
+                        {providerRegistry ? (
+                          <>
+                            <dl className="settings-summary provider-summary">
+                              <div>
+                                <dt>{t.providerDefault}</dt>
+                                <dd>{providerRegistry.defaultProviderId}</dd>
+                              </div>
+                              <div>
+                                <dt>{t.providerFallback}</dt>
+                                <dd>
+                                  {providerRegistry.fallbackRules
+                                    .map((rule) =>
+                                      rule.mode === "disabled"
+                                        ? t.providerFallbackDisabled
+                                        : `${rule.fromProviderId} -> ${rule.toProviderId}`,
+                                    )
+                                    .join(", ")}
+                                </dd>
+                              </div>
+                            </dl>
+                            <div className="provider-list">
+                              {providerRegistry.providers.map((provider) => (
+                                <article className="provider-item" key={provider.id}>
+                                  <div>
+                                    <strong>{provider.label}</strong>
+                                    <small>
+                                      {provider.kind} · {getProviderStatusLabel(provider.status, t)}
+                                    </small>
+                                  </div>
+                                  <code>{provider.supportedModels.join(", ")}</code>
+                                </article>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <StateBlock
+                            title={t.providerRegistry}
+                            detail={
+                              isProviderStatusLoading
+                                ? t.providerStatusLoading
+                                : t.notConfigured
+                            }
+                          />
+                        )}
+                      </div>
+
+                      <div className="provider-registry-panel">
+                        <div>
+                          <p>{t.entrySurfaces}</p>
+                          <small>{t.entrySurfacesDetail}</small>
+                        </div>
+                        {entrySurfaces ? (
+                          <div className="provider-list">
+                            {entrySurfaces.surfaces.map((surface) => (
+                              <article className="provider-item" key={surface.id}>
+                                <div>
+                                  <strong>{surface.label}</strong>
+                                  <small>
+                                    {getEntrySurfaceStatusLabel(surface.status, t)} ·{" "}
+                                    {surface.sharedStateModel}
+                                  </small>
+                                </div>
+                                <span>{surface.detail}</span>
+                              </article>
+                            ))}
+                          </div>
+                        ) : (
+                          <StateBlock
+                            title={t.entrySurfaces}
+                            detail={
+                              isProviderStatusLoading
+                                ? t.providerStatusLoading
+                                : t.notConfigured
+                            }
+                          />
+                        )}
+                      </div>
                     </div>
                   </div>
                 </article>

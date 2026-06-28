@@ -74,6 +74,14 @@
 - [x] 在工作台中提供技能列表、编辑、启用 / 停用和删除入口。
 - [x] 验收标准：技能可以本地持久化、人工 curated、可读写删，并且启用技能能进入 supervisor 上下文。
 
+### Task V2.4：多 provider 与多入口
+
+- [x] 定义 provider registry、provider 状态、fallback 规则和 entry surface 的共享类型。
+- [x] 将现有 DeepSeek 状态包装成 provider registry 快照，并继续保持后端安全摘要与连接测试不泄露凭据。
+- [x] 新建 run 时明确记录当前 providerId，保留旧 DeepSeek settings 的兼容读取。
+- [x] 在 Settings 中展示 provider registry、fallback disabled 状态，以及 Web active / Desktop planned 的共享入口模型。
+- [x] 验收标准：当前仍只有 DeepSeek 一个真实 provider，但 UI / API / shared types 已不再是只能承载单 DeepSeek 状态槽；自动 fallback 和真实 desktop app 保留到后续 task。
+
 ## 已完成基线
 
 - [x] Stage 0：项目地基

@@ -1,10 +1,11 @@
-import type { DeepSeekModel } from "@sage/shared";
+import type { DeepSeekModel, ProviderId } from "@sage/shared";
 
 export type Locale = "zh" | "en";
 export type ReasoningEffort = "high" | "max";
 
 export type Preferences = {
   readonly locale: Locale;
+  readonly providerId: ProviderId;
   readonly model: DeepSeekModel;
   readonly thinkingEnabled: boolean;
   readonly reasoningEffort: ReasoningEffort;
@@ -19,6 +20,7 @@ export const PREFERENCES_STORAGE_KEY = "sage.preferences.v1";
 
 export const DEFAULT_PREFERENCES: Preferences = {
   locale: "zh",
+  providerId: "deepseek",
   model: "deepseek-v4-flash",
   thinkingEnabled: true,
   reasoningEffort: "high",
@@ -32,7 +34,15 @@ export const ALLOWED_MODELS = [
 export const ALLOWED_REASONING_EFFORTS = ["high", "max"] as const;
 
 const ALLOWED_LOCALES = ["zh", "en"] as const;
+const ALLOWED_PROVIDER_IDS = ["deepseek"] as const satisfies readonly ProviderId[];
 const PREFERENCE_SCHEMA_KEYS = [
+  "locale",
+  "providerId",
+  "model",
+  "thinkingEnabled",
+  "reasoningEffort",
+] as const;
+const LEGACY_PREFERENCE_SCHEMA_KEYS = [
   "locale",
   "model",
   "thinkingEnabled",
@@ -45,16 +55,19 @@ export function parseStoredPreferences(value: string | null): Preferences {
   try {
     const parsed: unknown = JSON.parse(value);
     if (!isPlainRecord(parsed)) return DEFAULT_PREFERENCES;
-    const parsedKeys = Object.keys(parsed);
 
+    const parsedKeys = Object.keys(parsed);
+    const hasCurrentSchema = matchesSchemaKeys(parsedKeys, PREFERENCE_SCHEMA_KEYS);
+    const hasLegacySchema = matchesSchemaKeys(
+      parsedKeys,
+      LEGACY_PREFERENCE_SCHEMA_KEYS,
+    );
+    if (!hasCurrentSchema && !hasLegacySchema) return DEFAULT_PREFERENCES;
+
+    const providerId = hasCurrentSchema ? parsed.providerId : "deepseek";
     if (
-      parsedKeys.length !== PREFERENCE_SCHEMA_KEYS.length ||
-      !parsedKeys.every((key) =>
-        PREFERENCE_SCHEMA_KEYS.includes(
-          key as (typeof PREFERENCE_SCHEMA_KEYS)[number],
-        ),
-      ) ||
       !isAllowedValue(parsed.locale, ALLOWED_LOCALES) ||
+      !isAllowedValue(providerId, ALLOWED_PROVIDER_IDS) ||
       !isAllowedValue(parsed.model, ALLOWED_MODELS) ||
       typeof parsed.thinkingEnabled !== "boolean" ||
       !isAllowedValue(parsed.reasoningEffort, ALLOWED_REASONING_EFFORTS)
@@ -64,6 +77,7 @@ export function parseStoredPreferences(value: string | null): Preferences {
 
     return {
       locale: parsed.locale,
+      providerId,
       model: parsed.model,
       thinkingEnabled: parsed.thinkingEnabled,
       reasoningEffort: parsed.reasoningEffort,
@@ -88,6 +102,7 @@ export function readStoredPreferences(
 export function serializePreferences(preferences: Preferences): string {
   return JSON.stringify({
     locale: preferences.locale,
+    providerId: preferences.providerId,
     model: preferences.model,
     thinkingEnabled: preferences.thinkingEnabled,
     reasoningEffort: preferences.reasoningEffort,
@@ -111,6 +126,16 @@ function isAllowedValue<T extends readonly string[]>(
   allowed: T,
 ): value is T[number] {
   return typeof value === "string" && allowed.includes(value);
+}
+
+function matchesSchemaKeys<T extends readonly string[]>(
+  keys: readonly string[],
+  schema: T,
+): boolean {
+  return (
+    keys.length === schema.length &&
+    keys.every((key) => schema.includes(key))
+  );
 }
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
