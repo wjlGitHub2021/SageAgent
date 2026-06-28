@@ -1,69 +1,70 @@
-# Sage Agent
+# Sage Agent 使用说明
 
-Sage Agent 是一个轻量级 Hermes-like agent 工作台。它希望呈现 Codex 桌面端那种专注、密集、可观察的工作体验：用户前台看到一个统一助手，后台由一组小 agent 协作推进任务，并在关键操作前请求 approval。
+Sage Agent 是一个本地单用户、Web First 的 agent workbench。当前界面默认中文，支持中文/English 切换，目标是提供一个类似 Codex desktop 的三栏工作台：左侧 threads / runs，中间当前 run 工作区，右侧 timeline、tool calls、approvals 和 artifacts。
 
-这是一个商业化项目，不是一次性 demo。项目从一开始就要求清晰文档、可追踪任务、可审计安全边界和稳定的工程质量。
+## 快速开始
 
-## MVP 目标
+1. 安装依赖：
 
-- 构建 Web First 的 local single-user agent workspace。
-- 使用 Codex desktop-inspired 三栏布局：左侧 threads/runs，中间当前任务工作区，右侧 timeline/tool/artifact/approval inspector。
-- 一期只接入 DeepSeek V4。
-- 支持 `deepseek-v4-flash` 和 `deepseek-v4-pro`。
-- 默认 `deepseek-v4-flash`、thinking enabled、`reasoning_effort: high`。
-- UI 只暴露 `high` 和 `max` 两档 reasoning effort。
-- 使用 run-based 模型组织任务：Run、Step、ToolCall、Approval、Artifact、Event。
-- 先采用 Read + Draft 工具权限；写文件、shell、外部副作用操作都必须 approval。
-
-## 当前阶段
-
-- Phase 2 已完成：真实 run loop、DeepSeek streaming events、read-only file tool、supervisor-led multi-agent event flow 已接入。
-- Phase 3 已启动：聚焦独立 Settings surface、本地偏好、DeepSeek 配置状态、连接测试和 workspace 安全说明。
-- 当前仍是 local single-user MVP；runtime store 仍是进程内 memory store，暂不做 hosted multi-user、billing 或 tenant isolation。
-
-## 计划架构
-
-```text
-apps/web
-  Next.js 前端、API routes、SSE event endpoints
-
-packages/runtime
-  orchestrator、agent loop、event bus、approval handling
-
-packages/agents
-  supervisor、researcher、builder、reviewer
-
-packages/deepseek
-  DeepSeek V4 provider adapter
-
-packages/shared
-  共享 domain types 和 schemas
+```bash
+rtk pnpm install
 ```
 
-## MVP Agent Team
+2. 准备本地环境变量：
 
-- Supervisor：理解用户目标，创建 run plan，分派子任务，汇总最终结果。
-- Researcher：读取项目上下文，整理发现。
-- Builder：生成实现方案、patch 草稿、文档或 artifact。
-- Reviewer：检查风险、遗漏、质量问题和商业化可用性。
-
-## 工作方法
-
-每个小 task 遵循固定流程：
-
-```text
-写文档 -> 实现 -> QA 审查 -> 修复或记录 BUG -> 中文 git commit
+```bash
+cp .env.example .env.local
 ```
 
-复杂任务可以分派一次性子 agent 协助 research、implementation 或 QA。子 agent 完成明确子任务后立即结束，由主 agent 负责整合结论。
+3. 启动开发服务：
 
-## 文档
+```bash
+rtk pnpm dev
+```
 
-- [计划](docs/PLAN.md)
-- [规格](docs/SPEC.md)
-- [Phase 2 规格](docs/PHASE2_SPEC.md)
-- [Phase 3 规格](docs/PHASE3_SPEC.md)
-- [Stage 1 实施规格](docs/STAGE1_SPEC.md)
-- [任务](docs/TASKS.md)
-- [决策](docs/DECISIONS.md)
-- [BUG 跟踪](docs/BUGS.md)
+4. 打开：
+
+```text
+http://localhost:3000
+```
+
+## 本地配置
+
+`.env.local` 只放在本机，不要提交到仓库。
+
+- `DEEPSEEK_API_KEY`：DeepSeek API key
+- `DEEPSEEK_BASE_URL`：默认 `https://api.deepseek.com`
+- `DEEPSEEK_DEFAULT_MODEL`：默认 `deepseek-v4-flash`
+- `DEEPSEEK_DEFAULT_REASONING_EFFORT`：默认 `high`
+- `DEEPSEEK_THINKING_ENABLED`：默认 `true`
+- `SAGE_WORKSPACE_ROOT`：工作区根目录
+
+## 常用命令
+
+```bash
+rtk pnpm test
+rtk pnpm run typecheck
+rtk pnpm lint
+rtk pnpm build
+```
+
+## 你能看到什么
+
+- 左侧：threads、runs、workspace context、recent activity
+- 中间：当前 run、消息流、最终输出、composer
+- 右侧：agent timeline、tool calls、approvals、artifacts、run metadata
+- 设置：语言、默认模型、thinking mode、reasoning effort
+
+## 项目文档
+
+- [PLAN](docs/PLAN.md)
+- [SPEC](docs/SPEC.md)
+- [TASKS](docs/TASKS.md)
+- [BUGS](docs/BUGS.md)
+- [QA_CHECKLIST](docs/QA_CHECKLIST.md)
+
+## 安全提示
+
+- 不要把真实 API key 写进仓库文件
+- 不要提交 `.env.local`
+- 只在本地环境配置 DeepSeek 相关密钥
