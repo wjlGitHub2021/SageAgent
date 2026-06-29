@@ -24,6 +24,40 @@
 
 ## 当前 BUG
 
+### 2026-06-30 多 agent 全量审查与修复
+
+- 状态：`fixed`
+- 严重级别：`P1` / `P2`（含若干 P3 清理）
+- 发现阶段：多 agent code review（runtime/agents、apps/web、deepseek/shared 三路并行审查后汇总去重）
+- 影响范围：`packages/deepseek`、`packages/runtime`、`packages/shared`、`apps/web` 的可用性、数据安全、信任边界、资源释放与代码整洁度。
+- 问题清单与修复（每项独立提交并推送，全程门禁通过，测试 77→90）：
+  - P1 `cd4cb3e`：DeepSeek 请求无超时，连接挂起会让 run 永久卡死。抽 `fetchWithTimeout`，超时 abort 归一化为 `network_error`。
+  - P1 `f1d3ff3`：`memory-registry` 损坏文件静默丢数据。对齐 skill-registry：IO 错误抛出、JSON/schema 损坏先备份再视为无数据。
+  - P1 `1cf505b`：`stream-output` 路由是未被引用的后门，可伪造 agent 产出并改写 run 状态。生产 404 关闭，非生产仅允许 `queued`。
+  - P2 `aab0489`：memory 路由透传客户端 `createdBy` 可伪造 actor。固定为 `user`，与 skills 对齐。
+  - P2 `feca2f9`：supervisor 路由 guard 与状态落库之间存在 TOCTOU，并发会重复执行同一 run。新增 `claimSupervisorRun`（CAS）同步占用。
+  - P2 `6cd3870`：客户端取消未中止上游 DeepSeek，连接与 token 泄露。全链路透传 `AbortSignal`，abort 时 cancel reader。
+  - P2 `62a026b`：流式 `choices:[]` 收尾帧被误判中断流；非流式 `content:null` 整包拒绝。前者跳过，后者回退空串并保留 `finishReason`。
+  - P2 `af6d01a`：快照仅校验顶层数组，坏元素会进 Map 后排序崩溃；写入非原子。改为逐元素过滤 + 写临时文件 rename。
+  - P2 `ca2a051`：`read_project_file` 屏蔽清单缺凭据文件。补 `.npmrc`/`.netrc`/`.git-credentials`/`id_rsa` 等及 `.pem`/`.key` 等后缀。
+  - P3 `4e8bfb9`：删除死文件 `platform-extension-registry.ts` 与未引用别名 `PlatformEntrySurfaceSnapshot`。
+  - P3 `4841127`：抽取 `useDialogFocusTrap`，消除三处重复的对话框焦点陷阱。
+- 审查建议中未采纳项：
+  - 「`ProviderSettings.providerId` 收紧为 `ProviderId`」不适用——本仓库故意用 `string` 承载未知 provider 以驱动 `unsupported_provider` 处理（有测试依赖），收紧会破坏该逻辑。
+- 验证结论：`rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 全部通过；10 次提交均已推送 `origin/main`。
+
+### 2026-06-30 memory-registry Local/Persistent 类重复
+
+- 状态：`in_progress`
+- 严重级别：`P3`
+- 发现阶段：多 agent code review
+- 影响范围：`packages/runtime/src/memory-registry.ts` 的可维护性。
+- 复现步骤或线索：
+  - `LocalMemoryRegistry` 与 `PersistentMemoryRegistry` 的 `upsertEntry`/`deleteEntry`/`recordAudit`/`getSnapshot`/`listEntries`/`getEntry` 近乎逐行重复，唯一差别是 Persistent 多一次 `save()`；skill-registry 已抽出共享 helper，memory 侧未同步。
+- 修复方式：
+  - 照 skill-registry 模式抽出共享纯函数 helper（`upsertEntryInMap`/`createAuditRecord`/`createSnapshot` 等），两个类共用，仅 Persistent 在变更后追加持久化。
+- 验证结论：见对应提交，`rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build` 通过。
+
 ### 2026-06-29 V2.1-V2.5 QA 后续修复
 
 - 状态：`fixed`
