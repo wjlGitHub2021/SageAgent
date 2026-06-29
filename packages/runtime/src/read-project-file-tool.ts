@@ -15,6 +15,29 @@ const BLOCKED_PATH_SEGMENTS = new Set([
   "test-results",
 ]);
 
+// 常见凭据型文件名（不分大小写），即使在工作区内也不允许读取。
+const BLOCKED_FILE_NAMES = new Set([
+  ".npmrc",
+  ".netrc",
+  ".git-credentials",
+  ".pgpass",
+  ".htpasswd",
+  "id_rsa",
+  "id_dsa",
+  "id_ecdsa",
+  "id_ed25519",
+]);
+
+// 私钥/证书/密钥库类后缀，统一阻断。
+const BLOCKED_FILE_EXTENSIONS = [
+  ".pem",
+  ".key",
+  ".p12",
+  ".pfx",
+  ".keystore",
+  ".jks",
+];
+
 export type ReadProjectFileIssueCode =
   | "invalid_workspace_root"
   | "invalid_path"
@@ -203,7 +226,11 @@ function isBlockedProjectPath(relativePath: string): boolean {
     ) {
       return true;
     }
-    return BLOCKED_PATH_SEGMENTS.has(normalizedSegment);
+    if (BLOCKED_PATH_SEGMENTS.has(normalizedSegment)) return true;
+    if (BLOCKED_FILE_NAMES.has(normalizedSegment)) return true;
+    return BLOCKED_FILE_EXTENSIONS.some((ext) =>
+      normalizedSegment.endsWith(ext),
+    );
   });
 }
 

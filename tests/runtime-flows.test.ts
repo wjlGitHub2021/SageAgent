@@ -388,6 +388,25 @@ describe("runtime flows", () => {
       issue: { code: "blocked_path" },
     });
 
+    for (const credentialPath of [
+      ".npmrc",
+      ".netrc",
+      ".git-credentials",
+      "secrets/id_rsa",
+      "certs/server.pem",
+      "keys/private.KEY",
+    ]) {
+      await expect(
+        readProjectFileTool({
+          workspaceRoot: process.cwd(),
+          relativePath: credentialPath,
+        }),
+      ).resolves.toMatchObject({
+        ok: false,
+        issue: { code: "blocked_path" },
+      });
+    }
+
     expect(requiresToolApproval("read_project_file")).toBe(false);
   });
 
