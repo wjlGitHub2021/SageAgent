@@ -17,10 +17,15 @@ import type {
   SkillAuditRecord,
   SkillEntry,
   SkillSnapshot,
+  SkillSource,
   SkillStatus,
   UpsertSkillEntryInput,
 } from "@sage/shared";
-import { createEmptySkillSnapshot } from "@sage/shared";
+import {
+  createEmptySkillSnapshot,
+  SKILL_SOURCES,
+  SKILL_STATUSES,
+} from "@sage/shared";
 
 export interface SkillRegistry {
   getSnapshot(): SkillSnapshot;
@@ -382,12 +387,23 @@ function readPersistedSnapshot(storagePath: string): SkillSnapshot | null {
     return null;
   }
 
-  if (!isSkillSnapshot(parsed)) {
+  if (!isSkillSnapshotShape(parsed)) {
     backupInvalidSnapshot(storagePath);
     return null;
   }
 
-  return parsed;
+  // 逐元素校验：过滤掉结构非法的 entry/audit，避免坏元素进入 Map 后在排序等处抛错；
+  // 若确有元素被丢弃，先备份原文件以便人工恢复。
+  const entries = parsed.entries.filter(isSkillEntry);
+  const auditTrail = parsed.auditTrail.filter(isSkillAuditRecord);
+  if (
+    entries.length !== parsed.entries.length ||
+    auditTrail.length !== parsed.auditTrail.length
+  ) {
+    backupInvalidSnapshot(storagePath);
+  }
+
+  return { entries, auditTrail };
 }
 
 function backupInvalidSnapshot(storagePath: string): void {
@@ -402,15 +418,59 @@ function backupInvalidSnapshot(storagePath: string): void {
 function persistSnapshot(storagePath: string, snapshot: SkillSnapshot): void {
   const directory = path.dirname(storagePath);
   mkdirSync(directory, { recursive: true });
-  writeFileSync(storagePath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
+  // 原子写：先写临时文件再 rename，避免写一半崩溃留下截断 JSON。
+  const tempPath = `${storagePath}.tmp-${randomUUID()}`;
+  writeFileSync(tempPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
+  renameSync(tempPath, storagePath);
 }
 
-function isSkillSnapshot(value: unknown): value is SkillSnapshot {
-  return isSkillSnapshotRecord(value) &&
+function isSkillSnapshotShape(
+  value: unknown,
+): value is { entries: unknown[]; auditTrail: unknown[] } {
+  return (
+    isRecord(value) &&
     Array.isArray(value.entries) &&
-    Array.isArray(value.auditTrail);
+    Array.isArray(value.auditTrail)
+  );
 }
 
-function isSkillSnapshotRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isSkillEntry(value: unknown): value is SkillEntry {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.name === "string" &&
+    typeof value.description === "string" &&
+    typeof value.instruction === "string" &&
+    isStringArray(value.tags) &&
+    SKILL_SOURCES.includes(value.source as SkillSource) &&
+    SKILL_STATUSES.includes(value.status as SkillStatus) &&
+    typeof value.version === "number" &&
+    typeof value.createdBy === "string" &&
+    typeof value.createdAt === "string" &&
+    typeof value.updatedAt === "string"
+  );
+}
+
+function isSkillAuditRecord(value: unknown): value is SkillAuditRecord {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.skillId === "string" &&
+    typeof value.action === "string" &&
+    typeof value.actor === "string" &&
+    typeof value.reason === "string" &&
+    typeof value.summary === "string" &&
+    typeof value.name === "string" &&
+    SKILL_STATUSES.includes(value.status as SkillStatus) &&
+    typeof value.version === "number" &&
+    typeof value.createdAt === "string"
+  );
 }

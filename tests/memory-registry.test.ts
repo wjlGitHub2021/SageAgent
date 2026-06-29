@@ -137,4 +137,44 @@ describe("memory registry", () => {
 
     await fs.rm(storageDirectory, { recursive: true, force: true });
   });
+
+  it("drops structurally invalid entries while keeping valid ones", async () => {
+    const storageDirectory = await fs.mkdtemp(
+      path.join(os.tmpdir(), "sage-memory-registry-badelem-"),
+    );
+    const storagePath = path.join(storageDirectory, "memory-registry.json");
+    const validEntry = {
+      id: "memory-keep",
+      scope: "workspace",
+      title: "Keep me",
+      content: "valid",
+      tags: ["ok"],
+      sourceThreadId: null,
+      sourceRunId: null,
+      createdBy: "user",
+      createdAt: "2026-06-29T10:00:00.000Z",
+      updatedAt: "2026-06-29T10:00:00.000Z",
+    };
+    await fs.writeFile(
+      storagePath,
+      JSON.stringify({ entries: [validEntry, null, { id: "broken" }], auditTrail: [] }),
+      "utf8",
+    );
+
+    const registry = createPersistentMemoryRegistry({
+      storagePath,
+      initialSnapshot: createEmptyMemorySnapshot(),
+    });
+
+    const entries = registry.getSnapshot().entries;
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.id).toBe("memory-keep");
+    // 丢弃坏元素时备份原文件
+    const backups = (await fs.readdir(storageDirectory)).filter((name) =>
+      name.startsWith("memory-registry.json.invalid-"),
+    );
+    expect(backups).toHaveLength(1);
+
+    await fs.rm(storageDirectory, { recursive: true, force: true });
+  });
 });

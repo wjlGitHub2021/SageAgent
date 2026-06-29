@@ -171,4 +171,44 @@ describe("skill registry", () => {
 
     await fs.rm(storageDirectory, { recursive: true, force: true });
   });
+
+  it("drops structurally invalid entries while keeping valid ones", async () => {
+    const storageDirectory = await fs.mkdtemp(
+      path.join(os.tmpdir(), "sage-skill-registry-badelem-"),
+    );
+    const storagePath = path.join(storageDirectory, "skill-registry.json");
+    const validEntry = {
+      id: "skill-keep",
+      name: "Keep me",
+      description: "valid",
+      instruction: "do something",
+      tags: ["ok"],
+      source: "user",
+      status: "draft",
+      version: 1,
+      createdBy: "user",
+      createdAt: "2026-06-29T10:00:00.000Z",
+      updatedAt: "2026-06-29T10:00:00.000Z",
+    };
+    await fs.writeFile(
+      storagePath,
+      JSON.stringify({ entries: [validEntry, null, { id: "broken" }], auditTrail: [] }),
+      "utf8",
+    );
+
+    const registry = createPersistentSkillRegistry({
+      storagePath,
+      initialSnapshot: createEmptySkillSnapshot(),
+    });
+
+    const entries = registry.getSnapshot().entries;
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.id).toBe("skill-keep");
+    const backups = (await fs.readdir(storageDirectory)).filter((name) =>
+      name.startsWith("skill-registry.json.invalid-"),
+    );
+    expect(backups).toHaveLength(1);
+
+    await fs.rm(storageDirectory, { recursive: true, force: true });
+  });
 });

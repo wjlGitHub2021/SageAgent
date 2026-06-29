@@ -19,7 +19,7 @@ import type {
   MemorySnapshot,
   UpsertMemoryEntryInput,
 } from "@sage/shared";
-import { createEmptyMemorySnapshot } from "@sage/shared";
+import { createEmptyMemorySnapshot, MEMORY_SCOPES } from "@sage/shared";
 
 export interface MemoryRegistry {
   getSnapshot(): MemorySnapshot;
@@ -355,12 +355,23 @@ function readPersistedSnapshot(storagePath: string): MemorySnapshot | null {
     return null;
   }
 
-  if (!isMemorySnapshot(parsed)) {
+  if (!isMemorySnapshotShape(parsed)) {
     backupInvalidSnapshot(storagePath);
     return null;
   }
 
-  return parsed;
+  // 逐元素校验：过滤掉结构非法的 entry/audit（合法 JSON 但坏元素），避免它们进入
+  // Map 后在排序、tags.length 等处抛错；若确有元素被丢弃，先备份原文件以便人工恢复。
+  const entries = parsed.entries.filter(isMemoryEntry);
+  const auditTrail = parsed.auditTrail.filter(isMemoryAuditRecord);
+  if (
+    entries.length !== parsed.entries.length ||
+    auditTrail.length !== parsed.auditTrail.length
+  ) {
+    backupInvalidSnapshot(storagePath);
+  }
+
+  return { entries, auditTrail };
 }
 
 function backupInvalidSnapshot(storagePath: string): void {
@@ -375,15 +386,63 @@ function backupInvalidSnapshot(storagePath: string): void {
 function persistSnapshot(storagePath: string, snapshot: MemorySnapshot): void {
   const directory = path.dirname(storagePath);
   mkdirSync(directory, { recursive: true });
-  writeFileSync(storagePath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
+  // 原子写：先写临时文件再 rename，避免写一半崩溃留下截断 JSON。
+  const tempPath = `${storagePath}.tmp-${randomUUID()}`;
+  writeFileSync(tempPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
+  renameSync(tempPath, storagePath);
 }
 
-function isMemorySnapshot(value: unknown): value is MemorySnapshot {
-  return isMemorySnapshotRecord(value) &&
+function isMemorySnapshotShape(
+  value: unknown,
+): value is { entries: unknown[]; auditTrail: unknown[] } {
+  return (
+    isRecord(value) &&
     Array.isArray(value.entries) &&
-    Array.isArray(value.auditTrail);
+    Array.isArray(value.auditTrail)
+  );
 }
 
-function isMemorySnapshotRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isStringOrNull(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isMemoryEntry(value: unknown): value is MemoryEntry {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    MEMORY_SCOPES.includes(value.scope as MemoryScope) &&
+    typeof value.title === "string" &&
+    typeof value.content === "string" &&
+    isStringArray(value.tags) &&
+    isStringOrNull(value.sourceThreadId) &&
+    isStringOrNull(value.sourceRunId) &&
+    typeof value.createdBy === "string" &&
+    typeof value.createdAt === "string" &&
+    typeof value.updatedAt === "string"
+  );
+}
+
+function isMemoryAuditRecord(value: unknown): value is MemoryAuditRecord {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.memoryId === "string" &&
+    typeof value.action === "string" &&
+    typeof value.actor === "string" &&
+    typeof value.reason === "string" &&
+    typeof value.summary === "string" &&
+    MEMORY_SCOPES.includes(value.scope as MemoryScope) &&
+    typeof value.title === "string" &&
+    isStringOrNull(value.sourceThreadId) &&
+    isStringOrNull(value.sourceRunId) &&
+    typeof value.createdAt === "string"
+  );
 }
