@@ -319,10 +319,9 @@ export function parseDeepSeekChatCompletionResponse(
       return invalidResponse("DeepSeek response message must be an object.");
     }
 
-    const content = readString(message.content);
-    if (content === null) {
-      return invalidResponse("DeepSeek response message content must be a string.");
-    }
+    // content 缺失/为 null（如 finish_reason: "length" 或推理类响应）时回退为空串并
+    // 保留 finishReason，而不是把整包响应判为 invalid_response。
+    const content = readString(message.content) ?? "";
 
     choices.push({
       index: readNumber(rawChoice.index) ?? choices.length,
@@ -475,14 +474,20 @@ async function readStreamChunk(
 
 function parseDeepSeekStreamPayload(
   payload: unknown,
-): DeepSeekAdapterResult<DeepSeekStreamParseEvent> {
+): DeepSeekAdapterResult<DeepSeekStreamParseEvent | null> {
   if (!isRecord(payload)) {
     return invalidStreamLine("DeepSeek stream payload must be an object.");
   }
 
   const rawChoices = payload.choices;
-  if (!Array.isArray(rawChoices) || rawChoices.length === 0) {
-    return invalidStreamLine("DeepSeek stream payload choices must be a non-empty array.");
+  if (!Array.isArray(rawChoices)) {
+    return invalidStreamLine("DeepSeek stream payload choices must be an array.");
+  }
+
+  // OpenAI 兼容服务（DeepSeek 同协议）常在 [DONE] 前发送 choices:[] + usage 统计帧，
+  // 跳过该帧而不是把它判为错误并中断整个流。
+  if (rawChoices.length === 0) {
+    return { ok: true, value: null };
   }
 
   const firstChoice = rawChoices[0];

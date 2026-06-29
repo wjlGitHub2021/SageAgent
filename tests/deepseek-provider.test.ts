@@ -300,6 +300,50 @@ describe("DeepSeek provider", () => {
   });
 });
 
+describe("DeepSeek parsing edge cases", () => {
+  it("skips usage-only tail frames with empty choices instead of erroring", async () => {
+    const stream = createTextStream([
+      'data: {"choices":[{"delta":{"content":"hi"}}]}\n',
+      'data: {"choices":[],"usage":{"total_tokens":5}}\n',
+      "data: [DONE]\n",
+    ]);
+
+    const results: Awaited<
+      ReturnType<typeof parseDeepSeekStreamLine>
+    >[] = [];
+    for await (const result of parseDeepSeekStreamBody(stream)) {
+      results.push(result);
+    }
+
+    expect(results.every((result) => result.ok)).toBe(true);
+    const values = results.flatMap((result) =>
+      result.ok ? [result.value] : [],
+    );
+    expect(values).toHaveLength(2);
+    expect(values.some((value) => value?.type === "delta")).toBe(true);
+    expect(values.some((value) => value?.type === "done")).toBe(true);
+  });
+
+  it("falls back to empty content instead of rejecting null message content", () => {
+    const result = parseDeepSeekChatCompletionResponse({
+      id: "x",
+      model: "deepseek-v4-flash",
+      choices: [
+        {
+          index: 0,
+          message: { role: "assistant", content: null },
+          finish_reason: "length",
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.choices[0]?.message.content).toBe("");
+    expect(result.value.choices[0]?.finishReason).toBe("length");
+  });
+});
+
 describe("DeepSeek stream cancellation", () => {
   it("cancels the reader and stops reading when the signal aborts", async () => {
     let cancelled = false;
