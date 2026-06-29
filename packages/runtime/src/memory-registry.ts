@@ -3,6 +3,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  renameSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
@@ -342,14 +343,33 @@ function normalizeWorkspaceRoot(value: string): string {
 function readPersistedSnapshot(storagePath: string): MemorySnapshot | null {
   if (!existsSync(storagePath)) return null;
 
+  // 读取异常（如权限错误）直接抛出，让调用方感知，而不是当作“无数据”静默吞掉；
+  // 仅当文件存在但内容损坏（JSON 解析或 schema 不符）时，先备份坏文件再视为无数据，
+  // 避免下一次 save() 用空快照覆盖原本可人工恢复的记忆。
+  const raw = readFileSync(storagePath, "utf8");
+  let parsed: unknown;
   try {
-    const raw = readFileSync(storagePath, "utf8");
-    const parsed: unknown = JSON.parse(raw);
-    if (!isMemorySnapshot(parsed)) return null;
-    return parsed;
+    parsed = JSON.parse(raw);
   } catch {
+    backupInvalidSnapshot(storagePath);
     return null;
   }
+
+  if (!isMemorySnapshot(parsed)) {
+    backupInvalidSnapshot(storagePath);
+    return null;
+  }
+
+  return parsed;
+}
+
+function backupInvalidSnapshot(storagePath: string): void {
+  if (!existsSync(storagePath)) return;
+
+  const backupPath = `${storagePath}.invalid-${new Date()
+    .toISOString()
+    .replace(/[:.]/g, "-")}`;
+  renameSync(storagePath, backupPath);
 }
 
 function persistSnapshot(storagePath: string, snapshot: MemorySnapshot): void {

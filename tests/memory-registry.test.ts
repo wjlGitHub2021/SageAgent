@@ -113,4 +113,28 @@ describe("memory registry", () => {
     ]);
     void fs.rm(storagePath, { force: true });
   });
+
+  it("backs up invalid persisted snapshots instead of silently overwriting them", async () => {
+    const storageDirectory = await fs.mkdtemp(
+      path.join(os.tmpdir(), "sage-memory-registry-invalid-"),
+    );
+    const storagePath = path.join(storageDirectory, "memory-registry.json");
+    await fs.writeFile(storagePath, "{not-json", "utf8");
+
+    const registry = createPersistentMemoryRegistry({
+      storagePath,
+      initialSnapshot: createEmptyMemorySnapshot(),
+    });
+
+    expect(registry.getSnapshot().entries).toEqual([]);
+    const backups = (await fs.readdir(storageDirectory)).filter((name) =>
+      name.startsWith("memory-registry.json.invalid-"),
+    );
+    expect(backups).toHaveLength(1);
+    await expect(
+      fs.readFile(path.join(storageDirectory, backups[0] ?? ""), "utf8"),
+    ).resolves.toBe("{not-json");
+
+    await fs.rm(storageDirectory, { recursive: true, force: true });
+  });
 });
