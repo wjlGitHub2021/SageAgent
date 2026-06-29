@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   createDeepSeekChatCompletion,
+  fetchWithTimeout,
   loadDeepSeekProviderConfig,
   parseDeepSeekChatCompletionResponse,
   parseDeepSeekStreamBody,
@@ -296,6 +297,60 @@ describe("DeepSeek provider", () => {
       ok: false,
       issue: { code: "network_error" },
     });
+  });
+});
+
+describe("fetchWithTimeout", () => {
+  it("aborts the request when the timeout elapses before a response", async () => {
+    const run = (signal: AbortSignal) =>
+      new Promise<never>((_resolve, reject) => {
+        signal.addEventListener("abort", () =>
+          reject(new Error("aborted by timeout")),
+        );
+      });
+
+    await expect(fetchWithTimeout(run, 5)).rejects.toThrow("aborted by timeout");
+  });
+
+  it("returns the value and does not abort when the request resolves in time", async () => {
+    let aborted = false;
+    const run = (signal: AbortSignal) => {
+      signal.addEventListener("abort", () => {
+        aborted = true;
+      });
+      return Promise.resolve("ok");
+    };
+
+    await expect(fetchWithTimeout(run, 1000)).resolves.toBe("ok");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(aborted).toBe(false);
+  });
+
+  it("maps a timeout abort to a network_error from the chat completion adapter", async () => {
+    const config = loadDeepSeekProviderConfig({ DEEPSEEK_API_KEY: "sk-test" });
+    expect(config.ok).toBe(true);
+    if (!config.ok) return;
+
+    const hangingFetcher = (_input: string, _init: unknown) =>
+      fetchWithTimeout<never>(
+        (signal) =>
+          new Promise<never>((_resolve, reject) => {
+            signal.addEventListener("abort", () =>
+              reject(new Error("timed out")),
+            );
+          }),
+        5,
+      );
+
+    const result = await createDeepSeekChatCompletion(
+      config.config,
+      { messages: [{ role: "user", content: "hi" }] },
+      hangingFetcher as never,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issue.code).toBe("network_error");
   });
 });
 

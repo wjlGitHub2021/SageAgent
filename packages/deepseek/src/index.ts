@@ -21,7 +21,9 @@ export {
 } from "./api-key.js";
 export {
   DEEPSEEK_CHAT_COMPLETIONS_PATH,
+  DEEPSEEK_REQUEST_TIMEOUT_MS,
   createDeepSeekChatCompletion,
+  fetchWithTimeout,
   parseDeepSeekChatCompletionResponse,
   parseDeepSeekStreamBody,
   parseDeepSeekStreamLine,

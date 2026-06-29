@@ -5,6 +5,12 @@ import type { DeepSeekProviderConfig } from "./config.js";
 
 export const DEEPSEEK_CHAT_COMPLETIONS_PATH = "/chat/completions";
 
+/**
+ * 默认请求超时（毫秒）。覆盖从发起请求到收到响应头的阶段，避免连接挂起时
+ * 整个 run 永久 pending；超时会 abort fetch，由调用方归一化为 network_error。
+ */
+export const DEEPSEEK_REQUEST_TIMEOUT_MS = 60_000;
+
 export type DeepSeekChatRole = "system" | "user" | "assistant";
 
 export interface DeepSeekChatMessage {
@@ -550,6 +556,19 @@ function normalizeMessages(
   };
 }
 
+/**
+ * 用超时驱动的 AbortSignal 包裹一次请求：超时未拿到响应头即 abort，
+ * 拿到响应（或失败）后立即清除计时器，不影响后续 body 流式读取。
+ */
+export function fetchWithTimeout<R>(
+  run: (signal: AbortSignal) => Promise<R>,
+  timeoutMs: number = DEEPSEEK_REQUEST_TIMEOUT_MS,
+): Promise<R> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return run(controller.signal).finally(() => clearTimeout(timer));
+}
+
 function defaultDeepSeekFetch(
   input: string,
   init: Parameters<DeepSeekFetch>[1],
@@ -558,7 +577,7 @@ function defaultDeepSeekFetch(
     return Promise.reject(new Error("fetch is not available."));
   }
 
-  return fetch(input, init);
+  return fetchWithTimeout((signal) => fetch(input, { ...init, signal }));
 }
 
 function defaultDeepSeekStreamFetch(
@@ -569,7 +588,7 @@ function defaultDeepSeekStreamFetch(
     return Promise.reject(new Error("fetch is not available."));
   }
 
-  return fetch(input, init);
+  return fetchWithTimeout((signal) => fetch(input, { ...init, signal }));
 }
 
 function joinDeepSeekUrl(baseUrl: string, path: string): string {
