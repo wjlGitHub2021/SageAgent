@@ -114,6 +114,11 @@ export interface StreamSupervisorDeepSeekInput {
   readonly maxFileBytes?: number;
   readonly now?: Clock;
   readonly createId?: IdFactory;
+  /**
+   * 是否由生成器自行发出 run 启动事件。路由在返回前会同步 claim run（并发守卫），
+   * 并自行发出启动事件，此时应传 false，避免重复发出 run.status_changed。
+   */
+  readonly emitRunStartedEvent?: boolean;
 }
 
 export async function runSupervisorDeepSeekOnce({
@@ -296,20 +301,24 @@ export async function* streamSupervisorDeepSeekEvents({
   maxFileBytes = DEFAULT_READ_PROJECT_FILE_MAX_BYTES,
   now = defaultNow,
   createId = defaultCreateId,
+  emitRunStartedEvent = true,
 }: StreamSupervisorDeepSeekInput): AsyncGenerator<RunEvent, SupervisorRunResult> {
   const run = store.getRun(runId);
   if (!run) {
     return missingRunResult();
   }
 
-  const startEvent = createRunStartedEvent({
-    run,
-    createdAt: now(),
-    sequence: nextRunSequence(store, run.id),
-    createId,
-  });
-  store.appendEvent(startEvent);
-  yield startEvent;
+  let startEvent: RunEvent | null = null;
+  if (emitRunStartedEvent) {
+    startEvent = createRunStartedEvent({
+      run,
+      createdAt: now(),
+      sequence: nextRunSequence(store, run.id),
+      createId,
+    });
+    store.appendEvent(startEvent);
+    yield startEvent;
+  }
 
   const fileContextPass = await appendReadProjectFileContextPass({
     store,
@@ -358,7 +367,7 @@ export async function* streamSupervisorDeepSeekEvents({
         now,
         createId,
         alreadyAppendedEvents: [
-          startEvent,
+          ...(startEvent ? [startEvent] : []),
           ...fileContextPass.events,
           ...multiAgentPass.events,
         ],
@@ -406,7 +415,7 @@ export async function* streamSupervisorDeepSeekEvents({
       now,
       createId,
       alreadyAppendedEvents: [
-        startEvent,
+        ...(startEvent ? [startEvent] : []),
         ...fileContextPass.events,
         ...multiAgentPass.events,
       ],
@@ -854,6 +863,41 @@ function appendSupervisorFailure({
     run: failedRun,
     events: [...alreadyAppendedEvents, event],
   };
+}
+
+export type ClaimSupervisorRunResult =
+  | { readonly ok: true; readonly startEvent: RunEvent }
+  | { readonly ok: false };
+
+/**
+ * 同步“占用”一个排队中的 run：仅当当前状态为 queued 时翻转为 running 并发出
+ * 启动事件，否则返回失败。路由在返回响应前同步调用它，使并发的第二个请求看到
+ * running 状态而被拒绝，关闭 guard 检查与状态落库之间的 TOCTOU 窗口。
+ */
+export function claimSupervisorRun({
+  store,
+  runId,
+  now = defaultNow,
+  createId = defaultCreateId,
+}: {
+  readonly store: RuntimeStore;
+  readonly runId: EntityId;
+  readonly now?: Clock;
+  readonly createId?: IdFactory;
+}): ClaimSupervisorRunResult {
+  const run = store.getRun(runId);
+  if (!run || run.status !== "queued") {
+    return { ok: false };
+  }
+
+  const startEvent = createRunStartedEvent({
+    run,
+    createdAt: now(),
+    sequence: nextRunSequence(store, run.id),
+    createId,
+  });
+  store.appendEvent(startEvent);
+  return { ok: true, startEvent };
 }
 
 function createRunStartedEvent({

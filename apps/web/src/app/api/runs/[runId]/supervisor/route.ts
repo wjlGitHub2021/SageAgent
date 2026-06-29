@@ -4,13 +4,13 @@ import { loadDeepSeekProviderConfig } from "@sage/deepseek";
 import {
   createMemoryContextMessage,
   createSkillContextMessage,
-  isTerminalRunStatus,
 } from "@sage/runtime";
 import { getRuntimeStore, getTelemetryLogger } from "@/lib/runtime-store";
 import { getMemoryRegistry } from "@/lib/memory-registry";
 import { getSkillRegistry } from "@/lib/skill-registry";
 import {
   appendSupervisorFailureEvent,
+  claimSupervisorRun,
   streamSupervisorDeepSeekEvents,
 } from "@/lib/supervisor-runner";
 
@@ -43,7 +43,7 @@ export async function POST(_request: Request, context: RouteContext) {
     return jsonError("run_not_found", "Run was not found.", 404);
   }
 
-  if (run.status !== "queued" || isTerminalRunStatus(run.status)) {
+  if (run.status !== "queued") {
     telemetry.record({
       name: "api.runs.supervisor.rejected",
       level: "warn",
@@ -130,6 +130,30 @@ export async function POST(_request: Request, context: RouteContext) {
     return createRunEventStreamResponse(result.events);
   }
 
+  // 在返回响应前同步 claim run，关闭 guard 检查与状态落库之间的 TOCTOU 窗口：
+  // 并发的第二个请求会看到 running 状态并被下面或上方的 guard 拒绝。
+  const claim = claimSupervisorRun({ store, runId: run.id });
+  if (!claim.ok) {
+    telemetry.record({
+      name: "api.runs.supervisor.rejected",
+      level: "warn",
+      source: "api",
+      message: "Supervisor run was already claimed by a concurrent request.",
+      runId: run.id,
+      threadId: run.threadId,
+      metadata: {
+        code: "run_not_runnable",
+        status: 409,
+        runStatus: store.getRun(run.id)?.status ?? "unknown",
+      },
+    });
+    return jsonError(
+      "run_not_runnable",
+      "Run has already started or finished.",
+      409,
+    );
+  }
+
   const memoryContextMessage = createMemoryContextMessage({
     snapshot: getMemoryRegistry().getSnapshot(),
     currentThreadId: run.threadId,
@@ -146,6 +170,9 @@ export async function POST(_request: Request, context: RouteContext) {
       let finalError: string | null = null;
       let clientCancelled = false;
       try {
+        // 启动事件已在 claim 时发出，这里先推给客户端，生成器不再重复发出。
+        controller.enqueue(encoder.encode(encodeRunEvent(claim.startEvent)));
+        eventCount += 1;
         const stream = streamSupervisorDeepSeekEvents({
           store,
           runId: run.id,
@@ -153,6 +180,7 @@ export async function POST(_request: Request, context: RouteContext) {
           workspaceRoot: WORKSPACE_ROOT,
           memoryContextMessage,
           skillContextMessage,
+          emitRunStartedEvent: false,
         });
         for await (const event of stream) {
           eventCount += 1;

@@ -5,6 +5,7 @@ import { getRuntimeStore } from "../apps/web/src/lib/runtime-store";
 import { POST as createRun } from "../apps/web/src/app/api/runs/route";
 import { POST as runSupervisor } from "../apps/web/src/app/api/runs/[runId]/supervisor/route";
 import { POST as streamOutput } from "../apps/web/src/app/api/runs/[runId]/stream-output/route";
+import { claimSupervisorRun } from "../apps/web/src/lib/supervisor-runner";
 
 describe("run routes", () => {
   it("stores providerId on newly created runs", async () => {
@@ -102,6 +103,79 @@ describe("run routes", () => {
       activeAgent: "supervisor",
     });
   });
+  it("claims a queued run exactly once to prevent concurrent duplicate execution", () => {
+    const store = getRuntimeStore();
+    const createdAt = "2026-06-29T11:00:00.000Z";
+    const run: Run = {
+      id: "run-claim-cas",
+      threadId: "thread-claim-cas",
+      title: "Claim CAS",
+      goal: "Verify claim CAS",
+      status: "queued",
+      activeAgent: null,
+      settings: {
+        providerId: "deepseek",
+        model: "deepseek-v4-flash",
+        thinkingEnabled: true,
+        reasoningEffort: "high",
+      },
+      createdAt,
+      updatedAt: createdAt,
+      completedAt: null,
+    };
+    store.upsertRun(run);
+
+    const first = claimSupervisorRun({ store, runId: run.id });
+    const second = claimSupervisorRun({ store, runId: run.id });
+
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(false);
+    expect(store.getRun(run.id)).toMatchObject({
+      status: "running",
+      activeAgent: "supervisor",
+    });
+  });
+
+  it("rejects a concurrent supervisor request once the run is claimed", async () => {
+    const store = getRuntimeStore();
+    const createdAt = "2026-06-29T11:05:00.000Z";
+    const run: Run = {
+      id: "run-supervisor-claimed",
+      threadId: "thread-supervisor-claimed",
+      title: "Supervisor claimed",
+      goal: "Verify concurrent guard",
+      status: "queued",
+      activeAgent: null,
+      settings: {
+        providerId: "deepseek",
+        model: "deepseek-v4-flash",
+        thinkingEnabled: true,
+        reasoningEffort: "high",
+      },
+      createdAt,
+      updatedAt: createdAt,
+      completedAt: null,
+    };
+    store.upsertRun(run);
+
+    // 模拟另一个请求已经 claim 了该 run。
+    expect(claimSupervisorRun({ store, runId: run.id }).ok).toBe(true);
+
+    const response = await runSupervisor(
+      new Request(
+        "http://localhost/api/runs/run-supervisor-claimed/supervisor",
+        { method: "POST" },
+      ),
+      { params: Promise.resolve({ runId: run.id }) },
+    );
+    const body = (await response.json()) as {
+      readonly error: { readonly code: string };
+    };
+
+    expect(response.status).toBe(409);
+    expect(body.error.code).toBe("run_not_runnable");
+  });
+
   it("rejects stream output for runs that are not queued", async () => {
     const store = getRuntimeStore();
     const createdAt = "2026-06-29T10:00:00.000Z";
