@@ -164,6 +164,8 @@ export async function POST(_request: Request, context: RouteContext) {
   });
 
   const encoder = new TextEncoder();
+  // 客户端断开时 abort，用于中止上游 DeepSeek 流并释放连接，避免取消后继续消耗 token。
+  const abortController = new AbortController();
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
       let eventCount = 0;
@@ -181,6 +183,7 @@ export async function POST(_request: Request, context: RouteContext) {
           memoryContextMessage,
           skillContextMessage,
           emitRunStartedEvent: false,
+          signal: abortController.signal,
         });
         for await (const event of stream) {
           eventCount += 1;
@@ -237,6 +240,8 @@ export async function POST(_request: Request, context: RouteContext) {
       }
     },
     cancel() {
+      // 透传取消到上游：中止 DeepSeek 流读取并释放连接。
+      abortController.abort();
       telemetry.record({
         name: "api.runs.supervisor.client_cancelled",
         level: "warn",

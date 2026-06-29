@@ -240,7 +240,9 @@ export async function* streamDeepSeekChatCompletion(
   config: DeepSeekProviderConfig,
   input: DeepSeekChatCompletionInput,
   fetcher: DeepSeekStreamFetch = defaultDeepSeekStreamFetch,
+  signal?: AbortSignal,
 ): AsyncGenerator<DeepSeekAdapterResult<DeepSeekStreamParseEvent>, void> {
+  if (signal?.aborted) return;
   const request = prepareDeepSeekChatCompletionRequest(config, {
     ...input,
     stream: true,
@@ -287,7 +289,7 @@ export async function* streamDeepSeekChatCompletion(
     return;
   }
 
-  for await (const result of parseDeepSeekStreamBody(response.body)) {
+  for await (const result of parseDeepSeekStreamBody(response.body, signal)) {
     yield result;
     if (result.ok && result.value.type === "done") return;
     if (!result.ok) return;
@@ -382,10 +384,21 @@ export function parseDeepSeekStreamLine(
 
 export async function* parseDeepSeekStreamBody(
   body: ReadableStream<Uint8Array>,
+  signal?: AbortSignal,
 ): AsyncGenerator<DeepSeekAdapterResult<DeepSeekStreamParseEvent>, void> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+
+  // 外部取消时 cancel reader：既能让挂起的 read() 立即返回，也会释放底层连接，
+  // 避免客户端断开后上游 DeepSeek 流仍长期挂起、持续消耗 token。
+  const onAbort = () => {
+    void reader.cancel().catch(() => {});
+  };
+  if (signal) {
+    if (signal.aborted) onAbort();
+    else signal.addEventListener("abort", onAbort, { once: true });
+  }
 
   try {
     while (true) {
@@ -435,7 +448,9 @@ export async function* parseDeepSeekStreamBody(
       if (parsed.value.type === "done") return;
     }
   } finally {
-    reader.releaseLock();
+    signal?.removeEventListener("abort", onAbort);
+    // 消费方提前退出（return/break）或正常结束时都 cancel reader，确保底层连接被释放。
+    await reader.cancel().catch(() => {});
   }
 }
 

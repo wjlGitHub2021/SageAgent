@@ -59,7 +59,14 @@ export type SupervisorProvider = (
 export type SupervisorStreamProvider = (
   config: DeepSeekProviderConfig,
   input: DeepSeekChatCompletionInput,
+  options?: { readonly signal?: AbortSignal },
 ) => AsyncIterable<DeepSeekAdapterResult<DeepSeekStreamParseEvent>>;
+
+const defaultSupervisorStreamProvider: SupervisorStreamProvider = (
+  config,
+  input,
+  options,
+) => streamDeepSeekChatCompletion(config, input, undefined, options?.signal);
 
 export type ReadProjectFileRunner = (
   input: ReadProjectFileToolInput,
@@ -119,6 +126,8 @@ export interface StreamSupervisorDeepSeekInput {
    * 并自行发出启动事件，此时应传 false，避免重复发出 run.status_changed。
    */
   readonly emitRunStartedEvent?: boolean;
+  /** 客户端断开时由路由 abort，用于中止上游 DeepSeek 流并释放连接。 */
+  readonly signal?: AbortSignal;
 }
 
 export async function runSupervisorDeepSeekOnce({
@@ -293,7 +302,7 @@ export async function* streamSupervisorDeepSeekEvents({
   store,
   runId,
   config,
-  provider = streamDeepSeekChatCompletion,
+  provider = defaultSupervisorStreamProvider,
   workspaceRoot = null,
   memoryContextMessage = null,
   skillContextMessage = null,
@@ -302,6 +311,7 @@ export async function* streamSupervisorDeepSeekEvents({
   now = defaultNow,
   createId = defaultCreateId,
   emitRunStartedEvent = true,
+  signal,
 }: StreamSupervisorDeepSeekInput): AsyncGenerator<RunEvent, SupervisorRunResult> {
   const run = store.getRun(runId);
   if (!run) {
@@ -358,7 +368,7 @@ export async function* streamSupervisorDeepSeekEvents({
     model: run.settings.model,
     thinkingEnabled: run.settings.thinkingEnabled,
     reasoningEffort: run.settings.reasoningEffort,
-  })) {
+  }, { signal })) {
     if (!result.ok) {
       const failure = appendSupervisorFailure({
         store,

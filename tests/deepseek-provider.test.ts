@@ -300,6 +300,59 @@ describe("DeepSeek provider", () => {
   });
 });
 
+describe("DeepSeek stream cancellation", () => {
+  it("cancels the reader and stops reading when the signal aborts", async () => {
+    let cancelled = false;
+    const controller = new AbortController();
+    const body = new ReadableStream<Uint8Array>({
+      start(streamController) {
+        streamController.enqueue(
+          new TextEncoder().encode(
+            'data: {"choices":[{"delta":{"content":"hi"}}]}\n',
+          ),
+        );
+        // 故意不 close，保持流打开，模拟上游持续挂起。
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+
+    const events: unknown[] = [];
+    for await (const event of parseDeepSeekStreamBody(body, controller.signal)) {
+      events.push(event);
+      controller.abort();
+    }
+
+    expect(events).toHaveLength(1);
+    expect(cancelled).toBe(true);
+  });
+
+  it("yields nothing when the signal is already aborted before fetching", async () => {
+    const config = loadDeepSeekProviderConfig({ DEEPSEEK_API_KEY: "sk-test" });
+    expect(config.ok).toBe(true);
+    if (!config.ok) return;
+
+    const controller = new AbortController();
+    controller.abort();
+    const fetcher = () => {
+      throw new Error("fetch should not be called when already aborted");
+    };
+
+    const events: unknown[] = [];
+    for await (const event of streamDeepSeekChatCompletion(
+      config.config,
+      { messages: [{ role: "user", content: "hi" }] },
+      fetcher as never,
+      controller.signal,
+    )) {
+      events.push(event);
+    }
+
+    expect(events).toHaveLength(0);
+  });
+});
+
 describe("fetchWithTimeout", () => {
   it("aborts the request when the timeout elapses before a response", async () => {
     const run = (signal: AbortSignal) =>
