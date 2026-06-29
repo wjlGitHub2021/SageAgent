@@ -433,9 +433,9 @@ V2.5 起，Sage Agent 在 Settings 中只读展示未来平台扩展登记面板
 - `cron`
 - `voice`
 - `profiles`
-- `remote_login`
-- `gateway_messaging`
-- `auto_update`
+- `remote-login`
+- `gateway-messaging`
+- `auto-update`
 
 字段要求：
 

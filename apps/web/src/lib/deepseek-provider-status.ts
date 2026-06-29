@@ -15,8 +15,8 @@ import type {
   ProviderRegistryAuditRecord,
   ProviderRegistrySnapshot,
   ReasoningEffort,
-  EntrySurfaceSnapshot,
   PlatformExtensionSnapshot,
+  EntrySurfaceSnapshot,
 } from "@sage/shared";
 
 export type DeepSeekProviderConfigStatus = "valid" | "invalid";
@@ -126,6 +126,10 @@ export function createProviderRuntimeStatusResponse(input: {
   >;
 }): Omit<DeepSeekProviderStatusResponse, "status"> {
   const checkedAt = input.checkedAt ?? defaultNow();
+  const platformExtensions = createPlatformExtensionSnapshot({
+    checkedAt,
+    auditAction: input.auditAction,
+  });
   return {
     providerRegistry: createProviderRegistrySnapshot({
       deepSeek: input.status,
@@ -133,10 +137,7 @@ export function createProviderRuntimeStatusResponse(input: {
       auditAction: input.auditAction,
     }),
     entrySurfaces: createEntrySurfaceSnapshot(),
-    platformExtensions: createPlatformExtensionSnapshot({
-      checkedAt,
-      auditAction: input.auditAction,
-    }),
+    platformExtensions,
   };
 }
 

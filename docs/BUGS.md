@@ -24,6 +24,25 @@
 
 ## 当前 BUG
 
+### 2026-06-29 V2.1-V2.5 QA 后续修复
+
+- 状态：`fixed`
+- 严重级别：`P2`
+- 发现阶段：QA / implementation handoff
+- 影响范围：`apps/web` Settings / memory / skill dialog 可达性、V2.1 首页态、V2.5 platform extension 共享口径。
+- 复现步骤或线索：
+  - Settings、记忆和技能弹窗已经声明 `aria-modal`，但关闭按钮、遮罩点击和保存后关闭路径不完全统一，容易绕过焦点回收。
+  - V2.1 首屏增加了 `hasSelectedRun` 状态但尚未完整接入渲染分支，默认仍会像已选中 seed run。
+  - `packages/shared/src/platform-extension.ts` 与旧 `platform-extension-registry.ts` 同时保留实现，后续维护容易出现登记对象、状态和 audit action 口径漂移。
+  - `RunItem` 已新增 `threadId`，但新建 run 的 append helper 还没有写入该字段。
+- 修复方式：
+  - 统一三个 dialog 的 focus trap、Escape、遮罩关闭、按钮关闭和保存后关闭路径。
+  - 让首屏明确区分 agent home 与已选中 run，并保留新建 run 后切换到 run 工作区。
+  - 将旧 platform extension registry 文件收敛为兼容 re-export，避免两套实现并存。
+- 验证结论：
+  - 已补 `tests/web-shell-regression.test.ts` 和 platform extension 兼容测试。
+  - 本轮收口需重新运行 `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check`。
+
 ### BUG-0001：首屏 hydration mismatch 与桌面滚动容器不符合工作台预期
 
 - 状态：`fixed`

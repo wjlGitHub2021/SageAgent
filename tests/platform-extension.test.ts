@@ -3,53 +3,20 @@ import { describe, expect, it } from "vitest";
 import {
   createPlatformExtensionRegistrySnapshot,
   createPlatformExtensionSurfaceCatalog,
+  createPlatformExtensionSnapshot,
 } from "@sage/shared";
 
-describe("platform extension registry", () => {
-  it("exposes a read-only candidate surface catalog with clear boundaries", () => {
-    const catalog = createPlatformExtensionSurfaceCatalog();
-
-    expect(catalog).toEqual([
-      expect.objectContaining({
-        id: "cron",
-        status: "planned",
-        category: "automation",
-      }),
-      expect.objectContaining({
-        id: "voice",
-        status: "planned",
-        category: "interaction",
-      }),
-      expect.objectContaining({
-        id: "profiles",
-        status: "planned",
-        category: "identity",
-      }),
-      expect.objectContaining({
-        id: "remote-login",
-        status: "blocked",
-        category: "identity",
-      }),
-      expect.objectContaining({
-        id: "gateway-messaging",
-        status: "blocked",
-        category: "messaging",
-      }),
-      expect.objectContaining({
-        id: "auto-update",
-        status: "proposed",
-        category: "maintenance",
-      }),
-    ]);
-  });
-
-  it("creates an auditable platform extension snapshot", () => {
-    const snapshot = createPlatformExtensionRegistrySnapshot({
+describe("platform extension snapshot", () => {
+  it("exposes the candidate surfaces as a read-only audit snapshot", () => {
+    const snapshot = createPlatformExtensionSnapshot({
       checkedAt: "2026-06-28T10:00:00.000Z",
-      auditAction: "status_check",
+    });
+    const registrySnapshot = createPlatformExtensionRegistrySnapshot({
+      checkedAt: "2026-06-28T10:00:00.000Z",
     });
 
     expect(snapshot.checkedAt).toBe("2026-06-28T10:00:00.000Z");
+    expect(registrySnapshot).toEqual(snapshot);
     expect(snapshot.entries.map((entry) => entry.id)).toEqual([
       "cron",
       "voice",
@@ -58,6 +25,7 @@ describe("platform extension registry", () => {
       "gateway-messaging",
       "auto-update",
     ]);
+    expect(snapshot.entries).toEqual(createPlatformExtensionSurfaceCatalog());
     expect(snapshot.auditTrail).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -67,6 +35,9 @@ describe("platform extension registry", () => {
           action: "status_check",
         }),
       ]),
+    );
+    expect(snapshot.entries.every((entry) => entry.boundary.length > 0)).toBe(
+      true,
     );
   });
 });

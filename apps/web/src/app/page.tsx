@@ -58,6 +58,7 @@ type ThreadItem = {
 
 type RunItem = {
   id: string;
+  threadId: string;
   title: Record<Locale, string>;
   status: string;
   time: string;
@@ -794,12 +795,14 @@ const initialThreads: ThreadItem[] = [
 const initialRuns: RunItem[] = [
   {
     id: "run-1842",
+    threadId: "thread-1",
     title: { zh: "初始化三栏工作台", en: "Initialize three-column workbench" },
     status: "running",
     time: "09:42",
   },
   {
     id: "run-1839",
+    threadId: "thread-2",
     title: { zh: "锁定 Stage 1 规格", en: "Lock Stage 1 spec" },
     status: "completed",
     time: "08:18",
@@ -1174,6 +1177,63 @@ type AuditSummary = {
   readonly artifactCount: number;
 };
 
+function createEmptyAuditSummary(): AuditSummary {
+  return {
+    eventCount: 0,
+    lastEventType: null,
+    lastEventTitle: null,
+    lastEventAt: null,
+    toolCallCount: 0,
+    approvalCount: 0,
+    artifactCount: 0,
+  };
+}
+
+function createEmptyPhase4RunSummary(): ReturnType<typeof getPhase4RunSummary> {
+  return {
+    hasData: false,
+    supervisor: {
+      status: "missing",
+      summary: null,
+      stepTitles: [],
+    },
+    researcher: {
+      status: "missing",
+      summary: null,
+      contextTargets: [],
+      constraints: [],
+      handoffNotes: [],
+    },
+    builder: {
+      status: "missing",
+      summary: null,
+      implementationNotes: [],
+      patchTargets: [],
+      artifactDraftTitles: [],
+      safetyNotes: [],
+    },
+    reviewer: {
+      status: "missing",
+      summary: null,
+      decision: null,
+      acceptanceCriteria: [],
+      findings: [],
+      risks: [],
+      missingChecks: [],
+      safetyNotes: [],
+    },
+    finalSummaryGate: {
+      status: "missing",
+      reviewerDecision: null,
+      summary: null,
+      findings: [],
+      risks: [],
+      missingChecks: [],
+    },
+    artifacts: [],
+  };
+}
+
 function StatusDot({ status }: { status: string }) {
   const color =
     status === "completed" || status === "approved"
@@ -1394,6 +1454,7 @@ export default function Home() {
   const [composerInput, setComposerInput] = useState("");
   const [composerError, setComposerError] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [hasSelectedRun, setHasSelectedRun] = useState(false);
   const [providerStatus, setProviderStatus] =
     useState<DeepSeekProviderStatusSummary | null>(null);
   const [providerRegistry, setProviderRegistry] =
@@ -1442,6 +1503,12 @@ export default function Home() {
     "idle" | "cancelled"
   >("idle");
   const runRequestRef = useRef<AbortController | null>(null);
+  const settingsDialogRef = useRef<HTMLElement | null>(null);
+  const memoryDialogRef = useRef<HTMLElement | null>(null);
+  const skillDialogRef = useRef<HTMLElement | null>(null);
+  const settingsTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const memoryTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const skillTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -1455,6 +1522,138 @@ export default function Home() {
       writeStoredPreferences(window.localStorage, preferences);
     }
   }, [hasLoadedStoredPreferences, preferences]);
+
+  useEffect(() => {
+    if (!isSettingsOpen) return;
+
+    const focusTarget = settingsDialogRef.current?.querySelector<HTMLElement>(
+      "button, [href], input, textarea, select, [tabindex]:not([tabindex='-1'])",
+    );
+
+    focusTarget?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeSettings();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusable = getFocusableElements(settingsDialogRef.current);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
+      const nextIndex = event.shiftKey
+        ? currentIndex <= 0
+          ? focusable.length - 1
+          : currentIndex - 1
+        : currentIndex === focusable.length - 1
+          ? 0
+          : currentIndex + 1;
+
+      event.preventDefault();
+      focusable[nextIndex]?.focus();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isSettingsOpen]);
+
+  useEffect(() => {
+    if (!isMemoryEditorOpen) return;
+
+    const focusTarget = memoryDialogRef.current?.querySelector<HTMLElement>(
+      "button, [href], input, textarea, select, [tabindex]:not([tabindex='-1'])",
+    );
+
+    focusTarget?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeMemoryEditor();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusable = getFocusableElements(memoryDialogRef.current);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
+      const nextIndex = event.shiftKey
+        ? currentIndex <= 0
+          ? focusable.length - 1
+          : currentIndex - 1
+        : currentIndex === focusable.length - 1
+          ? 0
+          : currentIndex + 1;
+
+      event.preventDefault();
+      focusable[nextIndex]?.focus();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMemoryEditorOpen]);
+
+  useEffect(() => {
+    if (!isSkillEditorOpen) return;
+
+    const focusTarget = skillDialogRef.current?.querySelector<HTMLElement>(
+      "button, [href], input, textarea, select, [tabindex]:not([tabindex='-1'])",
+    );
+
+    focusTarget?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeSkillEditor();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusable = getFocusableElements(skillDialogRef.current);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
+      const nextIndex = event.shiftKey
+        ? currentIndex <= 0
+          ? focusable.length - 1
+          : currentIndex - 1
+        : currentIndex === focusable.length - 1
+          ? 0
+          : currentIndex + 1;
+
+      event.preventDefault();
+      focusable[nextIndex]?.focus();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isSkillEditorOpen]);
 
   const loadProviderStatus = useCallback(async (signal?: AbortSignal) => {
     setIsProviderStatusLoading(true);
@@ -1537,7 +1736,20 @@ export default function Home() {
     }));
   }
 
+  function openSettings() {
+    settingsTriggerRef.current = document.activeElement as HTMLButtonElement | null;
+    setIsSettingsOpen(true);
+  }
+
+  function closeSettings() {
+    setIsSettingsOpen(false);
+    queueMicrotask(() => {
+      settingsTriggerRef.current?.focus();
+    });
+  }
+
   function openMemoryEditor(entry?: MemoryEntry) {
+    memoryTriggerRef.current = document.activeElement as HTMLButtonElement | null;
     if (entry) {
       setMemoryEditorMode("edit");
       setActiveMemoryId(entry.id);
@@ -1557,6 +1769,13 @@ export default function Home() {
     }
     setMemoryFeedback(null);
     setIsMemoryEditorOpen(true);
+  }
+
+  function closeMemoryEditor() {
+    setIsMemoryEditorOpen(false);
+    queueMicrotask(() => {
+      memoryTriggerRef.current?.focus();
+    });
   }
 
   async function submitMemoryEntry() {
@@ -1592,7 +1811,7 @@ export default function Home() {
       } else {
         await loadMemorySnapshot();
       }
-      setIsMemoryEditorOpen(false);
+      closeMemoryEditor();
       setMemoryFeedback(copy[locale].memorySaved);
     } catch (error) {
       setMemoryFeedback(toSafeErrorMessage(error));
@@ -1630,6 +1849,7 @@ export default function Home() {
   }
 
   function openSkillEditor(entry?: SkillEntry) {
+    skillTriggerRef.current = document.activeElement as HTMLButtonElement | null;
     if (entry) {
       setSkillEditorMode("edit");
       setActiveSkillId(entry.id);
@@ -1648,6 +1868,13 @@ export default function Home() {
     }
     setSkillFeedback(null);
     setIsSkillEditorOpen(true);
+  }
+
+  function closeSkillEditor() {
+    setIsSkillEditorOpen(false);
+    queueMicrotask(() => {
+      skillTriggerRef.current?.focus();
+    });
   }
 
   async function submitSkillEntry() {
@@ -1683,7 +1910,7 @@ export default function Home() {
       } else {
         await loadSkillSnapshot();
       }
-      setIsSkillEditorOpen(false);
+      closeSkillEditor();
       setSkillFeedback(copy[locale].skillSaved);
     } catch (error) {
       setSkillFeedback(toSafeErrorMessage(error));
@@ -1778,14 +2005,30 @@ export default function Home() {
 
   const activeThread = threadItems.find((thread) => thread.id === activeThreadId);
   const activeRun = runItems.find((run) => run.id === activeRunId);
-  const timelineRows = getTimelineRows(runEvents, activeRunId);
-  const activeToolCalls = getToolCallRows(runEvents, activeRunId);
-  const activeApproval = getActiveApproval(runEvents, activeRunId);
-  const activeArtifacts = getArtifactRows(runEvents, activeRunId);
-  const activeProviderError = getProviderError(runEvents, activeRunId, locale);
-  const activeAuditSummary = getAuditSummary(runEvents, activeRunId);
-  const activePhase4Summary = getPhase4RunSummary(runEvents, activeRunId);
-  const activeMessages = messages.filter((message) => message.runId === activeRunId);
+  const selectedRun = hasSelectedRun ? activeRun : null;
+  const selectedRunId = hasSelectedRun ? activeRunId : null;
+  const timelineRows = selectedRunId ? getTimelineRows(runEvents, selectedRunId) : [];
+  const activeToolCalls = selectedRunId
+    ? getToolCallRows(runEvents, selectedRunId)
+    : [];
+  const activeApproval = selectedRunId
+    ? getActiveApproval(runEvents, selectedRunId)
+    : null;
+  const activeArtifacts = selectedRunId
+    ? getArtifactRows(runEvents, selectedRunId)
+    : [];
+  const activeProviderError = selectedRunId
+    ? getProviderError(runEvents, selectedRunId, locale)
+    : null;
+  const activeAuditSummary = selectedRunId
+    ? getAuditSummary(runEvents, selectedRunId)
+    : createEmptyAuditSummary();
+  const activePhase4Summary = selectedRunId
+    ? getPhase4RunSummary(runEvents, selectedRunId)
+    : createEmptyPhase4RunSummary();
+  const activeMessages = selectedRunId
+    ? messages.filter((message) => message.runId === selectedRunId)
+    : [];
   const trimmedComposerInput = composerInput.trim();
   const composerStatusText = getComposerStatusText({
     t,
@@ -1811,6 +2054,20 @@ export default function Home() {
 
     setThreadItems((current) => [...current, nextThread]);
     setActiveThreadId(nextThread.id);
+    setHasSelectedRun(false);
+  }
+
+  function handleThreadSelect(threadId: string) {
+    const nextRun = runItems.find((run) => run.threadId === threadId);
+    setActiveThreadId(threadId);
+
+    if (nextRun) {
+      setActiveRunId(nextRun.id);
+      setHasSelectedRun(true);
+      return;
+    }
+
+    setHasSelectedRun(false);
   }
 
   async function handleRunClick() {
@@ -1845,6 +2102,7 @@ export default function Home() {
       setRunItems((current) => appendRunItem(current, created.run));
       setActiveThreadId(created.thread.id);
       setActiveRunId(created.run.id);
+      setHasSelectedRun(true);
       setRunEvents((current) =>
         mergeRunEvents(current, created.events),
       );
@@ -1893,6 +2151,8 @@ export default function Home() {
   }
 
   function handleCancelRun() {
+    if (!selectedRunId) return;
+
     runRequestRef.current?.abort();
     runRequestRef.current = null;
 
@@ -1911,10 +2171,12 @@ export default function Home() {
   }
 
   function handleApprovalResolution(status: ApprovalStatus) {
+    if (!selectedRunId) return;
+
     const resolvedAt = new Date().toISOString();
 
     setRunEvents((current) => {
-      const currentApproval = getActiveApproval(current, activeRunId);
+      const currentApproval = getActiveApproval(current, selectedRunId);
       if (!currentApproval || currentApproval.approval.status !== "pending") {
         return current;
       }
@@ -1923,9 +2185,9 @@ export default function Home() {
         ...current,
         {
           id: `event-approval-${Date.now()}`,
-          runId: activeRunId,
+          runId: selectedRunId,
           type: "approval.resolved",
-          sequence: nextEventSequence(current, activeRunId),
+          sequence: nextEventSequence(current, selectedRunId),
           createdAt: resolvedAt,
           payload: {
             approval: {
@@ -1940,12 +2202,14 @@ export default function Home() {
   }
 
   function handleProviderError() {
+    if (!selectedRunId || !selectedRun) return;
+
     const failedAt = new Date().toISOString();
     const failedRun: Run = {
-      id: activeRunId,
+      id: selectedRunId,
       threadId: activeThreadId,
-      title: activeRun?.title.en ?? "Local provider run",
-      goal: activeRun?.title.en ?? "Local provider run",
+      title: selectedRun.title.en,
+      goal: selectedRun.goal ?? selectedRun.title.en,
       status: "failed",
       activeAgent: "supervisor",
       settings: {
@@ -1963,11 +2227,11 @@ export default function Home() {
       zh: copy.zh.providerErrorSafeMessage,
       en: copy.en.providerErrorSafeMessage,
     };
-    const nextSequence = nextEventSequence(runEvents, activeRunId);
+    const nextSequence = nextEventSequence(runEvents, selectedRunId);
 
     const event: RunEvent = {
-      id: `event-provider-error-${activeRunId}-${nextSequence}`,
-      runId: activeRunId,
+      id: `event-provider-error-${selectedRunId}-${nextSequence}`,
+      runId: selectedRunId,
       type: "run.failed",
       sequence: nextSequence,
       createdAt: failedAt,
@@ -1982,6 +2246,8 @@ export default function Home() {
   }
 
   function handleProviderRetry() {
+    if (!selectedRunId) return;
+
     appendLocalFeedbackEvent("message.completed", {
       message: createLocalFeedbackRunMessage(copy[locale].retryProviderHint),
     });
@@ -2008,9 +2274,9 @@ export default function Home() {
     const createdAt = new Date().toISOString();
     const event = {
       id: `event-local-feedback-${Date.now()}`,
-      runId: activeRunId,
+      runId: selectedRunId ?? activeRunId,
       type,
-      sequence: nextEventSequence(runEvents, activeRunId),
+      sequence: nextEventSequence(runEvents, selectedRunId ?? activeRunId),
       createdAt,
       payload,
     } as RunEvent;
@@ -2024,7 +2290,7 @@ export default function Home() {
       ...current,
       {
         role: "Supervisor",
-        runId: activeRunId,
+        runId: selectedRunId ?? activeRunId,
         body,
       },
     ]);
@@ -2037,7 +2303,7 @@ export default function Home() {
     return {
       id: `message-feedback-${Date.now()}`,
       threadId: activeThreadId,
-      runId: activeRunId,
+      runId: selectedRunId ?? activeRunId,
       role: "agent",
       agent: "supervisor",
       content,
@@ -2060,9 +2326,9 @@ export default function Home() {
             <div className="sidebar-hero-copy">
               <div className="sidebar-hero-heading">
                 <span>{t.currentRun}</span>
-                <strong>{activeRun?.title[locale] ?? t.headerFallback}</strong>
+                <strong>{selectedRun?.title[locale] ?? t.headerFallback}</strong>
               </div>
-              <p>{activeRun?.goal ?? t.headerDescription}</p>
+              <p>{selectedRun?.goal ?? t.headerDescription}</p>
             </div>
             <div className="sidebar-hero-meta" aria-label={t.currentConfiguration}>
               <span>
@@ -2079,7 +2345,7 @@ export default function Home() {
             <button
               aria-label={t.openSettings}
               className="settings-entry"
-              onClick={() => setIsSettingsOpen(true)}
+              onClick={openSettings}
               type="button"
             >
               <div className="settings-copy">
@@ -2110,7 +2376,7 @@ export default function Home() {
                       : "thread-item"
                   }
                   key={thread.id}
-                  onClick={() => setActiveThreadId(thread.id)}
+                  onClick={() => handleThreadSelect(thread.id)}
                 >
                   <span>{thread.title[locale]}</span>
                   <small>{thread.subtitle[locale]}</small>
@@ -2123,9 +2389,17 @@ export default function Home() {
             <div className="stack">
               {runItems.map((run) => (
                 <button
-                  className={run.id === activeRunId ? "run-row active" : "run-row"}
+                  className={
+                    hasSelectedRun && run.id === activeRunId
+                      ? "run-row active"
+                      : "run-row"
+                  }
                   key={run.id}
-                  onClick={() => setActiveRunId(run.id)}
+                  onClick={() => {
+                    setActiveRunId(run.id);
+                    setActiveThreadId(run.threadId);
+                    setHasSelectedRun(true);
+                  }}
                 >
                   <StatusDot status={run.status} />
                   <div>
@@ -2148,11 +2422,8 @@ export default function Home() {
               <p className="section-label">
                 {activeThread?.title[locale] ?? t.currentRun}
               </p>
-              <h1>{activeRun?.title[locale] ?? t.headerFallback}</h1>
-              <p>
-                {activeRun?.goal ??
-                  `${activeThread?.title[locale]} ${t.headerDescription}`}
-              </p>
+              <h1>{selectedRun?.title[locale] ?? t.headerFallback}</h1>
+              <p>{selectedRun?.goal ?? t.headerDescription}</p>
             </div>
 
             <div className="model-controls" aria-label={t.modelSettings}>
@@ -2171,11 +2442,8 @@ export default function Home() {
           <section className="workspace-launchpad" aria-label={t.currentConfiguration}>
             <div className="launchpad-card">
               <span>{t.currentRun}</span>
-              <strong>{activeRun?.id ?? t.notConfigured}</strong>
-              <small>
-                {activeRun ? formatRunStatusLabel(activeRun.status, t) : t.notConfigured}
-                {activeRun ? ` · ${activeRun.time}` : ""}
-              </small>
+              <strong>{selectedRun?.id ?? t.headerFallback}</strong>
+              <small>{selectedRun?.goal ?? t.headerDescription}</small>
             </div>
             <div className="launchpad-card">
               <span>{t.threads}</span>
@@ -2192,15 +2460,23 @@ export default function Home() {
           </section>
 
           <div className="conversation">
-            {activeMessages.map((message, index) => (
-              <article className="message" key={`${message.role}-${index}`}>
-                <div className="message-avatar">{message.role.slice(0, 1)}</div>
-                <div>
-                  <p className="message-role">{message.role}</p>
-                  <p className="message-body">{message.body[locale]}</p>
-                </div>
-              </article>
-            ))}
+            {selectedRun ? (
+              activeMessages.map((message, index) => (
+                <article className="message" key={`${message.role}-${index}`}>
+                  <div className="message-avatar">{message.role.slice(0, 1)}</div>
+                  <div>
+                    <p className="message-role">{message.role}</p>
+                    <p className="message-body">{message.body[locale]}</p>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <StateBlock
+                eyebrow={t.localWorkbench}
+                title={t.headerFallback}
+                detail={t.headerDescription}
+              />
+            )}
           </div>
 
           <div className="composer">
@@ -2228,12 +2504,16 @@ export default function Home() {
               <span>{composerStatusText}</span>
             </div>
             <div className="composer-actions">
-              <button className="secondary-button" onClick={handleProviderError}>
+              <button
+                className="secondary-button"
+                disabled={!selectedRun}
+                onClick={handleProviderError}
+              >
                 {t.simulateProviderError}
               </button>
               <button
                 className="secondary-button"
-                disabled={!isRunBusy}
+                disabled={!selectedRun || !isRunBusy}
                 onClick={handleCancelRun}
               >
                 {t.cancel}
@@ -2761,7 +3041,7 @@ export default function Home() {
           className="settings-overlay"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
-              setIsMemoryEditorOpen(false);
+              closeMemoryEditor();
             }
           }}
         >
@@ -2770,6 +3050,7 @@ export default function Home() {
             aria-modal="true"
             className="settings-dialog memory-dialog"
             role="dialog"
+            ref={memoryDialogRef}
           >
             <header className="settings-dialog-header">
               <div>
@@ -2781,7 +3062,7 @@ export default function Home() {
               </div>
               <button
                 className="ghost-button"
-                onClick={() => setIsMemoryEditorOpen(false)}
+                onClick={closeMemoryEditor}
                 type="button"
               >
                 {t.closeSettings}
@@ -2914,7 +3195,7 @@ export default function Home() {
                     <div className="composer-actions">
                       <button
                         className="secondary-button"
-                        onClick={() => setIsMemoryEditorOpen(false)}
+                        onClick={closeMemoryEditor}
                         type="button"
                       >
                         {t.cancel}
@@ -2937,7 +3218,7 @@ export default function Home() {
           className="settings-overlay"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
-              setIsSkillEditorOpen(false);
+              closeSkillEditor();
             }
           }}
         >
@@ -2946,6 +3227,7 @@ export default function Home() {
             aria-modal="true"
             className="settings-dialog skill-dialog"
             role="dialog"
+            ref={skillDialogRef}
           >
             <header className="settings-dialog-header">
               <div>
@@ -2957,7 +3239,7 @@ export default function Home() {
               </div>
               <button
                 className="ghost-button"
-                onClick={() => setIsSkillEditorOpen(false)}
+                onClick={closeSkillEditor}
                 type="button"
               >
                 {t.closeSettings}
@@ -3082,7 +3364,7 @@ export default function Home() {
                     <div className="composer-actions">
                       <button
                         className="secondary-button"
-                        onClick={() => setIsSkillEditorOpen(false)}
+                        onClick={closeSkillEditor}
                         type="button"
                       >
                         {t.cancel}
@@ -3105,7 +3387,7 @@ export default function Home() {
           className="settings-overlay"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
-              setIsSettingsOpen(false);
+              closeSettings();
             }
           }}
         >
@@ -3114,6 +3396,7 @@ export default function Home() {
             aria-modal="true"
             className="settings-dialog"
             role="dialog"
+            ref={settingsDialogRef}
           >
             <header className="settings-dialog-header">
               <div>
@@ -3123,7 +3406,7 @@ export default function Home() {
               </div>
               <button
                 className="ghost-button"
-                onClick={() => setIsSettingsOpen(false)}
+                onClick={closeSettings}
                 type="button"
               >
                 {t.closeSettings}
@@ -4021,6 +4304,7 @@ function appendThreadItem(
 function appendRunItem(current: readonly RunItem[], run: Run): RunItem[] {
   const item: RunItem = {
     id: run.id,
+    threadId: run.threadId,
     title: {
       zh: run.title,
       en: run.title,
@@ -4226,6 +4510,23 @@ function isAbortError(error: unknown): boolean {
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getFocusableElements(container: HTMLElement | null): HTMLElement[] {
+  if (!container) return [];
+
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      [
+        "button:not([disabled])",
+        "a[href]",
+        "input:not([disabled])",
+        "textarea:not([disabled])",
+        "select:not([disabled])",
+        "[tabindex]:not([tabindex='-1'])",
+      ].join(", "),
+    ),
+  ).filter((element) => !element.hasAttribute("aria-hidden"));
 }
 
 function getToolCallRows(

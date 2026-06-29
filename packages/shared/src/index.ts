@@ -125,7 +125,6 @@ export {
   createDefaultEntrySurfaceSnapshot,
   createEmptyProviderRegistrySnapshot,
 } from "./provider.js";
-export type { EntrySurfaceSnapshot as PlatformEntrySurfaceSnapshot } from "./provider.js";
 export {
   PLATFORM_EXTENSION_AUDIT_ACTIONS,
   PLATFORM_EXTENSION_CATEGORIES,
@@ -133,8 +132,10 @@ export {
   PLATFORM_EXTENSION_STATUSES,
   createEmptyPlatformExtensionSnapshot,
   createPlatformExtensionRegistrySnapshot,
+  createPlatformExtensionSnapshot,
   createPlatformExtensionSurfaceCatalog,
   type CreatePlatformExtensionRegistrySnapshotInput,
+  type CreatePlatformExtensionSnapshotInput,
   type PlatformExtensionAuditAction,
   type PlatformExtensionAuditRecord,
   type PlatformExtensionCategory,
@@ -143,7 +144,7 @@ export {
   type PlatformExtensionSurface,
   type PlatformExtensionSurfaceId,
   type PlatformExtensionSurfaceStatus,
-} from "./platform-extension-registry.js";
+} from "./platform-extension.js";
 
 export interface Thread {
   readonly id: EntityId;

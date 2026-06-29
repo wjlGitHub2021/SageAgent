@@ -33,7 +33,7 @@ describe("DeepSeek provider status", () => {
     expect(JSON.stringify(summary)).not.toContain("sk-secret-token");
   });
 
-  it("creates provider registry and entry surface snapshots from DeepSeek status", () => {
+  it("creates provider registry and platform extension snapshots from DeepSeek status", () => {
     const status = createDeepSeekProviderStatusSummary({
       ok: true,
       config: {
@@ -77,6 +77,19 @@ describe("DeepSeek provider status", () => {
       "web",
       "desktop",
     ]);
+    expect(response.platformExtensions.entries.map((entry) => entry.id)).toEqual([
+      "cron",
+      "voice",
+      "profiles",
+      "remote-login",
+      "gateway-messaging",
+      "auto-update",
+    ]);
+    expect(response.platformExtensions.auditTrail).toContainEqual(
+      expect.objectContaining({
+        action: "status_check",
+      }),
+    );
     expect(JSON.stringify(response)).not.toContain("sk-secret-token");
   });
 
@@ -101,6 +114,11 @@ describe("DeepSeek provider status", () => {
       expect.objectContaining({
         action: "connection_test",
         providerId: "deepseek",
+      }),
+    );
+    expect(response.platformExtensions.auditTrail).toContainEqual(
+      expect.objectContaining({
+        action: "connection_test",
       }),
     );
     expect(JSON.stringify(response)).not.toContain("sk-secret-token");
