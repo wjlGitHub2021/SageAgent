@@ -1523,137 +1523,9 @@ export default function Home() {
     }
   }, [hasLoadedStoredPreferences, preferences]);
 
-  useEffect(() => {
-    if (!isSettingsOpen) return;
-
-    const focusTarget = settingsDialogRef.current?.querySelector<HTMLElement>(
-      "button, [href], input, textarea, select, [tabindex]:not([tabindex='-1'])",
-    );
-
-    focusTarget?.focus();
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeSettings();
-        return;
-      }
-
-      if (event.key !== "Tab") return;
-
-      const focusable = getFocusableElements(settingsDialogRef.current);
-      if (focusable.length === 0) {
-        event.preventDefault();
-        return;
-      }
-
-      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
-      const nextIndex = event.shiftKey
-        ? currentIndex <= 0
-          ? focusable.length - 1
-          : currentIndex - 1
-        : currentIndex === focusable.length - 1
-          ? 0
-          : currentIndex + 1;
-
-      event.preventDefault();
-      focusable[nextIndex]?.focus();
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isSettingsOpen]);
-
-  useEffect(() => {
-    if (!isMemoryEditorOpen) return;
-
-    const focusTarget = memoryDialogRef.current?.querySelector<HTMLElement>(
-      "button, [href], input, textarea, select, [tabindex]:not([tabindex='-1'])",
-    );
-
-    focusTarget?.focus();
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeMemoryEditor();
-        return;
-      }
-
-      if (event.key !== "Tab") return;
-
-      const focusable = getFocusableElements(memoryDialogRef.current);
-      if (focusable.length === 0) {
-        event.preventDefault();
-        return;
-      }
-
-      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
-      const nextIndex = event.shiftKey
-        ? currentIndex <= 0
-          ? focusable.length - 1
-          : currentIndex - 1
-        : currentIndex === focusable.length - 1
-          ? 0
-          : currentIndex + 1;
-
-      event.preventDefault();
-      focusable[nextIndex]?.focus();
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isMemoryEditorOpen]);
-
-  useEffect(() => {
-    if (!isSkillEditorOpen) return;
-
-    const focusTarget = skillDialogRef.current?.querySelector<HTMLElement>(
-      "button, [href], input, textarea, select, [tabindex]:not([tabindex='-1'])",
-    );
-
-    focusTarget?.focus();
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeSkillEditor();
-        return;
-      }
-
-      if (event.key !== "Tab") return;
-
-      const focusable = getFocusableElements(skillDialogRef.current);
-      if (focusable.length === 0) {
-        event.preventDefault();
-        return;
-      }
-
-      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
-      const nextIndex = event.shiftKey
-        ? currentIndex <= 0
-          ? focusable.length - 1
-          : currentIndex - 1
-        : currentIndex === focusable.length - 1
-          ? 0
-          : currentIndex + 1;
-
-      event.preventDefault();
-      focusable[nextIndex]?.focus();
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isSkillEditorOpen]);
+  useDialogFocusTrap(isSettingsOpen, settingsDialogRef, closeSettings);
+  useDialogFocusTrap(isMemoryEditorOpen, memoryDialogRef, closeMemoryEditor);
+  useDialogFocusTrap(isSkillEditorOpen, skillDialogRef, closeSkillEditor);
 
   const loadProviderStatus = useCallback(async (signal?: AbortSignal) => {
     setIsProviderStatusLoading(true);
@@ -4510,6 +4382,63 @@ function isAbortError(error: unknown): boolean {
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// 三个对话框（Settings / 记忆 / 技能）的 focus trap + Escape 处理完全一致，抽成共用
+// hook。onClose 通过 ref 读取最新值，effect 仅依赖 isOpen，保持与原行为一致。
+function useDialogFocusTrap(
+  isOpen: boolean,
+  dialogRef: { readonly current: HTMLElement | null },
+  onClose: () => void,
+): void {
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const focusTarget = dialogRef.current?.querySelector<HTMLElement>(
+      "button, [href], input, textarea, select, [tabindex]:not([tabindex='-1'])",
+    );
+
+    focusTarget?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusable = getFocusableElements(dialogRef.current);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
+      const nextIndex = event.shiftKey
+        ? currentIndex <= 0
+          ? focusable.length - 1
+          : currentIndex - 1
+        : currentIndex === focusable.length - 1
+          ? 0
+          : currentIndex + 1;
+
+      event.preventDefault();
+      focusable[nextIndex]?.focus();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, dialogRef]);
 }
 
 function getFocusableElements(container: HTMLElement | null): HTMLElement[] {
