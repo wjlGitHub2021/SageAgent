@@ -38,7 +38,9 @@ export async function POST(request: Request) {
     tags: input.tags,
     sourceThreadId: input.sourceThreadId,
     sourceRunId: input.sourceRunId,
-    createdBy: input.createdBy,
+    // actor 由服务端固定为 user，禁止客户端经 HTTP 入口伪造 agent 身份污染审计轨迹；
+    // agent 写入记忆走 runtime 内部路径，不经此路由。与 skills 路由保持一致。
+    createdBy: "user",
     reason: input.reason,
     createdAt: new Date().toISOString(),
   });

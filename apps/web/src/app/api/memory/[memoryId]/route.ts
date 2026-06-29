@@ -35,7 +35,8 @@ export async function PUT(request: Request, context: RouteContext) {
     tags: input.tags,
     sourceThreadId: input.sourceThreadId,
     sourceRunId: input.sourceRunId,
-    createdBy: input.createdBy,
+    // actor 由服务端固定为 user，禁止客户端经 HTTP 入口伪造 agent 身份污染审计轨迹。
+    createdBy: "user",
     reason: input.reason,
     createdAt: new Date().toISOString(),
   });
@@ -69,12 +70,11 @@ export async function DELETE(request: Request, context: RouteContext) {
     bodyRecord && typeof bodyRecord.reason === "string"
       ? bodyRecord.reason.trim()
       : "memory deleted";
-  const actor =
-    bodyRecord?.createdBy === "supervisor" ? "supervisor" : "user";
 
   const deleted = registry.deleteEntry({
     id: memoryId,
-    actor,
+    // 删除 actor 同样固定为 user，禁止客户端伪造 agent 身份。
+    actor: "user",
     reason: reason.length > 0 ? reason : "memory deleted",
     createdAt: new Date().toISOString(),
   });
