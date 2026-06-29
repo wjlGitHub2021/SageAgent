@@ -272,3 +272,16 @@ BUG 记录：
 - 主要风险：当前空态与 loading 的可视化证据来自同一套页面和实现检查；部分状态在当前活跃 run 里不会同时呈现，需要依赖空态设计与代码路径确认
 - BUG 记录：本次补齐未新增 P0/P1
 - 备注：已确认 UI 首屏三栏、桌面密度、English/中文切换、长文案不溢出、run busy 状态、审批安全边界、provider error 安全文案与 run history 状态同步
+
+## 2026-06-29 V2.1-V2.5 后续回归复核
+
+- 日期：2026-06-29
+- 执行者：Codex
+- Commit：`3acfec0`
+- 环境：`http://localhost:3000`，Next.js 本地 dev server
+- 浏览器：in-app browser
+- 结论：pass
+- 自动化门禁：`rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check` 通过
+- 主要风险：Browser QA 主要覆盖本地 dev server 的首屏、Settings 模态和 390px 响应式；未在真实 DeepSeek 在线请求下重复验证
+- BUG 记录：`docs/BUGS.md` 的 2026-06-29 回归记录已更新为 fixed，并补齐验证结论
+- 备注：首屏默认是 home 态，未选中 run；Settings 弹窗 Tab / Escape 闭环正常；390px 下无明显横向溢出

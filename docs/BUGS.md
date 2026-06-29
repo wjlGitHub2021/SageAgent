@@ -40,8 +40,10 @@
   - 让首屏明确区分 agent home 与已选中 run，并保留新建 run 后切换到 run 工作区。
   - 将旧 platform extension registry 文件收敛为兼容 re-export，避免两套实现并存。
 - 验证结论：
-  - 已补 `tests/web-shell-regression.test.ts` 和 platform extension 兼容测试。
-  - 本轮收口需重新运行 `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check`。
+  - `rtk pnpm test`、`rtk pnpm run typecheck`、`rtk pnpm lint`、`rtk pnpm build`、`rtk git diff --check` 均已通过。
+  - Browser QA 复核 `http://localhost:3000`：首屏非空、无 framework overlay、console 无 error / warn，默认是 home 态且未选中 run。
+  - Settings modal 复核：焦点进入弹窗后可 Tab 循环，Escape 可关闭并回到 Settings 入口。
+  - 390px mobile 复核：无横向溢出，Settings 入口和主工作台仍可读。
 
 ### BUG-0001：首屏 hydration mismatch 与桌面滚动容器不符合工作台预期
 
