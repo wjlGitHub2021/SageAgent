@@ -29,6 +29,24 @@ export async function POST(request: Request, context: RouteContext) {
   const { runId } = await context.params;
   const store = getRuntimeStore();
   const telemetry = getTelemetryLogger();
+
+  // 该路由允许直接写入 agent 产出并强制改写 run 状态，仅作为本地开发/手动 smoke
+  // 工具保留；生产环境一律关闭，避免成为伪造 agent 产出与改写运行状态的后门。
+  if (process.env.NODE_ENV === "production") {
+    telemetry.record({
+      name: "api.runs.stream_output.rejected",
+      level: "warn",
+      source: "api",
+      message: "Stream output route is disabled in production.",
+      runId,
+      metadata: {
+        code: "not_available",
+        status: 404,
+      },
+    });
+    return jsonError("not_available", "Stream output route is not available.", 404);
+  }
+
   const run = store.getRun(runId);
 
   if (!run) {
@@ -44,6 +62,28 @@ export async function POST(request: Request, context: RouteContext) {
       },
     });
     return jsonError("run_not_found", "Run was not found.", 404);
+  }
+
+  // 只允许对尚未开始的 run 写入，避免改写一个 running / completed / failed 的 run。
+  if (run.status !== "queued") {
+    telemetry.record({
+      name: "api.runs.stream_output.rejected",
+      level: "warn",
+      source: "api",
+      message: "Stream output request targeted a run that is not queued.",
+      runId,
+      threadId: run.threadId,
+      metadata: {
+        code: "run_not_queued",
+        status: 409,
+        runStatus: run.status,
+      },
+    });
+    return jsonError(
+      "run_not_queued",
+      "Run is not queued and cannot accept stream output.",
+      409,
+    );
   }
 
   const body = await readJsonBody(request);
