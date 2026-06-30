@@ -208,6 +208,39 @@ describe("MCP tool loop", () => {
     expect(result.messages).toHaveLength(5);
   });
 
+  it("stops before the next round when the signal is aborted, forwarding it to the provider", async () => {
+    const controller = new AbortController();
+    let providerCalls = 0;
+    let lastOptions: { signal?: AbortSignal } | undefined;
+    const provider: ToolLoopProvider = async (_messages, _tools, options) => {
+      providerCalls += 1;
+      lastOptions = options;
+      controller.abort(); // 第一轮后取消：第二轮应在发起前被拦截。
+      return completion({
+        toolCalls: [{ id: "c", name: "get_weather", arguments: "{}" }],
+      });
+    };
+    const mcpCaller: ToolLoopCaller = async () => ({
+      ok: true,
+      content: "ok",
+      isError: false,
+    });
+
+    const result = await runMcpToolLoop({
+      messages: [{ role: "user", content: "go" }],
+      tools,
+      provider,
+      mcpCaller,
+      signal: controller.signal,
+    });
+
+    expect(providerCalls).toBe(1);
+    expect(lastOptions?.signal).toBe(controller.signal);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain("aborted");
+  });
+
   it("propagates provider failures", async () => {
     const provider: ToolLoopProvider = async () => ({
       ok: false,

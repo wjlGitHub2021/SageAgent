@@ -243,7 +243,19 @@ export async function createDeepSeekChatCompletion(
   config: DeepSeekProviderConfig,
   input: DeepSeekChatCompletionInput,
   fetcher: DeepSeekFetch = defaultDeepSeekFetch,
+  signal?: AbortSignal,
 ): Promise<DeepSeekAdapterResult<DeepSeekChatCompletionOutput>> {
+  // 取消优先：已 abort 时直接返回，不发起请求，避免取消后仍消耗 token。
+  if (signal?.aborted) {
+    return {
+      ok: false,
+      issue: {
+        code: "network_error",
+        message: "DeepSeek request was aborted before sending.",
+      },
+    };
+  }
+
   const request = prepareDeepSeekChatCompletionRequest(config, {
     ...input,
     stream: false,
@@ -252,7 +264,15 @@ export async function createDeepSeekChatCompletion(
 
   let response: DeepSeekFetchResponse;
   try {
-    response = await fetcher(request.value.url, request.value.init);
+    // 默认 fetcher 支持把外部 signal 合并进在途请求；注入的 fetcher 自行管理取消。
+    response =
+      fetcher === defaultDeepSeekFetch
+        ? await defaultDeepSeekFetch(
+            request.value.url,
+            request.value.init,
+            signal,
+          )
+        : await fetcher(request.value.url, request.value.init);
   } catch {
     return {
       ok: false,
@@ -699,21 +719,36 @@ function toWireToolCall(call: DeepSeekToolCall): DeepSeekWireToolCall {
 export function fetchWithTimeout<R>(
   run: (signal: AbortSignal) => Promise<R>,
   timeoutMs: number = DEEPSEEK_REQUEST_TIMEOUT_MS,
+  externalSignal?: AbortSignal,
 ): Promise<R> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  return run(controller.signal).finally(() => clearTimeout(timer));
+  // 外部取消（如客户端断开 / 工具循环被中止）即时 abort 在途请求，避免取消后继续消耗 token。
+  const onAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener("abort", onAbort, { once: true });
+  }
+  return run(controller.signal).finally(() => {
+    clearTimeout(timer);
+    externalSignal?.removeEventListener("abort", onAbort);
+  });
 }
 
 function defaultDeepSeekFetch(
   input: string,
   init: Parameters<DeepSeekFetch>[1],
+  externalSignal?: AbortSignal,
 ): Promise<DeepSeekFetchResponse> {
   if (typeof fetch === "undefined") {
     return Promise.reject(new Error("fetch is not available."));
   }
 
-  return fetchWithTimeout((signal) => fetch(input, { ...init, signal }));
+  return fetchWithTimeout(
+    (signal) => fetch(input, { ...init, signal }),
+    DEEPSEEK_REQUEST_TIMEOUT_MS,
+    externalSignal,
+  );
 }
 
 function defaultDeepSeekStreamFetch(

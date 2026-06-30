@@ -259,6 +259,32 @@ describe("DeepSeek provider", () => {
     ]);
   });
 
+  it("returns a network_error without calling fetch when the signal is already aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    let fetcherCalled = false;
+    const result = await createDeepSeekChatCompletion(
+      {
+        apiKey: "sk-test",
+        baseUrl: "https://api.deepseek.com",
+        defaultModel: "deepseek-v4-flash",
+        defaultReasoningEffort: "high",
+        thinkingEnabled: true,
+      },
+      { messages: [{ role: "user", content: "hi" }] },
+      async () => {
+        fetcherCalled = true;
+        return { ok: true, status: 200, async json() { return {}; } };
+      },
+      controller.signal,
+    );
+
+    expect(fetcherCalled).toBe(false);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issue.code).toBe("network_error");
+  });
+
   it("parses responses and streaming data defensively", () => {
     expect(parseDeepSeekChatCompletionResponse({ choices: [] })).toEqual({
       ok: true,

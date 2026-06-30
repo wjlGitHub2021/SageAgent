@@ -63,7 +63,12 @@ type IdFactory = (prefix: string) => EntityId;
 export type SupervisorProvider = (
   config: DeepSeekProviderConfig,
   input: DeepSeekChatCompletionInput,
+  options?: { readonly signal?: AbortSignal },
 ) => Promise<DeepSeekAdapterResult<DeepSeekChatCompletionOutput>>;
+
+// 默认非流式 provider：把外部 signal 接到底层 createDeepSeekChatCompletion，支持取消。
+const defaultSupervisorProvider: SupervisorProvider = (config, input, options) =>
+  createDeepSeekChatCompletion(config, input, undefined, options?.signal);
 
 export type SupervisorStreamProvider = (
   config: DeepSeekProviderConfig,
@@ -154,7 +159,7 @@ export async function runSupervisorDeepSeekOnce({
   store,
   runId,
   config,
-  provider = createDeepSeekChatCompletion,
+  provider = defaultSupervisorProvider,
   workspaceRoot = null,
   memoryContextMessage = null,
   skillContextMessage = null,
@@ -337,7 +342,7 @@ export async function* streamSupervisorDeepSeekEvents({
   mcpServers = [],
   mcpListTools = listMcpTools,
   mcpCall = callMcpTool,
-  toolLoopProvider = createDeepSeekChatCompletion,
+  toolLoopProvider = defaultSupervisorProvider,
 }: StreamSupervisorDeepSeekInput): AsyncGenerator<RunEvent, SupervisorRunResult> {
   const run = store.getRun(runId);
   if (!run) {
@@ -613,14 +618,18 @@ async function* runSupervisorMcpToolBranch({
   const tools = Array.from(toolByName.values()).map(mcpToolToDeepSeekTool);
 
   // 2. 适配 provider（非流式 completion，带 run 设置与 tools）与 caller（按工具名路由到服务器）。
-  const provider: ToolLoopProvider = (messages, loopTools) =>
-    toolLoopProvider(config, {
-      messages,
-      model: run.settings.model,
-      thinkingEnabled: run.settings.thinkingEnabled,
-      reasoningEffort: run.settings.reasoningEffort,
-      tools: loopTools,
-    });
+  const provider: ToolLoopProvider = (messages, loopTools, options) =>
+    toolLoopProvider(
+      config,
+      {
+        messages,
+        model: run.settings.model,
+        thinkingEnabled: run.settings.thinkingEnabled,
+        reasoningEffort: run.settings.reasoningEffort,
+        tools: loopTools,
+      },
+      options,
+    );
 
   const mcpCaller: ToolLoopCaller = (toolName, args) => {
     const url = serverByTool.get(toolName);
@@ -640,6 +649,7 @@ async function* runSupervisorMcpToolBranch({
     provider,
     mcpCaller,
     onToolCall: (event) => toolEvents.push(event),
+    signal,
   });
 
   // 3. 工具调用可视化：每次调用作为一个 step 事件（非流式：循环结束后统一下发）。

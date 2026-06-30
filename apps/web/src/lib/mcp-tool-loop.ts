@@ -19,9 +19,11 @@ import type { McpCallResult, McpTool } from "./mcp-client.js";
 export const DEFAULT_MAX_TOOL_ITERATIONS = 8;
 
 // DeepSeek 提供方：注入一次带 tools 的非流式 chat completion 调用。
+// options.signal 用于把外部取消透传到底层请求。
 export type ToolLoopProvider = (
   messages: readonly DeepSeekChatMessage[],
   tools: readonly DeepSeekTool[],
+  options?: { readonly signal?: AbortSignal },
 ) => Promise<DeepSeekAdapterResult<DeepSeekChatCompletionOutput>>;
 
 // MCP 工具执行器：按工具名 + 解析后的参数执行，返回 callMcpTool 的结果形态。
@@ -49,6 +51,8 @@ export interface ToolLoopInput {
   readonly maxIterations?: number;
   // 每次工具调用执行后回调（同步）；用于观测/呈现，不影响循环控制流。
   readonly onToolCall?: (event: ToolLoopToolEvent) => void;
+  // 外部取消信号：迭代间检查并透传给 provider，取消后不再发起新一轮。
+  readonly signal?: AbortSignal;
 }
 
 // MCP inputSchema → OpenAI 兼容 function parameters。缺失/非对象时退回空对象 schema，
@@ -91,7 +95,18 @@ export async function runMcpToolLoop(
   let toolCallCount = 0;
 
   for (let iteration = 1; iteration <= maxIterations; iteration++) {
-    const completion = await input.provider(transcript, input.tools);
+    // 取消优先：每轮发起前检查，避免取消后还跑后续 model↔tool 往返。
+    if (input.signal?.aborted) {
+      return {
+        ok: false,
+        error: "aborted: 运行已取消。",
+        messages: transcript,
+      };
+    }
+
+    const completion = await input.provider(transcript, input.tools, {
+      signal: input.signal,
+    });
     if (!completion.ok) {
       return {
         ok: false,
