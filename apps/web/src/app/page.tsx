@@ -2453,12 +2453,21 @@ export default function Home() {
   const activePhase4Summary = selectedRunId
     ? getPhase4RunSummary(runEvents, selectedRunId)
     : createEmptyPhase4RunSummary();
-  const activeMessages = selectedRunId
-    ? messages.filter((message) => message.runId === selectedRunId)
+  // 连续聊天：对话区按「当前会话(thread)」聚合全部轮次的消息，而不是只显示单个 run，
+  // 这样同一会话里发的后续消息会累积在同一窗口，读起来是一个连续对话。
+  const activeThreadRunIds = new Set(
+    runItems
+      .filter((item) => item.threadId === activeThreadId)
+      .map((item) => item.id),
+  );
+  const activeMessages = hasSelectedRun
+    ? messages.filter((message) => activeThreadRunIds.has(message.runId))
     : [];
-  // 工具卡片内联在「最后一条用户消息」与助手回答之间——契合 user → 工具 → 回答 的真实时序。
-  const firstAssistantIndex = activeMessages.findIndex(
-    (message) => message.role.toLowerCase() !== "user",
+  // 工具卡片内联在「最后一条用户消息」之后——契合当前轮 user → 工具 → 回答 的真实时序。
+  const lastUserIndex = activeMessages.reduce(
+    (last, message, index) =>
+      message.role.toLowerCase() === "user" ? index : last,
+    -1,
   );
   // 正在生成的助手消息 = run 进行中时的最后一条非用户消息；思考块据此实时展开。
   const lastAssistantIndex = activeMessages.reduce(
@@ -2874,17 +2883,17 @@ export default function Home() {
                           <Markdown>{message.body[locale]}</Markdown>
                         </div>
                       );
-                    if (index === firstAssistantIndex) {
+                    if (index === lastUserIndex) {
                       return (
                         <Fragment key={`group-${index}`}>
-                          <ConversationToolCalls calls={activeToolCalls} t={t} />
                           {bubble}
+                          <ConversationToolCalls calls={activeToolCalls} t={t} />
                         </Fragment>
                       );
                     }
                     return bubble;
                   })}
-                  {firstAssistantIndex === -1 ? (
+                  {activeMessages.length === 0 ? (
                     <ConversationToolCalls calls={activeToolCalls} t={t} />
                   ) : null}
                   {activeApproval &&
