@@ -2780,6 +2780,7 @@ export default function Home() {
             </div>
           </Panel>
 
+          {activePhase4Summary.hasData ? (
           <Panel title={t.phase4Summary}>
             {activePhase4Summary.hasData ? (
               <div className="stack phase4-summary-stack">
@@ -2917,6 +2918,7 @@ export default function Home() {
               />
             )}
           </Panel>
+          ) : null}
             </>
           ) : null}
 
@@ -3152,7 +3154,7 @@ export default function Home() {
           </Panel>
           ) : null}
 
-          {inspectorTab === "timeline" ? (
+          {inspectorTab === "timeline" && activeProviderError ? (
           <Panel title={t.providerError}>
             {activeProviderError ? (
               <div className="provider-error-box">
