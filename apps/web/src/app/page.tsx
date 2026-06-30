@@ -36,6 +36,7 @@ import { getPhase4RunSummary } from "@/lib/phase4-summary";
 import { Composer } from "./components/Composer";
 import { EmptyHome } from "./components/EmptyHome";
 import { Markdown } from "./components/Markdown";
+import { McpSettings } from "./components/McpSettings";
 import { SettingsNav } from "./components/SettingsNav";
 import { StatusBar } from "./components/StatusBar";
 import { ThinkingBlock } from "./components/ThinkingBlock";
@@ -215,8 +216,22 @@ const copy = {
     navMemory: "记忆与上下文",
     navProviders: "提供方",
     navTools: "工具与密钥",
+    navMcp: "MCP",
     navArchived: "已归档对话",
     navAbout: "关于",
+    mcpTitle: "MCP 服务器",
+    mcpDetail:
+      "连接 HTTP/SSE 的 MCP 服务器并列出其工具（阶段 1：先连接列工具，暂不在对话里调用）。",
+    mcpLabelPlaceholder: "名称（可选）",
+    mcpUrlPlaceholder: "服务器 URL（http/https）",
+    mcpAdd: "添加",
+    mcpTest: "列出工具",
+    mcpTesting: "连接中…",
+    mcpRemove: "删除",
+    mcpNoServers: "还没有 MCP 服务器，填入 URL 添加一个。",
+    mcpToolsCount: "个工具",
+    mcpConnectFailed: "连接失败",
+    mcpEmptyTools: "已连接，但该服务器没有暴露工具。",
     archiveAction: "归档",
     unarchiveAction: "恢复",
     archivedTitle: "已归档对话",
@@ -596,8 +611,22 @@ const copy = {
     navMemory: "Memory & Context",
     navProviders: "Providers",
     navTools: "Tools & Keys",
+    navMcp: "MCP",
     navArchived: "Archived",
     navAbout: "About",
+    mcpTitle: "MCP servers",
+    mcpDetail:
+      "Connect HTTP/SSE MCP servers and list their tools (phase 1: connect and list only, not yet callable in chat).",
+    mcpLabelPlaceholder: "Name (optional)",
+    mcpUrlPlaceholder: "Server URL (http/https)",
+    mcpAdd: "Add",
+    mcpTest: "List tools",
+    mcpTesting: "Connecting…",
+    mcpRemove: "Remove",
+    mcpNoServers: "No MCP servers yet — add one by URL.",
+    mcpToolsCount: "tools",
+    mcpConnectFailed: "Connection failed",
+    mcpEmptyTools: "Connected, but this server exposes no tools.",
     archiveAction: "Archive",
     unarchiveAction: "Restore",
     archivedTitle: "Archived conversations",
@@ -4389,6 +4418,7 @@ export default function Home() {
                   </article>
                 </>
               ) : null}
+              {settingsTab === "mcp" ? <McpSettings t={t} /> : null}
               {settingsTab === "archived" ? (
                 <article className="settings-card">
                   <div>

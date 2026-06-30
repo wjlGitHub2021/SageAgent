@@ -1303,6 +1303,74 @@ code {
   overflow-y: auto;
 }
 
+/* MCP 服务器设置：添加表单 + 服务器列表 + 探测结果。 */
+.mcp-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mcp-add input {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.mcp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mcp-server {
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-muted);
+}
+
+.mcp-server-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mcp-server-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mcp-server-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.mcp-server-url {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.mcp-server-actions {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
+
+.mcp-server-error {
+  margin: 9px 0 0;
+  font-size: 12.5px;
+  color: #c2553f;
+  overflow-wrap: anywhere;
+}
+
+.mcp-tools {
+  margin-top: 9px;
+}
+
 .archived-list {
   display: flex;
   flex-direction: column;
