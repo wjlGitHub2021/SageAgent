@@ -7,6 +7,7 @@ const { spawn } = require("child_process");
 const {
   app,
   BrowserWindow,
+  Menu,
   shell,
   ipcMain,
   safeStorage,
@@ -66,6 +67,20 @@ function registerKeyIpc() {
     fs.rmSync(keyFilePath(), { force: true });
     return { ok: true, requiresRestart: SERVE_EMBEDDED };
   });
+}
+
+// 原生应用菜单：用内置 role，自动获得 OS 本地化标签与标准快捷键
+//（重载、强制重载、DevTools、缩放、全屏、复制/粘贴/撤销、最小化/关闭/退出）。
+function buildApplicationMenu() {
+  const isMac = process.platform === "darwin";
+  const template = [
+    ...(isMac ? [{ role: "appMenu" }] : []),
+    { role: "fileMenu" },
+    { role: "editMenu" },
+    { role: "viewMenu" },
+    { role: "windowMenu" },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
 function standaloneServerPath() {
@@ -170,6 +185,7 @@ async function boot() {
 }
 
 app.whenReady().then(() => {
+  buildApplicationMenu();
   registerKeyIpc();
   return boot();
 });
