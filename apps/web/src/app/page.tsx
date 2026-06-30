@@ -307,8 +307,7 @@ const copy = {
     notConfigured: "暂未配置",
     language: "界面语言",
     new: "新建",
-    threads: "会话",
-    runs: "任务",
+    conversations: "会话",
     currentRun: "当前任务",
     modelSettings: "模型设置",
     model: "模型",
@@ -652,8 +651,7 @@ const copy = {
     notConfigured: "Not configured",
     language: "Interface language",
     new: "New",
-    threads: "Threads",
-    runs: "Runs",
+    conversations: "Conversations",
     currentRun: "Current Run",
     modelSettings: "Model settings",
     model: "Model",
@@ -2100,13 +2098,6 @@ export default function Home() {
   const selectedRun = hasSelectedRun ? activeRun : null;
   const selectedRunId = hasSelectedRun ? activeRunId : null;
   const normalizedConversationQuery = conversationQuery.trim().toLowerCase();
-  const filteredThreads = normalizedConversationQuery
-    ? threadItems.filter((thread) =>
-        `${thread.title[locale]} ${thread.subtitle[locale]}`
-          .toLowerCase()
-          .includes(normalizedConversationQuery)
-      )
-    : threadItems;
   const filteredRuns = normalizedConversationQuery
     ? runItems.filter((run) =>
         `${run.title[locale]} ${run.goal ?? ""}`
@@ -2131,35 +2122,63 @@ export default function Home() {
 
   const renderRunRow = (run: RunItem) => {
     const isPinned = pinnedRunIds.includes(run.id);
+    const isActive = hasSelectedRun && run.id === activeRunId;
     return (
-      <button
-        className={
-          hasSelectedRun && run.id === activeRunId
-            ? "side-run active"
-            : "side-run"
-        }
+      <div
+        className={`side-run-wrap${isActive ? " active" : ""}${
+          isPinned ? " pinned" : ""
+        }`}
         key={run.id}
-        onClick={(event) => {
-          if (event.shiftKey) {
-            toggleRunPin(run.id);
-            return;
-          }
-          setActiveRunId(run.id);
-          setActiveThreadId(run.threadId);
-          setHasSelectedRun(true);
-        }}
-        title={isPinned ? t.unpin : t.pinHint}
-        type="button"
       >
-        <StatusDot status={run.status} />
-        <span className="side-run-body">
-          <span className="side-run-title">{run.title[locale]}</span>
-          <span className="side-run-meta">
-            <span>{formatRunStatusLabel(run.status, t)}</span>
-            <span>{run.time}</span>
+        <button
+          className="side-run"
+          onClick={(event) => {
+            if (event.shiftKey) {
+              toggleRunPin(run.id);
+              return;
+            }
+            setActiveRunId(run.id);
+            setActiveThreadId(run.threadId);
+            setHasSelectedRun(true);
+          }}
+          type="button"
+        >
+          <StatusDot status={run.status} />
+          <span className="side-run-body">
+            <span className="side-run-title">{run.title[locale]}</span>
+            <span className="side-run-meta">
+              <span>{formatRunStatusLabel(run.status, t)}</span>
+              <span>{run.time}</span>
+            </span>
           </span>
-        </span>
-      </button>
+        </button>
+        <button
+          aria-label={isPinned ? t.unpin : t.pinHint}
+          aria-pressed={isPinned}
+          className="side-run-pin"
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleRunPin(run.id);
+          }}
+          title={isPinned ? t.unpin : t.pinHint}
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            fill={isPinned ? "currentColor" : "none"}
+            height="13"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.6"
+            viewBox="0 0 24 24"
+            width="13"
+          >
+            <path d="M12 17v5" />
+            <path d="M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.8a2 2 0 0 0-1.1-1.8l-1.8-.9A2 2 0 0 1 15 10.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+          </svg>
+        </button>
+      </div>
     );
   };
   const timelineRows = selectedRunId ? getTimelineRows(runEvents, selectedRunId) : [];
@@ -2219,19 +2238,6 @@ export default function Home() {
 
     setThreadItems((current) => [...current, nextThread]);
     setActiveThreadId(nextThread.id);
-    setHasSelectedRun(false);
-  }
-
-  function handleThreadSelect(threadId: string) {
-    const nextRun = runItems.find((run) => run.threadId === threadId);
-    setActiveThreadId(threadId);
-
-    if (nextRun) {
-      setActiveRunId(nextRun.id);
-      setHasSelectedRun(true);
-      return;
-    }
-
     setHasSelectedRun(false);
   }
 
@@ -2541,38 +2547,7 @@ export default function Home() {
 
           <div className="side-section">
             <p className="side-section-label">
-              <span>{t.threads}</span>
-              <span className="side-section-count">{filteredThreads.length}</span>
-            </p>
-            <div className="side-list">
-              {filteredThreads.map((thread) => (
-                <button
-                  className={
-                    thread.id === activeThreadId
-                      ? "side-thread active"
-                      : "side-thread"
-                  }
-                  key={thread.id}
-                  onClick={() => handleThreadSelect(thread.id)}
-                  type="button"
-                >
-                  <span className="side-thread-title">
-                    {thread.title[locale]}
-                  </span>
-                  <span className="side-thread-sub">
-                    {thread.subtitle[locale]}
-                  </span>
-                </button>
-              ))}
-              {filteredThreads.length === 0 ? (
-                <p className="side-empty">{t.noMatches}</p>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="side-section">
-            <p className="side-section-label">
-              <span>{t.runs}</span>
+              <span>{t.conversations}</span>
               <span className="side-section-count">{unpinnedRuns.length}</span>
             </p>
             <div className="side-list">

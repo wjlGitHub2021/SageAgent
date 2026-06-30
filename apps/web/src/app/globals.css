@@ -2339,10 +2339,27 @@ code {
   gap: 1px;
 }
 
-.side-thread,
+.side-run-wrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border-radius: 8px;
+}
+
+.side-run-wrap:hover {
+  background: var(--panel-muted);
+}
+
+.side-run-wrap.active {
+  background: var(--accent-soft);
+}
+
 .side-run {
   display: flex;
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 9px;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -2350,41 +2367,30 @@ code {
   padding: 8px 10px;
 }
 
-.side-thread {
-  flex-direction: column;
-  gap: 1px;
-}
-
-.side-thread:hover,
-.side-run:hover {
-  background: var(--panel-muted);
-}
-
-.side-thread.active,
-.side-run.active {
-  background: var(--accent-soft);
-}
-
-.side-thread-title {
-  color: var(--text-main);
-  font-size: 13.5px;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.side-thread-sub {
+.side-run-pin {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
   color: var(--text-muted);
-  font-size: 11.5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease;
 }
 
-.side-run {
-  align-items: flex-start;
-  gap: 9px;
+.side-run-wrap:hover .side-run-pin,
+.side-run-wrap.pinned .side-run-pin,
+.side-run-pin:focus-visible {
+  opacity: 1;
+}
+
+.side-run-wrap.pinned .side-run-pin,
+.side-run-pin:hover {
+  color: var(--accent-deep);
 }
 
 .side-run-body {
