@@ -93,6 +93,7 @@ type CreateRunPayload = {
   goal: string;
   title: string;
   threadTitle: string;
+  threadId?: string;
   settings: {
     providerId: "deepseek";
     model: Preferences["model"];
@@ -1857,6 +1858,9 @@ export default function Home() {
     "idle" | "cancelled"
   >("idle");
   const runRequestRef = useRef<AbortController | null>(null);
+  // 服务端已创建的 thread id 集合：用于把同一会话的后续消息挂回同一 thread，
+  // 从而让服务端回灌多轮历史。本地占位/草稿 thread 不在其中，避免传未知 id 被 404。
+  const serverThreadIdsRef = useRef<Set<string>>(new Set());
   const settingsDialogRef = useRef<HTMLElement | null>(null);
   const memoryDialogRef = useRef<HTMLElement | null>(null);
   const skillDialogRef = useRef<HTMLElement | null>(null);
@@ -2503,11 +2507,17 @@ export default function Home() {
     setComposerError(null);
 
     try {
+      // 继续同一会话：仅当当前 thread 是服务端已创建的，才回传其 id，让后续轮挂回同一 thread；
+      // 新会话（本地占位/草稿 thread）不传，由服务端新建。
+      const continuingThreadId = serverThreadIdsRef.current.has(activeThreadId)
+        ? activeThreadId
+        : undefined;
       const created = await createApiRun(
         {
           goal,
           title: deriveTitle(goal),
           threadTitle: deriveTitle(goal),
+          ...(continuingThreadId ? { threadId: continuingThreadId } : {}),
           settings: {
             providerId,
             model,
@@ -2518,6 +2528,8 @@ export default function Home() {
         controller.signal,
       );
 
+      // 记录服务端 thread id，使本会话后续消息复用它。
+      serverThreadIdsRef.current.add(created.thread.id);
       setThreadItems((current) => appendThreadItem(current, created.thread));
       setRunItems((current) => appendRunItem(current, created.run));
       setActiveThreadId(created.thread.id);
