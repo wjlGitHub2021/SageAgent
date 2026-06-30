@@ -1552,12 +1552,12 @@ function getDesktopBridge(): DesktopBridge | null {
   );
 }
 
-// 各模型的上下文窗口（token）。deepseek-v4 系列为演示模型，按配置值给定，可调整。
+// 各模型的上下文窗口（token），按 DeepSeek 官方 64K 给定，仅用于状态栏用量显示。
 const MODEL_CONTEXT_WINDOW: Record<string, number> = {
-  "deepseek-v4-flash": 128000,
-  "deepseek-v4-pro": 256000,
+  "deepseek-chat": 64000,
+  "deepseek-reasoner": 64000,
 };
-const DEFAULT_CONTEXT_WINDOW = 128000;
+const DEFAULT_CONTEXT_WINDOW = 64000;
 
 // 从活动 run 的 run.completed 事件读取 provider 上报的 total tokens；无则返回 null。
 function getRunTotalTokens(

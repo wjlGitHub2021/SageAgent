@@ -15,7 +15,7 @@ describe("DeepSeek provider status", () => {
       config: {
         apiKey: "sk-secret-token-123456789",
         baseUrl: "https://api.deepseek.com",
-        defaultModel: "deepseek-v4-pro",
+        defaultModel: "deepseek-reasoner",
         defaultReasoningEffort: "max",
         thinkingEnabled: false,
       },
@@ -25,7 +25,7 @@ describe("DeepSeek provider status", () => {
       configStatus: "valid",
       apiKeyReadiness: "configured",
       baseUrl: "https://api.deepseek.com",
-      defaultModel: "deepseek-v4-pro",
+      defaultModel: "deepseek-reasoner",
       thinkingEnabled: false,
       reasoningEffort: "max",
       issueCodes: [],
@@ -39,7 +39,7 @@ describe("DeepSeek provider status", () => {
       config: {
         apiKey: "sk-secret-token-123456789",
         baseUrl: "https://api.deepseek.com",
-        defaultModel: "deepseek-v4-flash",
+        defaultModel: "deepseek-chat",
         defaultReasoningEffort: "high",
         thinkingEnabled: true,
       },
@@ -99,7 +99,7 @@ describe("DeepSeek provider status", () => {
       config: {
         apiKey: "sk-secret-token-123456789",
         baseUrl: "https://api.deepseek.com",
-        defaultModel: "deepseek-v4-flash",
+        defaultModel: "deepseek-chat",
         defaultReasoningEffort: "high",
         thinkingEnabled: true,
       },

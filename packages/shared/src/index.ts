@@ -87,7 +87,7 @@ export const RUN_EVENT_TYPES = [
 
 export type RunEventType = (typeof RUN_EVENT_TYPES)[number];
 
-export const DEEPSEEK_MODELS = ["deepseek-v4-flash", "deepseek-v4-pro"] as const;
+export const DEEPSEEK_MODELS = ["deepseek-chat", "deepseek-reasoner"] as const;
 
 export type DeepSeekModel = (typeof DEEPSEEK_MODELS)[number];
 

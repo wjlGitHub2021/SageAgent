@@ -21,14 +21,14 @@ export const PREFERENCES_STORAGE_KEY = "sage.preferences.v1";
 export const DEFAULT_PREFERENCES: Preferences = {
   locale: "zh",
   providerId: "deepseek",
-  model: "deepseek-v4-flash",
+  model: "deepseek-chat",
   thinkingEnabled: true,
   reasoningEffort: "high",
 };
 
 export const ALLOWED_MODELS = [
-  "deepseek-v4-flash",
-  "deepseek-v4-pro",
+  "deepseek-chat",
+  "deepseek-reasoner",
 ] as const satisfies readonly DeepSeekModel[];
 
 export const ALLOWED_REASONING_EFFORTS = ["high", "max"] as const;

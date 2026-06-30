@@ -21,6 +21,8 @@ export interface DeepSeekChatMessage {
 export interface DeepSeekChatCompletionInput {
   readonly messages: readonly DeepSeekChatMessage[];
   readonly model?: DeepSeekModel;
+  // 真实 DeepSeek 契约不接受 thinking/reasoning_effort：是否推理由模型决定
+  // （deepseek-reasoner 回传 reasoning_content）。以下两项暂保留入参但不再下发。
   readonly thinkingEnabled?: boolean;
   readonly reasoningEffort?: ReasoningEffort;
 }
@@ -29,10 +31,6 @@ export interface DeepSeekChatCompletionRequestBody {
   readonly model: DeepSeekModel;
   readonly messages: readonly DeepSeekChatMessage[];
   readonly stream: boolean;
-  readonly thinking: {
-    readonly type: "enabled" | "disabled";
-  };
-  readonly reasoning_effort: ReasoningEffort;
 }
 
 export interface DeepSeekPreparedChatCompletionRequest {
@@ -165,13 +163,6 @@ function prepareDeepSeekChatCompletionRequest(
     model: input.model ?? config.defaultModel,
     messages: messagesResult.value,
     stream: input.stream,
-    thinking: {
-      type: (input.thinkingEnabled ?? config.thinkingEnabled)
-        ? "enabled"
-        : "disabled",
-    },
-    reasoning_effort:
-      input.reasoningEffort ?? config.defaultReasoningEffort,
   };
 
   return {

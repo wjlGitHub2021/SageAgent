@@ -21,7 +21,7 @@ type CreateRunRequest = {
 
 const DEFAULT_SETTINGS: ProviderSettings = {
   providerId: "deepseek",
-  model: "deepseek-v4-flash",
+  model: "deepseek-chat",
   thinkingEnabled: true,
   reasoningEffort: "high",
 };
@@ -228,7 +228,7 @@ function normalizeSettings(
     return {
       ok: false,
       code: "invalid_model",
-      message: "Model must be deepseek-v4-flash or deepseek-v4-pro.",
+      message: "Model must be deepseek-chat or deepseek-reasoner.",
       status: 400,
     };
   }

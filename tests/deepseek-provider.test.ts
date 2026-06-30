@@ -21,7 +21,7 @@ describe("DeepSeek provider", () => {
     expect(result.config).toMatchObject({
       apiKey: null,
       baseUrl: "https://api.deepseek.com",
-      defaultModel: "deepseek-v4-flash",
+      defaultModel: "deepseek-chat",
       defaultReasoningEffort: "high",
       thinkingEnabled: true,
     });
@@ -30,7 +30,7 @@ describe("DeepSeek provider", () => {
   it("rejects unsupported models, reasoning effort, and insecure base URLs", () => {
     const result = loadDeepSeekProviderConfig({
       DEEPSEEK_BASE_URL: "http://api.deepseek.com",
-      DEEPSEEK_DEFAULT_MODEL: "deepseek-chat",
+      DEEPSEEK_DEFAULT_MODEL: "unsupported-model",
       DEEPSEEK_DEFAULT_REASONING_EFFORT: "medium",
     });
 
@@ -52,7 +52,7 @@ describe("DeepSeek provider", () => {
     const missing = requireDeepSeekApiKey({
       apiKey: " ",
       baseUrl: "https://api.deepseek.com",
-      defaultModel: "deepseek-v4-flash",
+      defaultModel: "deepseek-chat",
       defaultReasoningEffort: "high",
       thinkingEnabled: true,
     });
@@ -64,13 +64,13 @@ describe("DeepSeek provider", () => {
       {
         apiKey: "sk-test",
         baseUrl: "https://api.deepseek.com/v1/",
-        defaultModel: "deepseek-v4-flash",
+        defaultModel: "deepseek-chat",
         defaultReasoningEffort: "high",
         thinkingEnabled: true,
       },
       {
         messages: [{ role: "user", content: "Hello" }],
-        model: "deepseek-v4-pro",
+        model: "deepseek-reasoner",
         thinkingEnabled: false,
         reasoningEffort: "max",
       },
@@ -78,13 +78,15 @@ describe("DeepSeek provider", () => {
         expect(url).toBe("https://api.deepseek.com/v1/chat/completions");
         expect(init.method).toBe("POST");
         expect(init.headers.Authorization).toBe("Bearer sk-test");
-        expect(JSON.parse(init.body)).toMatchObject({
-          model: "deepseek-v4-pro",
+        const parsedBody = JSON.parse(init.body);
+        expect(parsedBody).toMatchObject({
+          model: "deepseek-reasoner",
           stream: false,
-          thinking: { type: "disabled" },
-          reasoning_effort: "max",
           messages: [{ role: "user", content: "Hello" }],
         });
+        // 真实 DeepSeek 契约不含 thinking/reasoning_effort，确保不再下发。
+        expect(parsedBody).not.toHaveProperty("thinking");
+        expect(parsedBody).not.toHaveProperty("reasoning_effort");
 
         return {
           ok: true,
@@ -92,7 +94,7 @@ describe("DeepSeek provider", () => {
           async json() {
             return {
               id: "chatcmpl-test",
-              model: "deepseek-v4-pro",
+              model: "deepseek-reasoner",
               choices: [
                 {
                   index: 0,
@@ -129,14 +131,14 @@ describe("DeepSeek provider", () => {
     });
 
     const delta = parseDeepSeekStreamLine(
-      'data: {"id":"1","model":"deepseek-v4-flash","choices":[{"index":0,"delta":{"role":"assistant","content":"A","reasoning_content":"R"},"finish_reason":null}]}',
+      'data: {"id":"1","model":"deepseek-chat","choices":[{"index":0,"delta":{"role":"assistant","content":"A","reasoning_content":"R"},"finish_reason":null}]}',
     );
     expect(delta).toEqual({
       ok: true,
       value: {
         type: "delta",
         id: "1",
-        model: "deepseek-v4-flash",
+        model: "deepseek-chat",
         index: 0,
         role: "assistant",
         contentDelta: "A",
@@ -160,13 +162,13 @@ describe("DeepSeek provider", () => {
       {
         apiKey: "sk-test",
         baseUrl: "https://api.deepseek.com",
-        defaultModel: "deepseek-v4-flash",
+        defaultModel: "deepseek-chat",
         defaultReasoningEffort: "high",
         thinkingEnabled: true,
       },
       {
         messages: [{ role: "user", content: "Hello" }],
-        model: "deepseek-v4-pro",
+        model: "deepseek-reasoner",
         thinkingEnabled: true,
         reasoningEffort: "max",
       },
@@ -174,18 +176,16 @@ describe("DeepSeek provider", () => {
         expect(url).toBe("https://api.deepseek.com/chat/completions");
         expect(init.headers.Authorization).toBe("Bearer sk-test");
         expect(JSON.parse(init.body)).toMatchObject({
-          model: "deepseek-v4-pro",
+          model: "deepseek-reasoner",
           stream: true,
-          thinking: { type: "enabled" },
-          reasoning_effort: "max",
         });
 
         return {
           ok: true,
           status: 200,
           body: createTextStream([
-            'data: {"id":"1","model":"deepseek-v4-pro","choices":[{"index":0,"delta":{"role":"assistant","content":"Hel","reasoning_content":"R1"},"finish_reason":null}]}\n',
-            '\ndata: {"id":"1","model":"deepseek-v4-pro","choices":[{"index":0,"delta":{"content":"lo"},"finish_reason":null}]}\n\n',
+            'data: {"id":"1","model":"deepseek-reasoner","choices":[{"index":0,"delta":{"role":"assistant","content":"Hel","reasoning_content":"R1"},"finish_reason":null}]}\n',
+            '\ndata: {"id":"1","model":"deepseek-reasoner","choices":[{"index":0,"delta":{"content":"lo"},"finish_reason":null}]}\n\n',
             "data: [DONE]\n\n",
           ]),
         };
@@ -201,7 +201,7 @@ describe("DeepSeek provider", () => {
         value: {
           type: "delta",
           id: "1",
-          model: "deepseek-v4-pro",
+          model: "deepseek-reasoner",
           index: 0,
           role: "assistant",
           contentDelta: "Hel",
@@ -214,7 +214,7 @@ describe("DeepSeek provider", () => {
         value: {
           type: "delta",
           id: "1",
-          model: "deepseek-v4-pro",
+          model: "deepseek-reasoner",
           index: 0,
           role: null,
           contentDelta: "lo",
@@ -233,7 +233,7 @@ describe("DeepSeek provider", () => {
     const config = {
       apiKey: "sk-test",
       baseUrl: "https://api.deepseek.com",
-      defaultModel: "deepseek-v4-flash" as const,
+      defaultModel: "deepseek-chat" as const,
       defaultReasoningEffort: "high" as const,
       thinkingEnabled: true,
     };
@@ -354,7 +354,7 @@ describe("DeepSeek parsing edge cases", () => {
   it("falls back to empty content instead of rejecting null message content", () => {
     const result = parseDeepSeekChatCompletionResponse({
       id: "x",
-      model: "deepseek-v4-flash",
+      model: "deepseek-chat",
       choices: [
         {
           index: 0,

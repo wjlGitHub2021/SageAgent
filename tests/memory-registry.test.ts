@@ -60,7 +60,7 @@ describe("memory registry", () => {
     registry.upsertEntry({
       scope: "workspace",
       title: "Default model",
-      content: "deepseek-v4-flash is the default model.",
+      content: "deepseek-chat is the default model.",
       tags: ["model"],
       sourceThreadId: "thread-1",
       sourceRunId: "run-1",
@@ -76,7 +76,7 @@ describe("memory registry", () => {
     });
 
     expect(message).toContain("Persisted memory context");
-    expect(message).toContain("deepseek-v4-flash");
+    expect(message).toContain("deepseek-chat");
   });
 
   it("can persist memory registry snapshots to the local registry backend", () => {

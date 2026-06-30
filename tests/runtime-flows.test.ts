@@ -48,7 +48,7 @@ const run: Run = {
   status: "running",
   activeAgent: "supervisor",
   settings: {
-    model: "deepseek-v4-flash",
+    model: "deepseek-chat",
     thinkingEnabled: true,
     reasoningEffort: "high",
   },
@@ -848,7 +848,7 @@ describe("runtime flows", () => {
         ok: true,
         value: {
           id: "chatcmpl-test",
-          model: "deepseek-v4-flash",
+          model: "deepseek-chat",
           choices: [
             {
               index: 0,
@@ -880,7 +880,7 @@ describe("runtime flows", () => {
       config: {
         apiKey: "sk-test",
         baseUrl: "https://api.deepseek.com",
-        defaultModel: "deepseek-v4-flash",
+        defaultModel: "deepseek-chat",
         defaultReasoningEffort: "high",
         thinkingEnabled: true,
       },
@@ -954,7 +954,7 @@ describe("runtime flows", () => {
       config: {
         apiKey: "sk-secret-should-not-leak",
         baseUrl: "https://api.deepseek.com",
-        defaultModel: "deepseek-v4-flash",
+        defaultModel: "deepseek-chat",
         defaultReasoningEffort: "high",
         thinkingEnabled: true,
       },
@@ -1004,7 +1004,7 @@ describe("runtime flows", () => {
       config: {
         apiKey: "sk-test",
         baseUrl: "https://api.deepseek.com",
-        defaultModel: "deepseek-v4-flash",
+        defaultModel: "deepseek-chat",
         defaultReasoningEffort: "high",
         thinkingEnabled: true,
       },
@@ -1086,7 +1086,7 @@ describe("runtime flows", () => {
         value: {
           type: "delta",
           id: "chatcmpl-stream",
-          model: "deepseek-v4-flash",
+          model: "deepseek-chat",
           index: 0,
           role: "assistant",
           contentDelta: "你",
@@ -1099,7 +1099,7 @@ describe("runtime flows", () => {
         value: {
           type: "delta",
           id: "chatcmpl-stream",
-          model: "deepseek-v4-flash",
+          model: "deepseek-chat",
           index: 0,
           role: null,
           contentDelta: "",
@@ -1112,7 +1112,7 @@ describe("runtime flows", () => {
         value: {
           type: "delta",
           id: "chatcmpl-stream",
-          model: "deepseek-v4-flash",
+          model: "deepseek-chat",
           index: 0,
           role: null,
           contentDelta: "好",
@@ -1129,7 +1129,7 @@ describe("runtime flows", () => {
       config: {
         apiKey: "sk-test",
         baseUrl: "https://api.deepseek.com",
-        defaultModel: "deepseek-v4-flash",
+        defaultModel: "deepseek-chat",
         defaultReasoningEffort: "high",
         thinkingEnabled: true,
       },
@@ -1199,7 +1199,7 @@ describe("runtime flows", () => {
       config: {
         apiKey: "sk-test",
         baseUrl: "https://api.deepseek.com",
-        defaultModel: "deepseek-v4-flash",
+        defaultModel: "deepseek-chat",
         defaultReasoningEffort: "high",
         thinkingEnabled: true,
       },
@@ -1243,7 +1243,7 @@ describe("runtime flows", () => {
         value: {
           type: "delta",
           id: "chatcmpl-empty-stream",
-          model: "deepseek-v4-flash",
+          model: "deepseek-chat",
           index: 0,
           role: "assistant",
           contentDelta: "",
@@ -1261,7 +1261,7 @@ describe("runtime flows", () => {
       config: {
         apiKey: "sk-test",
         baseUrl: "https://api.deepseek.com",
-        defaultModel: "deepseek-v4-flash",
+        defaultModel: "deepseek-chat",
         defaultReasoningEffort: "high",
         thinkingEnabled: true,
       },
@@ -1313,7 +1313,7 @@ describe("runtime flows", () => {
         value: {
           type: "delta",
           id: "chatcmpl-file",
-          model: "deepseek-v4-flash",
+          model: "deepseek-chat",
           index: 0,
           role: "assistant",
           contentDelta: "已读取规格。",
@@ -1337,7 +1337,7 @@ describe("runtime flows", () => {
       config: {
         apiKey: "sk-test",
         baseUrl: "https://api.deepseek.com",
-        defaultModel: "deepseek-v4-flash",
+        defaultModel: "deepseek-chat",
         defaultReasoningEffort: "high",
         thinkingEnabled: true,
       },
@@ -1414,7 +1414,7 @@ describe("runtime flows", () => {
         value: {
           type: "delta",
           id: "chatcmpl-file-failure",
-          model: "deepseek-v4-flash",
+          model: "deepseek-chat",
           index: 0,
           role: "assistant",
           contentDelta: "不能读取敏感配置文件。",
@@ -1440,7 +1440,7 @@ describe("runtime flows", () => {
       config: {
         apiKey: "sk-test",
         baseUrl: "https://api.deepseek.com",
-        defaultModel: "deepseek-v4-flash",
+        defaultModel: "deepseek-chat",
         defaultReasoningEffort: "high",
         thinkingEnabled: true,
       },
@@ -1509,7 +1509,7 @@ describe("runtime flows", () => {
         value: {
           type: "delta",
           id: "chatcmpl-stream",
-          model: "deepseek-v4-flash",
+          model: "deepseek-chat",
           index: 0,
           role: "assistant",
           contentDelta: "partial",
@@ -1533,7 +1533,7 @@ describe("runtime flows", () => {
       config: {
         apiKey: "sk-test",
         baseUrl: "https://api.deepseek.com",
-        defaultModel: "deepseek-v4-flash",
+        defaultModel: "deepseek-chat",
         defaultReasoningEffort: "high",
         thinkingEnabled: true,
       },

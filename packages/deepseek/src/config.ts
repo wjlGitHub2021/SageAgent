@@ -6,7 +6,7 @@ import {
 } from "@sage/shared";
 
 export const DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com";
-export const DEFAULT_DEEPSEEK_MODEL: DeepSeekModel = "deepseek-v4-flash";
+export const DEFAULT_DEEPSEEK_MODEL: DeepSeekModel = "deepseek-chat";
 export const DEFAULT_DEEPSEEK_REASONING_EFFORT: ReasoningEffort = "high";
 export const DEFAULT_DEEPSEEK_THINKING_ENABLED = true;
 
@@ -199,7 +199,7 @@ function normalizeModel(
         field: "defaultModel",
         code: "invalid_default_model",
         message:
-          "DEEPSEEK_DEFAULT_MODEL must be deepseek-v4-flash or deepseek-v4-pro.",
+          "DEEPSEEK_DEFAULT_MODEL must be deepseek-chat or deepseek-reasoner.",
       },
     };
   }
