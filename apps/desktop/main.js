@@ -1,13 +1,65 @@
 "use strict";
 
 const path = require("path");
+const http = require("http");
+const { spawn } = require("child_process");
 const { app, BrowserWindow, shell } = require("electron");
 
-// v0：只加载本地运行的 Next 服务（dev 指向 localhost:3000）。
-// 生产打包（内嵌 standalone 服务端、改端口等）留到下一轮，可经此环境变量覆盖。
-const TARGET_URL = process.env.SAGE_DESKTOP_URL || "http://localhost:3000";
+// 两种运行模式：
+// - dev（默认）：连外部已运行的 Next dev 服务（localhost:3000）。
+// - serve（packaged 或 SAGE_DESKTOP_SERVE=1）：自己起内嵌的 Next standalone 服务，脱离终端独立运行。
+const SERVE_EMBEDDED = app.isPackaged || process.env.SAGE_DESKTOP_SERVE === "1";
+const EMBEDDED_PORT = Number(process.env.SAGE_DESKTOP_PORT || 34518);
+const DEV_URL = process.env.SAGE_DESKTOP_URL || "http://localhost:3000";
 
-function createWindow() {
+let serverProcess = null;
+
+function standaloneServerPath() {
+  // packaged：standalone 作为 extraResources 放在 resources/standalone 下。
+  // 未打包的 serve 验证：直接用 repo 内 apps/web/.next/standalone 产物。
+  const base = app.isPackaged
+    ? path.join(process.resourcesPath, "standalone")
+    : path.join(__dirname, "..", "web", ".next", "standalone");
+  return path.join(base, "apps", "web", "server.js");
+}
+
+function startEmbeddedServer() {
+  const serverPath = standaloneServerPath();
+  // 用 Electron 自带的 Node 跑 standalone 服务（ELECTRON_RUN_AS_NODE），无需系统 Node。
+  serverProcess = spawn(process.execPath, [serverPath], {
+    cwd: path.dirname(serverPath),
+    env: {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: "1",
+      NODE_ENV: "production",
+      PORT: String(EMBEDDED_PORT),
+      HOSTNAME: "127.0.0.1",
+    },
+    stdio: "inherit",
+  });
+  serverProcess.on("exit", (code) => {
+    if (code && code !== 0) console.error("[server] exited with code", code);
+  });
+}
+
+function waitForServer(url, timeoutMs = 20000) {
+  const deadline = Date.now() + timeoutMs;
+  return new Promise((resolve, reject) => {
+    const ping = () => {
+      const req = http.get(url, (res) => {
+        res.destroy();
+        resolve();
+      });
+      req.on("error", () => {
+        if (Date.now() > deadline) reject(new Error("server start timeout"));
+        else setTimeout(ping, 250);
+      });
+    };
+    ping();
+  });
+}
+
+function createWindow(targetUrl) {
   const win = new BrowserWindow({
     width: 1280,
     height: 832,
@@ -22,7 +74,7 @@ function createWindow() {
     },
   });
 
-  win.loadURL(TARGET_URL);
+  win.loadURL(targetUrl);
 
   // 外部链接交给系统浏览器，避免应用内导航走丢
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -33,7 +85,7 @@ function createWindow() {
   // 冒烟自检：SAGE_DESKTOP_SMOKE=1 时，加载完成即退出（CI / 无人值守验证用）
   if (process.env.SAGE_DESKTOP_SMOKE === "1") {
     win.webContents.once("did-finish-load", () => {
-      console.log("[smoke] loaded:", TARGET_URL);
+      console.log("[smoke] loaded:", targetUrl);
       setTimeout(() => app.quit(), 600);
     });
     win.webContents.once("did-fail-load", (_event, code, desc) => {
@@ -43,14 +95,32 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(() => {
-  createWindow();
+async function boot() {
+  let targetUrl = DEV_URL;
+  if (SERVE_EMBEDDED) {
+    targetUrl = `http://127.0.0.1:${EMBEDDED_PORT}`;
+    startEmbeddedServer();
+    try {
+      await waitForServer(targetUrl);
+    } catch (error) {
+      console.error("[server] failed to start:", error.message);
+      app.exit(1);
+      return;
+    }
+  }
+  createWindow(targetUrl);
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(targetUrl);
   });
-});
+}
+
+app.whenReady().then(boot);
 
 app.on("window-all-closed", () => {
   // macOS 习惯保留进程；其他平台关窗即退出
   if (process.platform !== "darwin") app.quit();
+});
+
+app.on("before-quit", () => {
+  if (serverProcess && !serverProcess.killed) serverProcess.kill();
 });
