@@ -209,10 +209,6 @@ code {
 
 .panel {
   min-width: 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel-bg);
-  box-shadow: var(--shadow-soft);
 }
 
 .panel-header {
@@ -652,9 +648,8 @@ code {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(82px, auto);
   gap: 8px;
-  border: 1px solid var(--border);
   border-radius: 7px;
-  background: linear-gradient(180deg, #fbfcfe 0%, var(--panel-muted) 100%);
+  background: var(--panel-muted);
   padding: 9px;
   margin: 0;
 }
