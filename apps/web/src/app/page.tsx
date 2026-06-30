@@ -34,6 +34,9 @@ import {
   writeStoredPreferences,
 } from "@/lib/preferences";
 import { getPhase4RunSummary } from "@/lib/phase4-summary";
+import { Composer } from "./components/Composer";
+import { EmptyHome } from "./components/EmptyHome";
+import { StatusBar } from "./components/StatusBar";
 import type {
   DeepSeekConnectionTestCode,
   DeepSeekConnectionTestResult,
@@ -2394,99 +2397,28 @@ export default function Home() {
               </div>
             </>
           ) : (
-            <div className="workspace-home">
-              <div className="workspace-home-inner">
-                <p className="workspace-home-eyebrow">{t.localWorkbench}</p>
-                <h1 className="workspace-home-wordmark">SAGE AGENT</h1>
-                <p className="workspace-home-subtitle">{t.homeSubtitle}</p>
-              </div>
-            </div>
+            <EmptyHome t={t} />
           )}
 
-          <div className="composer-dock">
-            <div className="composer-pill">
-              <div className="composer-pill-row">
-                <button
-                  className="composer-add"
-                  disabled
-                  title={t.composerAdd}
-                  type="button"
-                >
-                  <span aria-hidden="true">＋</span>
-                  <span className="sr-only">{t.composerAdd}</span>
-                </button>
-                <label className="sr-only" htmlFor="sage-composer-input">
-                  {t.composerInput}
-                </label>
-                <textarea
-                  aria-label={t.composerInput}
-                  className="composer-field"
-                  disabled={isRunBusy}
-                  id="sage-composer-input"
-                  onChange={(event) => {
-                    setComposerInput(event.target.value);
-                    if (composerError) setComposerError(null);
-                    if (lastComposerState === "cancelled") {
-                      setLastComposerState("idle");
-                    }
-                  }}
-                  onKeyDown={(event) => {
-                    if (
-                      event.key === "Enter" &&
-                      !event.shiftKey &&
-                      !isRunBusy &&
-                      trimmedComposerInput.length > 0
-                    ) {
-                      event.preventDefault();
-                      handleRunClick();
-                    }
-                  }}
-                  placeholder={t.composerPlaceholder}
-                  rows={1}
-                  value={composerInput}
-                />
-              </div>
-              <div className="composer-pill-foot">
-                <button
-                  className="composer-model"
-                  onClick={openSettings}
-                  title={t.modelSettings}
-                  type="button"
-                >
-                  <span>{model}</span>
-                  <span className="composer-model-sep">·</span>
-                  <span>{reasoningEffort}</span>
-                  <span aria-hidden="true" className="composer-model-caret">
-                    ⌄
-                  </span>
-                </button>
-                <div className="composer-pill-actions">
-                  <button
-                    aria-label={t.voiceInput}
-                    className="composer-mic"
-                    disabled
-                    title={t.voiceInput}
-                    type="button"
-                  >
-                    <span aria-hidden="true">🎤</span>
-                  </button>
-                  <button
-                    aria-label={isRunBusy ? t.cancel : t.run}
-                    className="composer-send"
-                    disabled={
-                      isRunBusy ? false : trimmedComposerInput.length === 0
-                    }
-                    onClick={isRunBusy ? handleCancelRun : handleRunClick}
-                    title={isRunBusy ? t.cancel : t.run}
-                    type="button"
-                  >
-                    <span aria-hidden="true">{isRunBusy ? "■" : "↑"}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-            <span className="composer-status">{composerStatusText}</span>
-          </div>
+          <Composer
+            t={t}
+            value={composerInput}
+            onChange={(value) => {
+              setComposerInput(value);
+              if (composerError) setComposerError(null);
+              if (lastComposerState === "cancelled") {
+                setLastComposerState("idle");
+              }
+            }}
+            onSubmit={handleRunClick}
+            onStop={handleCancelRun}
+            onOpenModel={openSettings}
+            isBusy={isRunBusy}
+            canSubmit={trimmedComposerInput.length > 0}
+            model={model}
+            reasoningEffort={reasoningEffort}
+            statusText={composerStatusText}
+          />
         </section>
 
         {inspectorOpen ? (
@@ -3030,27 +2962,7 @@ export default function Home() {
         </aside>
       </div>
 
-      <footer className="status-bar" aria-label={t.statusBar}>
-        <div className="status-bar-group">
-          <span className="status-bar-item">
-            <span className="status-bar-dot" aria-hidden="true" />
-            {t.statusLocalReady}
-          </span>
-          <span className="status-bar-item">
-            {t.model}: {model}
-          </span>
-        </div>
-        <div className="status-bar-group">
-          <span className="status-bar-item planned">
-            {t.statusGateway} · {t.statusPlanned}
-          </span>
-          <span className="status-bar-item planned">
-            {t.statusSchedule} · {t.statusPlanned}
-          </span>
-        </div>
-        <div className="status-bar-spacer" />
-        <span className="status-bar-version">v0.1.0</span>
-      </footer>
+      <StatusBar t={t} model={model} />
       {isMemoryEditorOpen ? (
         <div
           className="settings-overlay"
