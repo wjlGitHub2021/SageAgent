@@ -76,6 +76,12 @@ export type DeepSeekStreamParseEvent =
       readonly finishReason: string | null;
     }
   | {
+      readonly type: "usage";
+      readonly promptTokens: number | null;
+      readonly completionTokens: number | null;
+      readonly totalTokens: number | null;
+    }
+  | {
       readonly type: "done";
     };
 
@@ -484,9 +490,21 @@ function parseDeepSeekStreamPayload(
     return invalidStreamLine("DeepSeek stream payload choices must be an array.");
   }
 
-  // OpenAI 兼容服务（DeepSeek 同协议）常在 [DONE] 前发送 choices:[] + usage 统计帧，
-  // 跳过该帧而不是把它判为错误并中断整个流。
+  // OpenAI 兼容服务（DeepSeek 同协议）常在 [DONE] 前发送 choices:[] + usage 统计帧。
+  // 捕获 usage（用于上下文计量）；无 usage 时跳过该帧而不是判为错误中断整个流。
   if (rawChoices.length === 0) {
+    const usage = payload.usage;
+    if (isRecord(usage)) {
+      return {
+        ok: true,
+        value: {
+          type: "usage",
+          promptTokens: readNumber(usage.prompt_tokens) ?? null,
+          completionTokens: readNumber(usage.completion_tokens) ?? null,
+          totalTokens: readNumber(usage.total_tokens) ?? null,
+        },
+      };
+    }
     return { ok: true, value: null };
   }
 

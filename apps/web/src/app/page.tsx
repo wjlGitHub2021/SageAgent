@@ -167,6 +167,7 @@ const copy = {
     newConversation: "新建会话",
     searchConversations: "搜索会话...",
     noMatches: "没有匹配项",
+    contextUsage: "上下文用量",
     settings: "设置",
     openSettings: "打开设置",
     closeSettings: "关闭设置",
@@ -486,6 +487,7 @@ const copy = {
     newConversation: "New conversation",
     searchConversations: "Search conversations...",
     noMatches: "No matches",
+    contextUsage: "Context usage",
     settings: "Settings",
     openSettings: "Open settings",
     closeSettings: "Close settings",
@@ -1470,6 +1472,30 @@ function getBlockedPathPolicyDetail(t: (typeof copy)[Locale]): string {
   return `${t.blockedPathPolicyDetail} ${READ_PROJECT_FILE_BLOCKED_PATHS.join(", ")}`;
 }
 
+// 各模型的上下文窗口（token）。deepseek-v4-flash 为演示模型，按配置值给定，可调整。
+const MODEL_CONTEXT_WINDOW: Record<string, number> = {
+  "deepseek-v4-flash": 128000,
+};
+const DEFAULT_CONTEXT_WINDOW = 128000;
+
+// 从活动 run 的 run.completed 事件读取 provider 上报的 total tokens；无则返回 null。
+function getRunTotalTokens(
+  events: RunEvent[],
+  runId: string | null,
+): number | null {
+  if (!runId) return null;
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const event = events[index];
+    if (event.runId === runId && event.type === "run.completed") {
+      const usage = (
+        event.payload as { run?: { usage?: { totalTokens?: number | null } } }
+      ).run?.usage;
+      return usage?.totalTokens ?? null;
+    }
+  }
+  return null;
+}
+
 export default function Home() {
   const [preferences, setPreferences] = useState<Preferences>(DEFAULT_PREFERENCES);
   const [hasLoadedStoredPreferences, setHasLoadedStoredPreferences] =
@@ -1928,6 +1954,8 @@ export default function Home() {
           .includes(normalizedConversationQuery)
       )
     : runItems;
+  const activeUsedTokens = getRunTotalTokens(runEvents, selectedRunId);
+  const activeMaxTokens = MODEL_CONTEXT_WINDOW[model] ?? DEFAULT_CONTEXT_WINDOW;
   const timelineRows = selectedRunId ? getTimelineRows(runEvents, selectedRunId) : [];
   const activeToolCalls = selectedRunId
     ? getToolCallRows(runEvents, selectedRunId)
@@ -2962,7 +2990,12 @@ export default function Home() {
         </aside>
       </div>
 
-      <StatusBar t={t} model={model} />
+      <StatusBar
+        t={t}
+        model={model}
+        usedTokens={activeUsedTokens}
+        maxTokens={activeMaxTokens}
+      />
       {isMemoryEditorOpen ? (
         <div
           className="settings-overlay"

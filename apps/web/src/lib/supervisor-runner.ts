@@ -26,6 +26,7 @@ import type {
   Step,
   Run,
   RunEvent,
+  RunUsage,
   RunFailedEvent,
   ToolCall,
 } from "@sage/shared";
@@ -356,6 +357,7 @@ export async function* streamSupervisorDeepSeekEvents({
 
   const messageId = createId("message");
   const chunks: string[] = [];
+  let capturedUsage: RunUsage | null = null;
 
   for await (const result of provider(config, {
     messages: createSupervisorMessages(
@@ -391,6 +393,15 @@ export async function* streamSupervisorDeepSeekEvents({
     }
 
     if (result.value.type === "done") break;
+
+    if (result.value.type === "usage") {
+      capturedUsage = {
+        promptTokens: result.value.promptTokens,
+        completionTokens: result.value.completionTokens,
+        totalTokens: result.value.totalTokens,
+      };
+      continue;
+    }
 
     const delta = result.value.contentDelta;
     if (delta.length === 0) continue;
@@ -454,6 +465,7 @@ export async function* streamSupervisorDeepSeekEvents({
     activeAgent: null,
     updatedAt: completedAt,
     completedAt,
+    ...(capturedUsage ? { usage: capturedUsage } : {}),
   };
   const completedEvents: RunEvent[] = [
     {

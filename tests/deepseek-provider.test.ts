@@ -301,10 +301,10 @@ describe("DeepSeek provider", () => {
 });
 
 describe("DeepSeek parsing edge cases", () => {
-  it("skips usage-only tail frames with empty choices instead of erroring", async () => {
+  it("captures usage tail frames with empty choices instead of skipping or erroring", async () => {
     const stream = createTextStream([
       'data: {"choices":[{"delta":{"content":"hi"}}]}\n',
-      'data: {"choices":[],"usage":{"total_tokens":5}}\n',
+      'data: {"choices":[],"usage":{"prompt_tokens":3,"completion_tokens":2,"total_tokens":5}}\n',
       "data: [DONE]\n",
     ]);
 
@@ -319,9 +319,36 @@ describe("DeepSeek parsing edge cases", () => {
     const values = results.flatMap((result) =>
       result.ok ? [result.value] : [],
     );
-    expect(values).toHaveLength(2);
+    expect(values).toHaveLength(3);
     expect(values.some((value) => value?.type === "delta")).toBe(true);
     expect(values.some((value) => value?.type === "done")).toBe(true);
+    expect(values.find((value) => value?.type === "usage")).toMatchObject({
+      type: "usage",
+      promptTokens: 3,
+      completionTokens: 2,
+      totalTokens: 5,
+    });
+  });
+
+  it("still skips empty-choices tail frames that carry no usage", async () => {
+    const stream = createTextStream([
+      'data: {"choices":[{"delta":{"content":"hi"}}]}\n',
+      'data: {"choices":[]}\n',
+      "data: [DONE]\n",
+    ]);
+
+    const results: Awaited<
+      ReturnType<typeof parseDeepSeekStreamLine>
+    >[] = [];
+    for await (const result of parseDeepSeekStreamBody(stream)) {
+      results.push(result);
+    }
+
+    const values = results.flatMap((result) =>
+      result.ok ? [result.value] : [],
+    );
+    expect(values).toHaveLength(2);
+    expect(values.some((value) => value?.type === "usage")).toBe(false);
   });
 
   it("falls back to empty content instead of rejecting null message content", () => {

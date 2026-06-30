@@ -1477,6 +1477,35 @@ code {
   letter-spacing: 0.01em;
 }
 
+.status-bar-meter {
+  gap: 7px;
+}
+
+.status-bar-meter-text {
+  font-family: var(--font-sage-mono);
+  font-size: 11px;
+}
+
+.status-bar-meter-track {
+  width: 60px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.status-bar-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.status-bar-meter-pct {
+  min-width: 30px;
+  font-variant-numeric: tabular-nums;
+}
+
 .window-tools {
   display: inline-flex;
   align-items: center;

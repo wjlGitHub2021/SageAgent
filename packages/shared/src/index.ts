@@ -153,6 +153,12 @@ export interface Thread {
   readonly updatedAt: ISODateTimeString;
 }
 
+export interface RunUsage {
+  readonly promptTokens: number | null;
+  readonly completionTokens: number | null;
+  readonly totalTokens: number | null;
+}
+
 export interface Run {
   readonly id: EntityId;
   readonly threadId: EntityId;
@@ -164,6 +170,8 @@ export interface Run {
   readonly createdAt: ISODateTimeString;
   readonly updatedAt: ISODateTimeString;
   readonly completedAt: ISODateTimeString | null;
+  // Provider 上报的 token 用量；流式 run 完成时回填，seed/历史 run 可能为空。
+  readonly usage?: RunUsage;
 }
 
 export interface Message {
