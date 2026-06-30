@@ -149,6 +149,21 @@ const skillSourceOptions: readonly SkillSource[] = [
 const copy = {
   zh: {
     localWorkbench: "本地工作台",
+    statusBar: "状态栏",
+    statusLocalReady: "本地就绪",
+    statusGateway: "网关",
+    statusSchedule: "排程",
+    statusPlanned: "计划中",
+    inspectorPanel: "检查面板",
+    openInspector: "打开检查面板",
+    closeInspector: "关闭检查面板",
+    homeSubtitle:
+      "用你自己的话描述任务,我会挑选合适的工具、说明计划,并在有风险的步骤前与你确认。",
+    composerAdd: "添加附件",
+    voiceInput: "语音输入(计划中)",
+    newConversation: "新建会话",
+    searchConversations: "搜索会话...",
+    noMatches: "没有匹配项",
     settings: "设置",
     openSettings: "打开设置",
     closeSettings: "关闭设置",
@@ -453,6 +468,21 @@ const copy = {
   },
   en: {
     localWorkbench: "Local workbench",
+    statusBar: "Status bar",
+    statusLocalReady: "Local ready",
+    statusGateway: "Gateway",
+    statusSchedule: "Schedule",
+    statusPlanned: "Planned",
+    inspectorPanel: "Inspector",
+    openInspector: "Open inspector",
+    closeInspector: "Close inspector",
+    homeSubtitle:
+      "Describe the task in your own words. I'll pick the right tools, explain my plan, and check in before risky steps.",
+    composerAdd: "Add attachment",
+    voiceInput: "Voice input (planned)",
+    newConversation: "New conversation",
+    searchConversations: "Search conversations...",
+    noMatches: "No matches",
     settings: "Settings",
     openSettings: "Open settings",
     closeSettings: "Close settings",
@@ -1455,6 +1485,8 @@ export default function Home() {
   const [composerError, setComposerError] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [hasSelectedRun, setHasSelectedRun] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [conversationQuery, setConversationQuery] = useState("");
   const [providerStatus, setProviderStatus] =
     useState<DeepSeekProviderStatusSummary | null>(null);
   const [providerRegistry, setProviderRegistry] =
@@ -1875,10 +1907,24 @@ export default function Home() {
     }
   }
 
-  const activeThread = threadItems.find((thread) => thread.id === activeThreadId);
   const activeRun = runItems.find((run) => run.id === activeRunId);
   const selectedRun = hasSelectedRun ? activeRun : null;
   const selectedRunId = hasSelectedRun ? activeRunId : null;
+  const normalizedConversationQuery = conversationQuery.trim().toLowerCase();
+  const filteredThreads = normalizedConversationQuery
+    ? threadItems.filter((thread) =>
+        `${thread.title[locale]} ${thread.subtitle[locale]}`
+          .toLowerCase()
+          .includes(normalizedConversationQuery)
+      )
+    : threadItems;
+  const filteredRuns = normalizedConversationQuery
+    ? runItems.filter((run) =>
+        `${run.title[locale]} ${run.goal ?? ""}`
+          .toLowerCase()
+          .includes(normalizedConversationQuery)
+      )
+    : runItems;
   const timelineRows = selectedRunId ? getTimelineRows(runEvents, selectedRunId) : [];
   const activeToolCalls = selectedRunId
     ? getToolCallRows(runEvents, selectedRunId)
@@ -2184,87 +2230,101 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--app-bg)] text-[var(--text-main)]">
+    <main className="app-main min-h-screen bg-[var(--app-bg)] text-[var(--text-main)]">
       <div className="app-shell">
         <aside className="sidebar">
-          <section className="sidebar-hero" aria-label={t.localWorkbench}>
-            <div className="brand-row">
-              <div className="brand-mark">S</div>
-              <div>
-                <p className="brand-name">Sage Agent</p>
-                <p className="brand-subtitle">{t.localWorkbench}</p>
-              </div>
+          <div className="brand-row">
+            <div className="brand-mark">S</div>
+            <div>
+              <p className="brand-name">Sage Agent</p>
+              <p className="brand-subtitle">{t.localWorkbench}</p>
             </div>
-            <div className="sidebar-hero-copy">
-              <div className="sidebar-hero-heading">
-                <span>{t.currentRun}</span>
-                <strong>{selectedRun?.title[locale] ?? t.headerFallback}</strong>
-              </div>
-              <p>{selectedRun?.goal ?? t.headerDescription}</p>
-            </div>
-            <div className="sidebar-hero-meta" aria-label={t.currentConfiguration}>
-              <span>
-                {threadItems.length} {t.threads}
-              </span>
-              <span>
-                {runItems.length} {t.runs}
-              </span>
-              <span>{t.readDraftMode}</span>
-            </div>
-          </section>
+          </div>
 
-          <section className="settings-strip" aria-label={t.settings}>
+          <nav className="side-nav" aria-label={t.localWorkbench}>
+            <button
+              className="side-nav-item"
+              onClick={handleNewThread}
+              type="button"
+            >
+              <span className="side-nav-icon" aria-hidden="true">
+                ＋
+              </span>
+              <span className="side-nav-label">{t.newConversation}</span>
+              <span className="side-nav-kbd" aria-hidden="true">
+                ⌘N
+              </span>
+            </button>
             <button
               aria-label={t.openSettings}
-              className="settings-entry"
+              className="side-nav-item"
               onClick={openSettings}
               type="button"
             >
-              <div className="settings-copy">
-                <span>{t.settings}</span>
-                <p>{t.settingsEntryDetail}</p>
-              </div>
-              <span className="settings-entry-icon" aria-hidden="true">
+              <span className="side-nav-icon" aria-hidden="true">
                 ⚙
               </span>
-              <span className="sr-only">{t.openSettings}</span>
+              <span className="side-nav-label">{t.settings}</span>
             </button>
-          </section>
+          </nav>
 
-          <Panel
-            title={t.threads}
-            action={
-              <button className="ghost-button" onClick={handleNewThread}>
-                {t.new}
-              </button>
-            }
-          >
-            <div className="stack">
-              {threadItems.map((thread) => (
+          <div className="side-search">
+            <span className="side-search-icon" aria-hidden="true">
+              ⌕
+            </span>
+            <input
+              aria-label={t.searchConversations}
+              className="side-search-input"
+              onChange={(event) => setConversationQuery(event.target.value)}
+              placeholder={t.searchConversations}
+              type="search"
+              value={conversationQuery}
+            />
+          </div>
+
+          <div className="side-section">
+            <p className="side-section-label">
+              <span>{t.threads}</span>
+              <span className="side-section-count">{filteredThreads.length}</span>
+            </p>
+            <div className="side-list">
+              {filteredThreads.map((thread) => (
                 <button
                   className={
                     thread.id === activeThreadId
-                      ? "thread-item active"
-                      : "thread-item"
+                      ? "side-thread active"
+                      : "side-thread"
                   }
                   key={thread.id}
                   onClick={() => handleThreadSelect(thread.id)}
+                  type="button"
                 >
-                  <span>{thread.title[locale]}</span>
-                  <small>{thread.subtitle[locale]}</small>
+                  <span className="side-thread-title">
+                    {thread.title[locale]}
+                  </span>
+                  <span className="side-thread-sub">
+                    {thread.subtitle[locale]}
+                  </span>
                 </button>
               ))}
+              {filteredThreads.length === 0 ? (
+                <p className="side-empty">{t.noMatches}</p>
+              ) : null}
             </div>
-          </Panel>
+          </div>
 
-          <Panel title={t.runs}>
-            <div className="stack">
-              {runItems.map((run) => (
+          <div className="side-section">
+            <p className="side-section-label">
+              <span>{t.runs}</span>
+              <span className="side-section-count">{filteredRuns.length}</span>
+            </p>
+            <div className="side-list">
+              {filteredRuns.map((run) => (
                 <button
                   className={
                     hasSelectedRun && run.id === activeRunId
-                      ? "run-row active"
-                      : "run-row"
+                      ? "side-run active"
+                      : "side-run"
                   }
                   key={run.id}
                   onClick={() => {
@@ -2272,135 +2332,196 @@ export default function Home() {
                     setActiveThreadId(run.threadId);
                     setHasSelectedRun(true);
                   }}
+                  type="button"
                 >
                   <StatusDot status={run.status} />
-                  <div>
-                    <p>{run.title[locale]}</p>
-                    <small className="run-row-meta">
+                  <span className="side-run-body">
+                    <span className="side-run-title">{run.title[locale]}</span>
+                    <span className="side-run-meta">
                       <span>{formatRunStatusLabel(run.status, t)}</span>
                       <span>{run.time}</span>
-                      <code>{run.id}</code>
-                    </small>
-                  </div>
+                    </span>
+                  </span>
                 </button>
               ))}
+              {filteredRuns.length === 0 ? (
+                <p className="side-empty">{t.noMatches}</p>
+              ) : null}
             </div>
-          </Panel>
+          </div>
         </aside>
 
-        <section className="workspace">
-          <header className="workspace-header">
-            <div className="workspace-header-copy">
-              <p className="section-label">
-                {activeThread?.title[locale] ?? t.currentRun}
-              </p>
-              <h1>{selectedRun?.title[locale] ?? t.headerFallback}</h1>
-              <p>{selectedRun?.goal ?? t.headerDescription}</p>
-            </div>
+        <section
+          className={selectedRun ? "workspace" : "workspace workspace--home"}
+        >
+          {selectedRun ? (
+            <>
+              <header className="run-topbar">
+                <h2 className="run-title">
+                  {selectedRun?.title[locale] ?? t.headerFallback}
+                </h2>
+                <div className="window-tools">
+                  <button
+                    aria-label={inspectorOpen ? t.closeInspector : t.openInspector}
+                    aria-pressed={inspectorOpen}
+                    className={inspectorOpen ? "window-tool active" : "window-tool"}
+                    onClick={() => setInspectorOpen((open) => !open)}
+                    title={inspectorOpen ? t.closeInspector : t.openInspector}
+                    type="button"
+                  >
+                    <span aria-hidden="true">▦</span>
+                  </button>
+                </div>
+              </header>
 
-            <div className="model-controls" aria-label={t.modelSettings}>
-              <span className="config-chip">
-                {t.model}: {model}
-              </span>
-              <span className="config-chip">
-                {t.thinking}: {thinkingEnabled ? t.enabled : t.disabled}
-              </span>
-              <span className="config-chip">
-                {t.reasoningEffort}: {reasoningEffort}
-              </span>
+              <div className="conversation">
+                <div className="thread-column">
+                  {activeMessages.map((message, index) =>
+                    message.role.toLowerCase() === "user" ? (
+                      <div className="msg-user" key={`${message.role}-${index}`}>
+                        {message.body[locale]}
+                      </div>
+                    ) : (
+                      <div
+                        className="msg-assistant"
+                        key={`${message.role}-${index}`}
+                      >
+                        {message.body[locale]}
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="workspace-home">
+              <div className="workspace-home-inner">
+                <p className="workspace-home-eyebrow">{t.localWorkbench}</p>
+                <h1 className="workspace-home-wordmark">SAGE AGENT</h1>
+                <p className="workspace-home-subtitle">{t.homeSubtitle}</p>
+              </div>
             </div>
-          </header>
+          )}
 
-          <section className="workspace-launchpad" aria-label={t.currentConfiguration}>
-            <div className="launchpad-card">
-              <span>{t.currentRun}</span>
-              <strong>{selectedRun?.id ?? t.headerFallback}</strong>
-              <small>{selectedRun?.goal ?? t.headerDescription}</small>
+          <div className="composer-dock">
+            <div className="composer-pill">
+              <div className="composer-pill-row">
+                <button
+                  className="composer-add"
+                  disabled
+                  title={t.composerAdd}
+                  type="button"
+                >
+                  <span aria-hidden="true">＋</span>
+                  <span className="sr-only">{t.composerAdd}</span>
+                </button>
+                <label className="sr-only" htmlFor="sage-composer-input">
+                  {t.composerInput}
+                </label>
+                <textarea
+                  aria-label={t.composerInput}
+                  className="composer-field"
+                  disabled={isRunBusy}
+                  id="sage-composer-input"
+                  onChange={(event) => {
+                    setComposerInput(event.target.value);
+                    if (composerError) setComposerError(null);
+                    if (lastComposerState === "cancelled") {
+                      setLastComposerState("idle");
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (
+                      event.key === "Enter" &&
+                      !event.shiftKey &&
+                      !isRunBusy &&
+                      trimmedComposerInput.length > 0
+                    ) {
+                      event.preventDefault();
+                      handleRunClick();
+                    }
+                  }}
+                  placeholder={t.composerPlaceholder}
+                  rows={1}
+                  value={composerInput}
+                />
+              </div>
+              <div className="composer-pill-foot">
+                <button
+                  className="composer-model"
+                  onClick={openSettings}
+                  title={t.modelSettings}
+                  type="button"
+                >
+                  <span>{model}</span>
+                  <span className="composer-model-sep">·</span>
+                  <span>{reasoningEffort}</span>
+                  <span aria-hidden="true" className="composer-model-caret">
+                    ⌄
+                  </span>
+                </button>
+                <div className="composer-pill-actions">
+                  <button
+                    aria-label={t.voiceInput}
+                    className="composer-mic"
+                    disabled
+                    title={t.voiceInput}
+                    type="button"
+                  >
+                    <span aria-hidden="true">🎤</span>
+                  </button>
+                  <button
+                    aria-label={isRunBusy ? t.cancel : t.run}
+                    className="composer-send"
+                    disabled={
+                      isRunBusy ? false : trimmedComposerInput.length === 0
+                    }
+                    onClick={isRunBusy ? handleCancelRun : handleRunClick}
+                    title={isRunBusy ? t.cancel : t.run}
+                    type="button"
+                  >
+                    <span aria-hidden="true">{isRunBusy ? "■" : "↑"}</span>
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="launchpad-card">
-              <span>{t.threads}</span>
-              <strong>{activeThread?.title[locale] ?? t.notConfigured}</strong>
-              <small>{activeThread?.subtitle[locale] ?? t.notConfigured}</small>
-            </div>
-            <div className="launchpad-card">
-              <span>{t.modelSettings}</span>
-              <strong>{model}</strong>
-              <small>
-                {thinkingEnabled ? t.enabled : t.disabled} · {reasoningEffort}
-              </small>
-            </div>
-          </section>
-
-          <div className="conversation">
-            {selectedRun ? (
-              activeMessages.map((message, index) => (
-                <article className="message" key={`${message.role}-${index}`}>
-                  <div className="message-avatar">{message.role.slice(0, 1)}</div>
-                  <div>
-                    <p className="message-role">{message.role}</p>
-                    <p className="message-body">{message.body[locale]}</p>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <StateBlock
-                eyebrow={t.localWorkbench}
-                title={t.headerFallback}
-                detail={t.headerDescription}
-              />
-            )}
+            <span className="composer-status">{composerStatusText}</span>
           </div>
+        </section>
 
-          <div className="composer">
-            <div className="composer-main">
-              <p>{t.nextStep}</p>
-              <label className="sr-only" htmlFor="sage-composer-input">
-                {t.composerInput}
-              </label>
-              <textarea
-                aria-label={t.composerInput}
-                className="composer-input"
-                disabled={isRunBusy}
-                id="sage-composer-input"
-                onChange={(event) => {
-                  setComposerInput(event.target.value);
-                  if (composerError) setComposerError(null);
-                  if (lastComposerState === "cancelled") {
-                    setLastComposerState("idle");
-                  }
-                }}
-                placeholder={t.composerPlaceholder}
-                rows={3}
-                value={composerInput}
-              />
-              <span>{composerStatusText}</span>
-            </div>
-            <div className="composer-actions">
+        {inspectorOpen ? (
+          <button
+            aria-label={t.closeInspector}
+            className="inspector-backdrop"
+            onClick={() => setInspectorOpen(false)}
+            type="button"
+          />
+        ) : null}
+        <aside
+          aria-hidden={!inspectorOpen}
+          className={inspectorOpen ? "inspector open" : "inspector"}
+        >
+          <div className="inspector-bar">
+            <p>{t.inspectorPanel}</p>
+            <div className="inspector-bar-actions">
               <button
-                className="secondary-button"
+                className="ghost-button"
                 disabled={!selectedRun}
                 onClick={handleProviderError}
+                type="button"
               >
                 {t.simulateProviderError}
               </button>
               <button
-                className="secondary-button"
-                disabled={!selectedRun || !isRunBusy}
-                onClick={handleCancelRun}
+                aria-label={t.closeInspector}
+                className="ghost-button"
+                onClick={() => setInspectorOpen(false)}
+                type="button"
               >
-                {t.cancel}
-              </button>
-              <button
-                disabled={isRunBusy || trimmedComposerInput.length === 0}
-                onClick={handleRunClick}
-              >
-                {isRunBusy ? t.running : t.run}
+                ✕
               </button>
             </div>
           </div>
-        </section>
-
-        <aside className="inspector">
           <Panel title={t.auditTrail}>
             <div className="audit-summary">
               <dl className="audit-primary">
@@ -2908,6 +3029,28 @@ export default function Home() {
           </Panel>
         </aside>
       </div>
+
+      <footer className="status-bar" aria-label={t.statusBar}>
+        <div className="status-bar-group">
+          <span className="status-bar-item">
+            <span className="status-bar-dot" aria-hidden="true" />
+            {t.statusLocalReady}
+          </span>
+          <span className="status-bar-item">
+            {t.model}: {model}
+          </span>
+        </div>
+        <div className="status-bar-group">
+          <span className="status-bar-item planned">
+            {t.statusGateway} · {t.statusPlanned}
+          </span>
+          <span className="status-bar-item planned">
+            {t.statusSchedule} · {t.statusPlanned}
+          </span>
+        </div>
+        <div className="status-bar-spacer" />
+        <span className="status-bar-version">v0.1.0</span>
+      </footer>
       {isMemoryEditorOpen ? (
         <div
           className="settings-overlay"
