@@ -36,6 +36,7 @@ import { getPhase4RunSummary } from "@/lib/phase4-summary";
 import { Composer } from "./components/Composer";
 import { EmptyHome } from "./components/EmptyHome";
 import { Markdown } from "./components/Markdown";
+import { SettingsNav } from "./components/SettingsNav";
 import { StatusBar } from "./components/StatusBar";
 import { ThinkingBlock } from "./components/ThinkingBlock";
 import { ConversationToolCalls } from "./components/ToolCallCard";
@@ -198,6 +199,22 @@ const copy = {
     settingsTitle: "设置",
     settingsSubtitle: "管理本地工作台的显示、Provider、工作区和安全边界。",
     settingsEntryDetail: "语言、模型与推理偏好",
+    navModel: "模型",
+    navAppearance: "外观",
+    navWorkspace: "工作区",
+    navSecurity: "安全",
+    navProviders: "提供方",
+    navTools: "工具与密钥",
+    navAbout: "关于",
+    toolsKeysTitle: "工具与密钥",
+    toolsKeysWebDetail:
+      "Web 端的 API key 由后端 .env 管理（DEEPSEEK_API_KEY），不在界面填写；桌面端可用系统钥匙串存取。",
+    aboutAppName: "Sage Agent",
+    aboutTagline: "本地单用户的轻量 Agent 工作台",
+    aboutVersion: "版本",
+    aboutProvider: "默认 Provider",
+    aboutDescription:
+      "Web First、DeepSeek-only；密钥只在后端/系统钥匙串，不入代码与版本库。",
     generalSettings: "通用",
     providerSettings: "Providers / 入口",
     workspaceSettings: "工作区",
@@ -540,6 +557,22 @@ const copy = {
     settingsSubtitle:
       "Manage local workbench display, provider, workspace, and safety boundaries.",
     settingsEntryDetail: "Language, model, and reasoning preferences",
+    navModel: "Model",
+    navAppearance: "Appearance",
+    navWorkspace: "Workspace",
+    navSecurity: "Security",
+    navProviders: "Providers",
+    navTools: "Tools & Keys",
+    navAbout: "About",
+    toolsKeysTitle: "Tools & Keys",
+    toolsKeysWebDetail:
+      "On web the API key is managed by the backend .env (DEEPSEEK_API_KEY), not entered in the UI. The desktop app can store it in the OS keychain.",
+    aboutAppName: "Sage Agent",
+    aboutTagline: "A lightweight, local single-user agent workbench",
+    aboutVersion: "Version",
+    aboutProvider: "Default provider",
+    aboutDescription:
+      "Web First, DeepSeek-only. Keys live only in the backend / OS keychain, never in code or version control.",
     generalSettings: "General",
     providerSettings: "Providers / Entries",
     workspaceSettings: "Workspace",
@@ -1587,6 +1620,7 @@ export default function Home() {
   const [composerInput, setComposerInput] = useState("");
   const [composerError, setComposerError] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState("model");
   const [hasSelectedRun, setHasSelectedRun] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [inspectorTab, setInspectorTab] = useState("timeline");
@@ -3609,29 +3643,46 @@ export default function Home() {
           }}
         >
           <section
-            aria-labelledby="settings-dialog-title"
+            aria-label={t.settingsTitle}
             aria-modal="true"
-            className="settings-dialog"
+            className="settings-dialog settings-dialog--paned"
             role="dialog"
             ref={settingsDialogRef}
           >
-            <header className="settings-dialog-header">
-              <div>
-                <p className="section-label">{t.currentConfiguration}</p>
-                <h2 id="settings-dialog-title">{t.settingsTitle}</h2>
-                <p>{t.settingsSubtitle}</p>
-              </div>
-              <button
-                className="ghost-button"
-                onClick={closeSettings}
-                type="button"
-              >
-                {t.closeSettings}
-              </button>
-            </header>
-
-            <div className="settings-dialog-grid">
-              <div className="settings-dialog-column">
+            <button
+              aria-label={t.closeSettings}
+              className="settings-close"
+              onClick={closeSettings}
+              type="button"
+            >
+              ✕
+            </button>
+            <SettingsNav tab={settingsTab} onSelect={setSettingsTab} t={t} />
+            <div className="settings-content">
+              {settingsTab === "model" ? (
+                <article className="settings-card">
+                  <div>
+                    <p>{t.navModel}</p>
+                    <small>{t.modelReasoningHint}</small>
+                  </div>
+                  <div className="settings-card-control">
+                    <span>{t.defaultModel}</span>
+                    <div className="segmented model-selector" aria-label={t.model}>
+                      {ALLOWED_MODELS.map((modelOption) => (
+                        <button
+                          aria-pressed={model === modelOption}
+                          className={model === modelOption ? "selected" : ""}
+                          key={modelOption}
+                          onClick={() => updatePreferences({ model: modelOption })}
+                        >
+                          {modelOption}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </article>
+              ) : null}
+              {settingsTab === "appearance" ? (
                 <article className="settings-card">
                   <div>
                     <p>{t.generalSettings}</p>
@@ -3657,7 +3708,8 @@ export default function Home() {
                     </div>
                   </div>
                 </article>
-
+              ) : null}
+              {settingsTab === "workspace" ? (
                 <article className="settings-card">
                   <div>
                     <p>{t.workspaceSettings}</p>
@@ -3692,10 +3744,9 @@ export default function Home() {
                     </section>
                   </div>
                 </article>
-              </div>
-
-              <div className="settings-dialog-column">
-                {desktopBridge ? (
+              ) : null}
+              {settingsTab === "tools" ? (
+                desktopBridge ? (
                   <article className="settings-card">
                     <div>
                       <p>{t.desktopKeyTitle}</p>
@@ -3741,29 +3792,22 @@ export default function Home() {
                       ) : null}
                     </div>
                   </article>
-                ) : null}
+                ) : (
+                  <article className="settings-card">
+                    <div>
+                      <p>{t.toolsKeysTitle}</p>
+                      <small>{t.toolsKeysWebDetail}</small>
+                    </div>
+                  </article>
+                )
+              ) : null}
+              {settingsTab === "providers" ? (
                 <article className="settings-card">
                   <div>
                     <p>{t.providerSettings}</p>
                     <small>{t.providerSettingsDetail}</small>
                   </div>
                   <div className="settings-control-stack">
-                    <div className="settings-card-control">
-                      <span>{t.defaultModel}</span>
-                      <div className="segmented model-selector" aria-label={t.model}>
-                        {ALLOWED_MODELS.map((modelOption) => (
-                          <button
-                            aria-pressed={model === modelOption}
-                            className={model === modelOption ? "selected" : ""}
-                            key={modelOption}
-                            onClick={() => updatePreferences({ model: modelOption })}
-                          >
-                            {modelOption}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <small className="settings-card-hint">{t.modelReasoningHint}</small>
                     <div className="provider-status-panel" aria-live="polite">
                       <div className="provider-status-header">
                         <div>
@@ -4011,7 +4055,8 @@ export default function Home() {
                     </div>
                   </div>
                 </article>
-
+              ) : null}
+              {settingsTab === "security" ? (
                 <article className="settings-card">
                   <div>
                     <p>{t.safetySettings}</p>
@@ -4028,7 +4073,26 @@ export default function Home() {
                     </div>
                   </dl>
                 </article>
-              </div>
+              ) : null}
+              {settingsTab === "about" ? (
+                <article className="settings-card">
+                  <div>
+                    <p>{t.aboutAppName}</p>
+                    <small>{t.aboutTagline}</small>
+                  </div>
+                  <dl className="settings-summary">
+                    <div>
+                      <dt>{t.aboutVersion}</dt>
+                      <dd>v0.1.0</dd>
+                    </div>
+                    <div>
+                      <dt>{t.aboutProvider}</dt>
+                      <dd>DeepSeek</dd>
+                    </div>
+                  </dl>
+                  <small className="settings-card-hint">{t.aboutDescription}</small>
+                </article>
+              ) : null}
             </div>
           </section>
         </div>

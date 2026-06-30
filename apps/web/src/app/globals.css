@@ -1202,6 +1202,107 @@ code {
   box-shadow: 0 24px 80px rgba(15, 23, 42, 0.22);
 }
 
+/* 两栏设置：左侧分类导航 + 右侧内容（参照 Hermes 桌面端）。 */
+.settings-dialog--paned {
+  position: relative;
+  display: flex;
+  width: min(1040px, 100%);
+  height: min(720px, calc(100vh - 48px));
+  max-height: none;
+  overflow: hidden;
+}
+
+.settings-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.settings-close:hover {
+  background: var(--panel-muted);
+  color: var(--text-main);
+}
+
+.settings-nav {
+  flex: none;
+  width: 212px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 12px;
+  border-right: 1px solid var(--border);
+  background: var(--panel-muted);
+  overflow-y: auto;
+}
+
+.settings-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-nav-group:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-nav-item svg {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.settings-nav-item:hover {
+  background: var(--panel-bg);
+}
+
+.settings-nav-item.active {
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.settings-nav-item.active svg {
+  color: var(--accent-deep);
+}
+
+.settings-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 30px 28px 28px;
+  overflow-y: auto;
+}
+
 .settings-dialog-header {
   display: flex;
   min-width: 0;
