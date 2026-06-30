@@ -1090,7 +1090,7 @@ describe("runtime flows", () => {
           index: 0,
           role: "assistant",
           contentDelta: "你",
-          reasoningDelta: "hidden",
+          reasoningDelta: "先思考",
           finishReason: null,
         },
       };
@@ -1103,7 +1103,7 @@ describe("runtime flows", () => {
           index: 0,
           role: null,
           contentDelta: "",
-          reasoningDelta: "ignored",
+          reasoningDelta: "再补充",
           finishReason: null,
         },
       };
@@ -1162,6 +1162,8 @@ describe("runtime flows", () => {
     expect(new Set(deltas.map((event) => event.payload.messageId)).size).toBe(1);
     const completed = findSupervisorCompletedMessage(events);
     expect(completed?.payload.message.content).toBe("你好");
+    // 推理过程被捕获并拼接——第二帧 content 为空但 reasoning 不能丢。
+    expect(completed?.payload.message.reasoning).toBe("先思考再补充");
     expect(store.getRun(run.id)).toMatchObject({
       status: "completed",
       activeAgent: null,
@@ -1382,6 +1384,10 @@ describe("runtime flows", () => {
     expect(providerInput?.messages[1]?.content).toContain("docs/SPEC.md");
     expect(providerInput?.messages[1]?.content).toContain("SPEC file content.");
     expect(store.getToolCallsByRun(fileRun.id)[0]?.status).toBe("completed");
+    // 模型未回传推理时，完成消息不应挂上空的 reasoning 字段。
+    expect(
+      findSupervisorCompletedMessage(events)?.payload.message.reasoning,
+    ).toBeUndefined();
   });
 
   it("records read-only file tool failures without blocking Supervisor output", async () => {
