@@ -9,3 +9,7 @@ ignoredBuiltDependencies:
 allowBuilds:
   sharp: false
   unrs-resolver: false
+  electron: true
+
+onlyBuiltDependencies:
+  - electron

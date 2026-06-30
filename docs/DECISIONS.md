@@ -401,3 +401,23 @@ V2.5 不实现 cron、voice、profiles、remote login、gateway / messaging 或 
 
 - V2.5 的价值是在不扩大执行面和安全风险的前提下，把后续平台扩展先变成可审计、可解释的产品信息。
 - 这样可以让 Settings 继续承担“产品边界的事实来源”，避免平台扩展只停留在路线图文字里。
+
+## DEC-0021：桌面端套壳选 Electron（非 Tauri）
+
+状态：accepted
+
+决策：
+
+桌面端用 Electron 套壳，从最小原生壳（`apps/desktop`，窗口加载本地 Next）起步，而不是 Tauri。
+
+理由：
+
+- 当前 web 是“重服务端”应用：9 个 Next API 路由、服务端密钥（DEEPSEEK_API_KEY）、fs 持久化（memory/skill registry）、SSE 流式；无法静态导出。
+- 因此桌面端必须让 Next 服务端常驻（复用全部 TS 逻辑），而不是用 Rust 重写后端。
+- 一旦必带 Node 服务端，Tauri 的核心优势（无 Node、壳小）就被抵消，反而要额外打包 Node sidecar 并引入 Rust 工具链。
+- Electron 自带 Node，起子进程跑 Next 服务端几乎零成本，Next+Electron 模式成熟，对“重服务端 + 复用”最省摩擦。
+
+边界：
+
+- v0 只做最小原生壳：dev 指向 `localhost:3000`，一键启动（concurrently + wait-on），`contextIsolation` 开、`nodeIntegration` 关。
+- 生产打包（内嵌 standalone 服务端）、密钥进 OS keychain、原生菜单/托盘、自动更新、签名分发，均留后续单独提案。
