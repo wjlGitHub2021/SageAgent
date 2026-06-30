@@ -82,7 +82,7 @@ function createDeepSeekProviderDescriptor(
     supportsThinking: true,
     supportedModels: [...DEEPSEEK_MODELS],
     defaultSettings: {
-      model: deepSeek.defaultModel ?? "deepseek-chat",
+      model: deepSeek.defaultModel ?? "deepseek-v4-flash",
       thinkingEnabled: deepSeek.thinkingEnabled ?? true,
       reasoningEffort: deepSeek.reasoningEffort ?? "high",
     },

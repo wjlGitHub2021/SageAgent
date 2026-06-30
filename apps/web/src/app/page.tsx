@@ -25,6 +25,7 @@ import type {
 import { MEMORY_SCOPES, SKILL_SOURCES } from "@sage/shared";
 import {
   ALLOWED_MODELS,
+  ALLOWED_REASONING_EFFORTS,
   DEFAULT_PREFERENCES,
   type Locale,
   type Preferences,
@@ -259,7 +260,7 @@ const copy = {
     currentConfiguration: "当前配置",
     displayLanguage: "显示语言",
     defaultModel: "默认模型",
-    modelReasoningHint: "选择 deepseek-reasoner 时，回答上方会展示模型的思考过程。",
+    modelReasoningHint: "开启思考模式时，回答上方会展示模型的思考过程（v4-flash / v4-pro 都支持）。",
     generalSettingsDetail: "界面语言会作为非敏感偏好保存在本地浏览器。",
     providerSettingsDetail:
       "当前默认 Provider 是 DeepSeek；模型作为非敏感偏好持久化，API key 只从后端安全状态读取。",
@@ -367,6 +368,9 @@ const copy = {
     model: "模型",
     enabled: "开启",
     disabled: "关闭",
+    thinkingEnabledSetting: "思考模式",
+    thinking: "思考",
+    reasoningEffort: "推理强度",
     agentTimeline: "Agent 时间线",
     toolCalls: "工具调用",
     approval: "审批",
@@ -658,7 +662,7 @@ const copy = {
     displayLanguage: "Display language",
     defaultModel: "Default model",
     modelReasoningHint:
-      "Pick deepseek-reasoner to see the model's thinking above each answer.",
+      "Enable thinking mode to see the model's reasoning above each answer (both v4-flash and v4-pro support it).",
     generalSettingsDetail:
       "Interface language is stored locally as a non-sensitive preference.",
     providerSettingsDetail:
@@ -767,6 +771,9 @@ const copy = {
     model: "Model",
     enabled: "Enabled",
     disabled: "Disabled",
+    thinkingEnabledSetting: "Thinking mode",
+    thinking: "Thinking",
+    reasoningEffort: "Reasoning effort",
     agentTimeline: "Agent Timeline",
     toolCalls: "Tool Calls",
     approval: "Approval",
@@ -1667,12 +1674,12 @@ function getDesktopBridge(): DesktopBridge | null {
   );
 }
 
-// 各模型的上下文窗口（token），按 DeepSeek 官方 64K 给定，仅用于状态栏用量显示。
+// 各模型的上下文窗口（token），按 DeepSeek V4 官方 1M 给定，仅用于状态栏用量显示。
 const MODEL_CONTEXT_WINDOW: Record<string, number> = {
-  "deepseek-chat": 64000,
-  "deepseek-reasoner": 64000,
+  "deepseek-v4-flash": 1000000,
+  "deepseek-v4-pro": 1000000,
 };
-const DEFAULT_CONTEXT_WINDOW = 64000;
+const DEFAULT_CONTEXT_WINDOW = 1000000;
 
 // 从活动 run 的 run.completed 事件读取 provider 上报的 total tokens；无则返回 null。
 function getRunTotalTokens(
@@ -3876,6 +3883,51 @@ export default function Home() {
                           onClick={() => updatePreferences({ model: modelOption })}
                         >
                           {modelOption}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="settings-card-control">
+                    <span>{t.thinkingEnabledSetting}</span>
+                    <div className="segmented" aria-label={t.thinking}>
+                      <button
+                        aria-pressed={thinkingEnabled}
+                        className={thinkingEnabled ? "selected" : ""}
+                        onClick={() =>
+                          updatePreferences({ thinkingEnabled: true })
+                        }
+                        type="button"
+                      >
+                        {t.enabled}
+                      </button>
+                      <button
+                        aria-pressed={!thinkingEnabled}
+                        className={!thinkingEnabled ? "selected" : ""}
+                        onClick={() =>
+                          updatePreferences({ thinkingEnabled: false })
+                        }
+                        type="button"
+                      >
+                        {t.disabled}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="settings-card-control">
+                    <span>{t.reasoningEffort}</span>
+                    <div className="segmented" aria-label={t.reasoningEffort}>
+                      {ALLOWED_REASONING_EFFORTS.map((effortOption) => (
+                        <button
+                          aria-pressed={reasoningEffort === effortOption}
+                          className={
+                            reasoningEffort === effortOption ? "selected" : ""
+                          }
+                          key={effortOption}
+                          onClick={() =>
+                            updatePreferences({ reasoningEffort: effortOption })
+                          }
+                          type="button"
+                        >
+                          {effortOption}
                         </button>
                       ))}
                     </div>

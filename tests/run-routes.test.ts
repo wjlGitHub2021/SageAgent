@@ -14,7 +14,7 @@ describe("run routes", () => {
       title: "Provider registry run",
       threadTitle: "Provider registry thread",
       settings: {
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         thinkingEnabled: true,
         reasoningEffort: "high",
       },
@@ -24,7 +24,7 @@ describe("run routes", () => {
     expect(response.status).toBe(201);
     expect(body.run.settings).toMatchObject({
       providerId: "deepseek",
-      model: "deepseek-chat",
+      model: "deepseek-v4-flash",
       thinkingEnabled: true,
       reasoningEffort: "high",
     });
@@ -35,7 +35,7 @@ describe("run routes", () => {
       goal: "Reject unsupported provider",
       settings: {
         providerId: "other-provider",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         thinkingEnabled: true,
         reasoningEffort: "high",
       },
@@ -66,7 +66,7 @@ describe("run routes", () => {
       activeAgent: null,
       settings: {
         providerId: "future-provider",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         thinkingEnabled: true,
         reasoningEffort: "high",
       },
@@ -115,7 +115,7 @@ describe("run routes", () => {
       activeAgent: null,
       settings: {
         providerId: "deepseek",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         thinkingEnabled: true,
         reasoningEffort: "high",
       },
@@ -148,7 +148,7 @@ describe("run routes", () => {
       activeAgent: null,
       settings: {
         providerId: "deepseek",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         thinkingEnabled: true,
         reasoningEffort: "high",
       },
@@ -188,7 +188,7 @@ describe("run routes", () => {
       activeAgent: null,
       settings: {
         providerId: "deepseek",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         thinkingEnabled: true,
         reasoningEffort: "high",
       },

@@ -16,7 +16,7 @@ describe("web preferences", () => {
     const preferences: Preferences = {
       locale: "en",
       providerId: "deepseek",
-      model: "deepseek-reasoner",
+      model: "deepseek-v4-pro",
       thinkingEnabled: false,
       reasoningEffort: "max",
     };
@@ -32,7 +32,7 @@ describe("web preferences", () => {
       parseStoredPreferences(
         JSON.stringify({
           locale: "en",
-          model: "deepseek-reasoner",
+          model: "deepseek-v4-pro",
           thinkingEnabled: false,
           reasoningEffort: "max",
         }),
@@ -40,7 +40,7 @@ describe("web preferences", () => {
     ).toEqual({
       locale: "en",
       providerId: "deepseek",
-      model: "deepseek-reasoner",
+      model: "deepseek-v4-pro",
       thinkingEnabled: false,
       reasoningEffort: "max",
     });
@@ -53,7 +53,7 @@ describe("web preferences", () => {
         JSON.stringify({
           locale: "fr",
           providerId: "deepseek",
-          model: "deepseek-reasoner",
+          model: "deepseek-v4-pro",
           thinkingEnabled: false,
           reasoningEffort: "max",
         }),
@@ -64,7 +64,7 @@ describe("web preferences", () => {
         JSON.stringify({
           locale: "en",
           providerId: "other-provider",
-          model: "deepseek-reasoner",
+          model: "deepseek-v4-pro",
           thinkingEnabled: false,
           reasoningEffort: "max",
         }),
@@ -75,7 +75,7 @@ describe("web preferences", () => {
         JSON.stringify({
           locale: "en",
           providerId: "deepseek",
-          model: "deepseek-reasoner",
+          model: "deepseek-v4-pro",
           thinkingEnabled: false,
         }),
       ),
@@ -85,7 +85,7 @@ describe("web preferences", () => {
         JSON.stringify({
           locale: "en",
           providerId: "deepseek",
-          model: "deepseek-reasoner",
+          model: "deepseek-v4-pro",
           thinkingEnabled: false,
           reasoningEffort: "max",
           apiKey: "sk-should-not-be-accepted",
@@ -108,7 +108,7 @@ describe("web preferences", () => {
     const preferences: Preferences = {
       locale: "en",
       providerId: "deepseek",
-      model: "deepseek-reasoner",
+      model: "deepseek-v4-pro",
       thinkingEnabled: false,
       reasoningEffort: "max",
     };
