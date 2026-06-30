@@ -11,11 +11,38 @@ export const DEEPSEEK_CHAT_COMPLETIONS_PATH = "/chat/completions";
  */
 export const DEEPSEEK_REQUEST_TIMEOUT_MS = 60_000;
 
-export type DeepSeekChatRole = "system" | "user" | "assistant";
+export type DeepSeekChatRole = "system" | "user" | "assistant" | "tool";
 
 export interface DeepSeekChatMessage {
   readonly role: DeepSeekChatRole;
   readonly content: string;
+  // assistant 轮：模型请求调用的工具。回传时序列化为线格式 tool_calls 下发。
+  readonly toolCalls?: readonly DeepSeekToolCall[];
+  // assistant 轮思考内容。V4 约束：带 tool_calls 的轮次，后续请求必须回传
+  // reasoning_content，否则 API 返回 400。
+  readonly reasoningContent?: string | null;
+  // tool 轮：标识该结果对应哪一次 tool_call（线格式 tool_call_id）。
+  readonly toolCallId?: string;
+}
+
+// 发送到 DeepSeek 的线格式消息（snake_case）。普通轮仅 role+content；assistant
+// 工具轮带 tool_calls(+reasoning_content)；tool 轮带 tool_call_id。body 直接
+// JSON.stringify，故 camelCase→snake_case 转换必须在 normalizeMessages 这层完成。
+export interface DeepSeekWireMessage {
+  readonly role: DeepSeekChatRole;
+  readonly content: string;
+  readonly tool_calls?: readonly DeepSeekWireToolCall[];
+  readonly tool_call_id?: string;
+  readonly reasoning_content?: string;
+}
+
+interface DeepSeekWireToolCall {
+  readonly id: string;
+  readonly type: "function";
+  readonly function: {
+    readonly name: string;
+    readonly arguments: string;
+  };
 }
 
 // OpenAI 兼容的工具/函数定义（function calling）。
@@ -45,7 +72,7 @@ export interface DeepSeekChatCompletionInput {
 
 export interface DeepSeekChatCompletionRequestBody {
   readonly model: DeepSeekModel;
-  readonly messages: readonly DeepSeekChatMessage[];
+  readonly messages: readonly DeepSeekWireMessage[];
   readonly stream: boolean;
   // DeepSeek V4 思考开关与强度：thinking 默认 enabled，reasoning_effort high/max。
   readonly thinking: {
@@ -557,62 +584,111 @@ function parseDeepSeekStreamPayload(
 
 function normalizeMessages(
   messages: readonly DeepSeekChatMessage[],
-): DeepSeekAdapterResult<readonly DeepSeekChatMessage[]> {
+): DeepSeekAdapterResult<readonly DeepSeekWireMessage[]> {
   if (!Array.isArray(messages) || messages.length === 0) {
-    return {
-      ok: false,
-      issue: {
-        code: "invalid_messages",
-        message: "DeepSeek chat completion requires at least one message.",
-      },
-    };
+    return invalidMessages(
+      "DeepSeek chat completion requires at least one message.",
+    );
   }
 
-  const normalized: DeepSeekChatMessage[] = [];
+  const normalized: DeepSeekWireMessage[] = [];
 
   for (const message of messages) {
     if (!isRecord(message)) {
-      return {
-        ok: false,
-        issue: {
-          code: "invalid_messages",
-          message: "DeepSeek message must be an object.",
-        },
-      };
+      return invalidMessages("DeepSeek message must be an object.");
     }
 
     const role = readOptionalString(message.role);
+    if (!isDeepSeekChatRole(role)) {
+      return invalidMessages(
+        "DeepSeek message role must be system, user, assistant, or tool.",
+      );
+    }
+
     const content = readOptionalString(message.content);
 
-    if (!isDeepSeekChatRole(role)) {
-      return {
-        ok: false,
-        issue: {
-          code: "invalid_messages",
-          message: "DeepSeek message role must be system, user, or assistant.",
-        },
-      };
+    // tool 轮：必须带 tool_call_id；content 为工具结果，允许为空。
+    if (role === "tool") {
+      const toolCallId = readOptionalString(message.toolCallId);
+      if (!toolCallId) {
+        return invalidMessages(
+          "DeepSeek tool message must include a tool_call_id.",
+        );
+      }
+      normalized.push({
+        role: "tool",
+        content: content ?? "",
+        tool_call_id: toolCallId,
+      });
+      continue;
     }
 
+    // assistant 工具轮：放开 content 可空，序列化 tool_calls；按 V4 约束回传
+    // reasoning_content（存在时），否则下一轮请求会 400。
+    const toolCalls =
+      role === "assistant" ? readInputToolCalls(message.toolCalls) : [];
+    if (toolCalls.length > 0) {
+      const reasoningContent = readOptionalString(message.reasoningContent);
+      normalized.push({
+        role: "assistant",
+        content: content ?? "",
+        tool_calls: toolCalls.map(toWireToolCall),
+        ...(reasoningContent !== null
+          ? { reasoning_content: reasoningContent }
+          : {}),
+      });
+      continue;
+    }
+
+    // 其余（system/user/无工具的 assistant）：content 不能为空。
     if (content === null || content.trim().length === 0) {
-      return {
-        ok: false,
-        issue: {
-          code: "invalid_messages",
-          message: "DeepSeek message content must not be blank.",
-        },
-      };
+      return invalidMessages("DeepSeek message content must not be blank.");
     }
 
-    normalized.push({
-      role,
-      content,
-    });
+    normalized.push({ role, content });
   }
 
   return {
     ok: true,
     value: normalized,
+  };
+}
+
+function invalidMessages(
+  message: string,
+): { readonly ok: false; readonly issue: DeepSeekAdapterIssue } {
+  return {
+    ok: false,
+    issue: {
+      code: "invalid_messages",
+      message,
+    },
+  };
+}
+
+// 防御性读取入参 toolCalls（{id,name,arguments}）；缺 id/name 的条目跳过。
+function readInputToolCalls(raw: unknown): DeepSeekToolCall[] {
+  if (!Array.isArray(raw)) return [];
+  const calls: DeepSeekToolCall[] = [];
+  for (const item of raw) {
+    if (!isRecord(item)) continue;
+    const id = readOptionalString(item.id);
+    const name = readOptionalString(item.name);
+    if (!id || !name) continue;
+    calls.push({
+      id,
+      name,
+      arguments: readOptionalString(item.arguments) ?? "{}",
+    });
+  }
+  return calls;
+}
+
+function toWireToolCall(call: DeepSeekToolCall): DeepSeekWireToolCall {
+  return {
+    id: call.id,
+    type: "function",
+    function: { name: call.name, arguments: call.arguments },
   };
 }
 
@@ -723,5 +799,10 @@ function readToolCalls(raw: unknown): DeepSeekToolCall[] {
 }
 
 function isDeepSeekChatRole(value: string | null): value is DeepSeekChatRole {
-  return value === "system" || value === "user" || value === "assistant";
+  return (
+    value === "system" ||
+    value === "user" ||
+    value === "assistant" ||
+    value === "tool"
+  );
 }

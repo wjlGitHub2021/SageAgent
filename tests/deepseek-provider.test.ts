@@ -189,6 +189,76 @@ describe("DeepSeek provider", () => {
     expect(result.value.choices[0]?.finishReason).toBe("tool_calls");
   });
 
+  it("serializes tool round-trip messages to the snake_case wire format", async () => {
+    let sentBody: unknown;
+    const result = await createDeepSeekChatCompletion(
+      {
+        apiKey: "sk-test",
+        baseUrl: "https://api.deepseek.com",
+        defaultModel: "deepseek-v4-flash",
+        defaultReasoningEffort: "high",
+        thinkingEnabled: true,
+      },
+      {
+        messages: [
+          { role: "user", content: "weather in SF?" },
+          {
+            role: "assistant",
+            content: "",
+            reasoningContent: "Let me check the weather tool.",
+            toolCalls: [
+              { id: "call_1", name: "get_weather", arguments: '{"city":"SF"}' },
+            ],
+          },
+          {
+            role: "tool",
+            toolCallId: "call_1",
+            content: "Sunny, 22C",
+          },
+        ],
+        model: "deepseek-v4-flash",
+      },
+      async (_url, init) => {
+        sentBody = JSON.parse(init.body);
+        return {
+          ok: true,
+          status: 200,
+          async json() {
+            return {
+              id: "x",
+              model: "deepseek-v4-flash",
+              choices: [
+                {
+                  index: 0,
+                  message: { content: "It's sunny and 22C in SF." },
+                  finish_reason: "stop",
+                },
+              ],
+            };
+          },
+        };
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect((sentBody as { messages: unknown }).messages).toEqual([
+      { role: "user", content: "weather in SF?" },
+      {
+        role: "assistant",
+        content: "",
+        tool_calls: [
+          {
+            id: "call_1",
+            type: "function",
+            function: { name: "get_weather", arguments: '{"city":"SF"}' },
+          },
+        ],
+        reasoning_content: "Let me check the weather tool.",
+      },
+      { role: "tool", content: "Sunny, 22C", tool_call_id: "call_1" },
+    ]);
+  });
+
   it("parses responses and streaming data defensively", () => {
     expect(parseDeepSeekChatCompletionResponse({ choices: [] })).toEqual({
       ok: true,
