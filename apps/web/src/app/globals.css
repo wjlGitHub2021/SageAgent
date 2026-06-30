@@ -511,6 +511,48 @@ code {
   overflow-wrap: anywhere;
 }
 
+/* 思考过程：助手回答前的可折叠推理块（DeepSeek reasoning_content）。 */
+.thinking-block {
+  margin-bottom: 12px;
+}
+
+.thinking-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 2px;
+  background: transparent;
+  border: none;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.thinking-icon {
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.thinking-label {
+  font-weight: 600;
+}
+
+.thinking-chevron {
+  font-size: 10px;
+}
+
+.thinking-body {
+  margin-top: 8px;
+  padding: 2px 0 2px 12px;
+  border-left: 2px solid var(--border);
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .thread-approval {
   align-self: stretch;
 }

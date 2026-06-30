@@ -231,6 +231,7 @@ export async function runSupervisorDeepSeekOnce({
 
   const completedAt = now();
   const messageId = createId("message");
+  const reasoning = readAssistantReasoning(result.value);
   const message: Message = {
     id: messageId,
     threadId: run.threadId,
@@ -238,6 +239,7 @@ export async function runSupervisorDeepSeekOnce({
     role: "agent",
     agent: "supervisor",
     content,
+    ...(reasoning ? { reasoning } : {}),
     createdAt: completedAt,
   };
   const completedRun: Run = {
@@ -357,6 +359,7 @@ export async function* streamSupervisorDeepSeekEvents({
 
   const messageId = createId("message");
   const chunks: string[] = [];
+  const reasoningChunks: string[] = [];
   let capturedUsage: RunUsage | null = null;
 
   for await (const result of provider(config, {
@@ -401,6 +404,11 @@ export async function* streamSupervisorDeepSeekEvents({
         totalTokens: result.value.totalTokens,
       };
       continue;
+    }
+
+    // 推理过程往往与空 content 同帧到达，需在丢弃空 delta 之前先收集。
+    if (result.value.reasoningDelta) {
+      reasoningChunks.push(result.value.reasoningDelta);
     }
 
     const delta = result.value.contentDelta;
@@ -450,6 +458,7 @@ export async function* streamSupervisorDeepSeekEvents({
   }
 
   const completedAt = now();
+  const reasoning = reasoningChunks.join("");
   const message: Message = {
     id: messageId,
     threadId: run.threadId,
@@ -457,6 +466,7 @@ export async function* streamSupervisorDeepSeekEvents({
     role: "agent",
     agent: "supervisor",
     content,
+    ...(reasoning.trim().length > 0 ? { reasoning } : {}),
     createdAt: completedAt,
   };
   const completedRun: Run = {
@@ -1662,6 +1672,15 @@ function readAssistantContent(
   }
 
   return content;
+}
+
+function readAssistantReasoning(
+  output: DeepSeekChatCompletionOutput,
+): string | undefined {
+  const reasoning = output.choices[0]?.message.reasoningContent;
+  return typeof reasoning === "string" && reasoning.trim().length > 0
+    ? reasoning
+    : undefined;
 }
 
 function formatSafeProviderIssue(issue: DeepSeekAdapterIssue): string {

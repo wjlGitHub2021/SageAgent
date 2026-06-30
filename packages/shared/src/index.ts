@@ -181,6 +181,8 @@ export interface Message {
   readonly role: MessageRole;
   readonly agent: AgentRole | null;
   readonly content: string;
+  // Provider 返回的推理过程（DeepSeek reasoning_content）；仅在模型回传时存在。
+  readonly reasoning?: string;
   readonly createdAt: ISODateTimeString;
 }
 

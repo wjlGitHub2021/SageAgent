@@ -37,6 +37,7 @@ import { getPhase4RunSummary } from "@/lib/phase4-summary";
 import { Composer } from "./components/Composer";
 import { EmptyHome } from "./components/EmptyHome";
 import { StatusBar } from "./components/StatusBar";
+import { ThinkingBlock } from "./components/ThinkingBlock";
 import { ConversationToolCalls } from "./components/ToolCallCard";
 import type {
   DeepSeekConnectionTestCode,
@@ -52,6 +53,7 @@ type Message = {
   messageId?: string;
   eventIds?: readonly string[];
   body: Record<Locale, string>;
+  reasoning?: string;
 };
 
 type ThreadItem = {
@@ -457,6 +459,7 @@ const copy = {
     toolStatusCompleted: "已完成",
     toolStatusRunning: "运行中",
     toolStatusFailed: "失败",
+    thinkingLabel: "思考过程",
     approvalRequested: "请求审批",
     approvalResolved: "审批已处理",
     artifactCreated: "生成产物",
@@ -804,6 +807,7 @@ const copy = {
     toolStatusCompleted: "Completed",
     toolStatusRunning: "Running",
     toolStatusFailed: "Failed",
+    thinkingLabel: "Thinking",
     approvalRequested: "Requested approval",
     approvalResolved: "Approval resolved",
     artifactCreated: "Created artifact",
@@ -905,6 +909,8 @@ const baseMessages: Message[] = [
   {
     role: "Supervisor",
     runId: "run-1842",
+    reasoning:
+      "先确认目标：Codex 风格的产品壳层，需要展示多 agent 运行态。\n关键约束是单用户本地、Web First，所以布局应当克制：左侧会话、中间对话、右侧 inspector。\n把任务拆给 Builder 做静态壳层、seed data 先行，避免一开始就接真实数据导致返工。",
     body: {
       zh: "已将任务拆分为 UI shell、seed data、controls、inspector 四个部分，当前由 Builder 生成静态工作台。",
       en: "The task is split into UI shell, seed data, controls, and inspector. Builder is generating the static workbench.",
@@ -2616,6 +2622,12 @@ export default function Home() {
                           className="msg-assistant"
                           key={`${message.role}-${index}`}
                         >
+                          {message.reasoning ? (
+                            <ThinkingBlock
+                              reasoning={message.reasoning}
+                              t={t}
+                            />
+                          ) : null}
                           {message.body[locale]}
                         </div>
                       );
@@ -4724,6 +4736,7 @@ function applyMessageCompleted(
     ? agentLabels[event.payload.message.agent]
     : "System";
   const content = event.payload.message.content;
+  const reasoning = event.payload.message.reasoning;
   const existingIndex = current.findIndex(
     (message) =>
       message.runId === runId && message.messageId === event.payload.message.id,
@@ -4741,6 +4754,7 @@ function applyMessageCompleted(
           zh: content,
           en: content,
         },
+        ...(reasoning ? { reasoning } : {}),
       },
     ];
   }
@@ -4757,6 +4771,7 @@ function applyMessageCompleted(
             zh: content,
             en: content,
           },
+          ...(reasoning ? { reasoning } : {}),
         }
       : message,
   );
