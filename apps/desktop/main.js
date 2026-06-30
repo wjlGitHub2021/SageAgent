@@ -1,9 +1,16 @@
 "use strict";
 
 const path = require("path");
+const fs = require("fs");
 const http = require("http");
 const { spawn } = require("child_process");
-const { app, BrowserWindow, shell } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  shell,
+  ipcMain,
+  safeStorage,
+} = require("electron");
 
 // 两种运行模式：
 // - dev（默认）：连外部已运行的 Next dev 服务（localhost:3000）。
@@ -13,6 +20,53 @@ const EMBEDDED_PORT = Number(process.env.SAGE_DESKTOP_PORT || 34518);
 const DEV_URL = process.env.SAGE_DESKTOP_URL || "http://localhost:3000";
 
 let serverProcess = null;
+
+// ---- DeepSeek 密钥安全存储（OS keychain via Electron safeStorage）----
+function keyFilePath() {
+  return path.join(app.getPath("userData"), "deepseek-key.enc");
+}
+
+function readStoredKey() {
+  try {
+    const file = keyFilePath();
+    if (!fs.existsSync(file) || !safeStorage.isEncryptionAvailable()) return "";
+    return safeStorage.decryptString(fs.readFileSync(file));
+  } catch {
+    return "";
+  }
+}
+
+// 环境变量优先（dev/.env.local/CI），否则用 keychain 存储的 key
+function resolveApiKey() {
+  return process.env.DEEPSEEK_API_KEY || readStoredKey() || "";
+}
+
+function registerKeyIpc() {
+  ipcMain.handle("deepseek:key-status", () => ({
+    hasKey: Boolean(resolveApiKey()),
+    source: process.env.DEEPSEEK_API_KEY
+      ? "env"
+      : readStoredKey()
+        ? "keychain"
+        : "none",
+    encryptionAvailable: safeStorage.isEncryptionAvailable(),
+  }));
+  ipcMain.handle("deepseek:set-key", (_event, key) => {
+    if (typeof key !== "string" || !key.trim()) {
+      throw new Error("密钥不能为空");
+    }
+    if (!safeStorage.isEncryptionAvailable()) {
+      throw new Error("当前系统的加密存储不可用");
+    }
+    fs.writeFileSync(keyFilePath(), safeStorage.encryptString(key.trim()));
+    // 内嵌服务在启动时读取 env，改 key 需重启应用生效（避免热重启服务的端口竞态）
+    return { ok: true, requiresRestart: SERVE_EMBEDDED };
+  });
+  ipcMain.handle("deepseek:clear-key", () => {
+    fs.rmSync(keyFilePath(), { force: true });
+    return { ok: true, requiresRestart: SERVE_EMBEDDED };
+  });
+}
 
 function standaloneServerPath() {
   // packaged：standalone 作为 extraResources 放在 resources/standalone 下。
@@ -34,6 +88,7 @@ function startEmbeddedServer() {
       NODE_ENV: "production",
       PORT: String(EMBEDDED_PORT),
       HOSTNAME: "127.0.0.1",
+      DEEPSEEK_API_KEY: resolveApiKey(),
     },
     stdio: "inherit",
   });
@@ -114,7 +169,10 @@ async function boot() {
   });
 }
 
-app.whenReady().then(boot);
+app.whenReady().then(() => {
+  registerKeyIpc();
+  return boot();
+});
 
 app.on("window-all-closed", () => {
   // macOS 习惯保留进程；其他平台关窗即退出

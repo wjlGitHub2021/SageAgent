@@ -172,6 +172,17 @@ const copy = {
     pinHint: "Shift+单击对话以置顶",
     unpin: "取消置顶（Shift+单击）",
     approvalInThread: "请在会话中批准或拒绝",
+    desktopKeyTitle: "桌面端 DeepSeek 密钥",
+    desktopKeyDetail:
+      "密钥经 OS keychain 加密存储，替代 .env.local；保存后重启应用生效。",
+    desktopKeyPlaceholder: "粘贴 DeepSeek API key...",
+    desktopKeyConfigured: "已配置密钥",
+    desktopKeyMissing: "未配置密钥",
+    desktopKeySave: "保存",
+    desktopKeyClear: "清除",
+    desktopKeySaved: "已保存",
+    desktopKeyRestart: "已保存，重启应用后生效",
+    desktopKeyCleared: "已清除",
     settings: "设置",
     openSettings: "打开设置",
     closeSettings: "关闭设置",
@@ -496,6 +507,17 @@ const copy = {
     pinHint: "Shift+click a conversation to pin",
     unpin: "Unpin (Shift+click)",
     approvalInThread: "Approve or reject in the conversation",
+    desktopKeyTitle: "Desktop DeepSeek key",
+    desktopKeyDetail:
+      "Stored encrypted in the OS keychain (replaces .env.local); restart the app to apply.",
+    desktopKeyPlaceholder: "Paste DeepSeek API key...",
+    desktopKeyConfigured: "Key configured",
+    desktopKeyMissing: "No key configured",
+    desktopKeySave: "Save",
+    desktopKeyClear: "Clear",
+    desktopKeySaved: "Saved",
+    desktopKeyRestart: "Saved — restart the app to apply",
+    desktopKeyCleared: "Cleared",
     settings: "Settings",
     openSettings: "Open settings",
     closeSettings: "Close settings",
@@ -1482,6 +1504,27 @@ function getBlockedPathPolicyDetail(t: (typeof copy)[Locale]): string {
 
 const PINNED_RUNS_STORAGE_KEY = "sage.pinnedRuns";
 
+// Electron 预加载注入的安全桥（仅桌面端存在）。Web 端为 null。
+type DesktopBridge = {
+  isDesktop: boolean;
+  deepseek: {
+    getKeyStatus: () => Promise<{
+      hasKey: boolean;
+      source: string;
+      encryptionAvailable: boolean;
+    }>;
+    setKey: (key: string) => Promise<{ ok: boolean; requiresRestart: boolean }>;
+    clearKey: () => Promise<{ ok: boolean; requiresRestart: boolean }>;
+  };
+};
+
+function getDesktopBridge(): DesktopBridge | null {
+  if (typeof window === "undefined") return null;
+  return (
+    (window as unknown as { sageDesktop?: DesktopBridge }).sageDesktop ?? null
+  );
+}
+
 // 各模型的上下文窗口（token）。deepseek-v4 系列为演示模型，按配置值给定，可调整。
 const MODEL_CONTEXT_WINDOW: Record<string, number> = {
   "deepseek-v4-flash": 128000,
@@ -1534,6 +1577,55 @@ export default function Home() {
     setPinnedRunIds((ids) =>
       ids.includes(runId) ? ids.filter((id) => id !== runId) : [...ids, runId],
     );
+  }
+
+  const [desktopBridge, setDesktopBridge] = useState<DesktopBridge | null>(null);
+  const [desktopKeyStatus, setDesktopKeyStatus] = useState<{
+    hasKey: boolean;
+    source: string;
+    encryptionAvailable: boolean;
+  } | null>(null);
+  const [desktopKeyInput, setDesktopKeyInput] = useState("");
+  const [desktopKeyMessage, setDesktopKeyMessage] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      const bridge = getDesktopBridge();
+      setDesktopBridge(bridge);
+      if (bridge) {
+        bridge.deepseek
+          .getKeyStatus()
+          .then(setDesktopKeyStatus)
+          .catch(() => {});
+      }
+    });
+  }, []);
+
+  async function saveDesktopKey() {
+    if (!desktopBridge || desktopKeyInput.trim().length === 0) return;
+    try {
+      const result = await desktopBridge.deepseek.setKey(
+        desktopKeyInput.trim(),
+      );
+      setDesktopKeyInput("");
+      setDesktopKeyStatus(await desktopBridge.deepseek.getKeyStatus());
+      setDesktopKeyMessage(
+        result.requiresRestart ? t.desktopKeyRestart : t.desktopKeySaved,
+      );
+    } catch (error) {
+      setDesktopKeyMessage(
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+
+  async function clearDesktopKey() {
+    if (!desktopBridge) return;
+    await desktopBridge.deepseek.clearKey();
+    setDesktopKeyStatus(await desktopBridge.deepseek.getKeyStatus());
+    setDesktopKeyMessage(t.desktopKeyCleared);
   }
   const [providerStatus, setProviderStatus] =
     useState<DeepSeekProviderStatusSummary | null>(null);
@@ -3535,6 +3627,53 @@ export default function Home() {
               </div>
 
               <div className="settings-dialog-column">
+                {desktopBridge ? (
+                  <article className="settings-card">
+                    <div>
+                      <p>{t.desktopKeyTitle}</p>
+                      <small>{t.desktopKeyDetail}</small>
+                    </div>
+                    <div className="settings-control-stack">
+                      <p className="desktop-key-status">
+                        {desktopKeyStatus?.hasKey
+                          ? t.desktopKeyConfigured
+                          : t.desktopKeyMissing}
+                      </p>
+                      <input
+                        aria-label={t.desktopKeyTitle}
+                        className="desktop-key-input"
+                        onChange={(event) =>
+                          setDesktopKeyInput(event.target.value)
+                        }
+                        placeholder={t.desktopKeyPlaceholder}
+                        type="password"
+                        value={desktopKeyInput}
+                      />
+                      <div className="composer-actions">
+                        <button
+                          className="secondary-button"
+                          disabled={!desktopKeyStatus?.hasKey}
+                          onClick={clearDesktopKey}
+                          type="button"
+                        >
+                          {t.desktopKeyClear}
+                        </button>
+                        <button
+                          disabled={desktopKeyInput.trim().length === 0}
+                          onClick={saveDesktopKey}
+                          type="button"
+                        >
+                          {t.desktopKeySave}
+                        </button>
+                      </div>
+                      {desktopKeyMessage ? (
+                        <small className="desktop-key-message">
+                          {desktopKeyMessage}
+                        </small>
+                      ) : null}
+                    </div>
+                  </article>
+                ) : null}
                 <article className="settings-card">
                   <div>
                     <p>{t.providerSettings}</p>
