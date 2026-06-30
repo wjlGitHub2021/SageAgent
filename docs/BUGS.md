@@ -48,7 +48,7 @@
 
 ### 2026-06-30 memory-registry Local/Persistent 类重复
 
-- 状态：`in_progress`
+- 状态：`fixed`
 - 严重级别：`P3`
 - 发现阶段：多 agent code review
 - 影响范围：`packages/runtime/src/memory-registry.ts` 的可维护性。

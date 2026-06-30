@@ -68,26 +68,11 @@ class LocalMemoryRegistry implements MemoryRegistry {
   private readonly auditTrail = new Map<EntityId, MemoryAuditRecord>();
 
   constructor(initialSnapshot: MemorySnapshot) {
-    for (const entry of initialSnapshot.entries) {
-      this.entries.set(entry.id, entry);
-    }
-
-    for (const audit of initialSnapshot.auditTrail) {
-      this.auditTrail.set(audit.id, audit);
-    }
+    loadIntoMaps(initialSnapshot, this.entries, this.auditTrail);
   }
 
   getSnapshot(): MemorySnapshot {
-    return {
-      entries: [...this.entries.values()].sort((left, right) =>
-        compareIsoDateTime(left.updatedAt, right.updatedAt) ||
-        left.title.localeCompare(right.title),
-      ),
-      auditTrail: [...this.auditTrail.values()].sort((left, right) =>
-        compareIsoDateTime(left.createdAt, right.createdAt) ||
-        left.id.localeCompare(right.id),
-      ),
-    };
+    return createSnapshot(this.entries, this.auditTrail);
   }
 
   listEntries(scope?: MemoryScope): readonly MemoryEntry[] {
@@ -100,25 +85,10 @@ class LocalMemoryRegistry implements MemoryRegistry {
   }
 
   upsertEntry(input: UpsertMemoryEntryInput): MemoryEntry {
-    const now = input.createdAt.trim();
-    const id = (input.id ?? createMemoryId()).trim();
-    const previous = this.entries.get(id);
-    const entry: MemoryEntry = {
-      id,
-      scope: input.scope,
-      title: input.title.trim(),
-      content: input.content.trim(),
-      tags: normalizeTags(input.tags ?? []),
-      sourceThreadId: input.sourceThreadId ?? null,
-      sourceRunId: input.sourceRunId ?? null,
-      createdBy: input.createdBy,
-      createdAt: previous?.createdAt ?? now,
-      updatedAt: now,
-    };
-
-    this.entries.set(id, entry);
+    const previous = this.entries.get(input.id ?? "");
+    const entry = upsertEntryInMap(this.entries, input);
     this.recordAudit({
-      memoryId: id,
+      memoryId: entry.id,
       action: previous ? "update" : "create",
       actor: input.createdBy,
       reason: input.reason,
@@ -127,9 +97,8 @@ class LocalMemoryRegistry implements MemoryRegistry {
       title: entry.title,
       sourceThreadId: entry.sourceThreadId,
       sourceRunId: entry.sourceRunId,
-      createdAt: now,
+      createdAt: input.createdAt.trim(),
     });
-
     return entry;
   }
 
@@ -155,20 +124,7 @@ class LocalMemoryRegistry implements MemoryRegistry {
   }
 
   recordAudit(input: MemoryAuditInput): MemoryAuditRecord {
-    const record: MemoryAuditRecord = {
-      id: createMemoryAuditId(),
-      memoryId: input.memoryId,
-      action: input.action,
-      actor: input.actor,
-      reason: input.reason.trim(),
-      summary: input.summary.trim(),
-      scope: input.scope,
-      title: input.title.trim(),
-      sourceThreadId: input.sourceThreadId,
-      sourceRunId: input.sourceRunId,
-      createdAt: input.createdAt.trim(),
-    };
-
+    const record = createAuditRecord(input);
     this.auditTrail.set(record.id, record);
     return record;
   }
@@ -181,20 +137,12 @@ class PersistentMemoryRegistry implements MemoryRegistry {
 
   constructor(input: { readonly initialSnapshot: MemorySnapshot; readonly storagePath: string }) {
     this.storagePath = input.storagePath;
-    this.loadSnapshot(input.initialSnapshot);
+    const persisted = readPersistedSnapshot(this.storagePath);
+    loadIntoMaps(persisted ?? input.initialSnapshot, this.entries, this.auditTrail);
   }
 
   getSnapshot(): MemorySnapshot {
-    return {
-      entries: [...this.entries.values()].sort((left, right) =>
-        compareIsoDateTime(left.updatedAt, right.updatedAt) ||
-        left.title.localeCompare(right.title),
-      ),
-      auditTrail: [...this.auditTrail.values()].sort((left, right) =>
-        compareIsoDateTime(left.createdAt, right.createdAt) ||
-        left.id.localeCompare(right.id),
-      ),
-    };
+    return createSnapshot(this.entries, this.auditTrail);
   }
 
   listEntries(scope?: MemoryScope): readonly MemoryEntry[] {
@@ -207,25 +155,10 @@ class PersistentMemoryRegistry implements MemoryRegistry {
   }
 
   upsertEntry(input: UpsertMemoryEntryInput): MemoryEntry {
-    const now = input.createdAt.trim();
-    const id = (input.id ?? createMemoryId()).trim();
-    const previous = this.entries.get(id);
-    const entry: MemoryEntry = {
-      id,
-      scope: input.scope,
-      title: input.title.trim(),
-      content: input.content.trim(),
-      tags: normalizeTags(input.tags ?? []),
-      sourceThreadId: input.sourceThreadId ?? null,
-      sourceRunId: input.sourceRunId ?? null,
-      createdBy: input.createdBy,
-      createdAt: previous?.createdAt ?? now,
-      updatedAt: now,
-    };
-
-    this.entries.set(id, entry);
+    const previous = this.entries.get(input.id ?? "");
+    const entry = upsertEntryInMap(this.entries, input);
     this.recordAudit({
-      memoryId: id,
+      memoryId: entry.id,
       action: previous ? "update" : "create",
       actor: input.createdBy,
       reason: input.reason,
@@ -234,10 +167,9 @@ class PersistentMemoryRegistry implements MemoryRegistry {
       title: entry.title,
       sourceThreadId: entry.sourceThreadId,
       sourceRunId: entry.sourceRunId,
-      createdAt: now,
+      createdAt: input.createdAt.trim(),
     });
     this.save();
-
     return entry;
   }
 
@@ -264,40 +196,79 @@ class PersistentMemoryRegistry implements MemoryRegistry {
   }
 
   recordAudit(input: MemoryAuditInput): MemoryAuditRecord {
-    const record: MemoryAuditRecord = {
-      id: createMemoryAuditId(),
-      memoryId: input.memoryId,
-      action: input.action,
-      actor: input.actor,
-      reason: input.reason.trim(),
-      summary: input.summary.trim(),
-      scope: input.scope,
-      title: input.title.trim(),
-      sourceThreadId: input.sourceThreadId,
-      sourceRunId: input.sourceRunId,
-      createdAt: input.createdAt.trim(),
-    };
-
+    const record = createAuditRecord(input);
     this.auditTrail.set(record.id, record);
     return record;
-  }
-
-  private loadSnapshot(initialSnapshot: MemorySnapshot): void {
-    const persisted = readPersistedSnapshot(this.storagePath);
-    const snapshot = persisted ?? initialSnapshot;
-
-    for (const entry of snapshot.entries) {
-      this.entries.set(entry.id, entry);
-    }
-
-    for (const audit of snapshot.auditTrail) {
-      this.auditTrail.set(audit.id, audit);
-    }
   }
 
   private save(): void {
     persistSnapshot(this.storagePath, this.getSnapshot());
   }
+}
+
+function loadIntoMaps(
+  snapshot: MemorySnapshot,
+  entries: Map<EntityId, MemoryEntry>,
+  auditTrail: Map<EntityId, MemoryAuditRecord>,
+): void {
+  for (const entry of snapshot.entries) entries.set(entry.id, entry);
+  for (const audit of snapshot.auditTrail) auditTrail.set(audit.id, audit);
+}
+
+function createSnapshot(
+  entries: ReadonlyMap<EntityId, MemoryEntry>,
+  auditTrail: ReadonlyMap<EntityId, MemoryAuditRecord>,
+): MemorySnapshot {
+  return {
+    entries: [...entries.values()].sort((left, right) =>
+      compareIsoDateTime(left.updatedAt, right.updatedAt) ||
+      left.title.localeCompare(right.title),
+    ),
+    auditTrail: [...auditTrail.values()].sort((left, right) =>
+      compareIsoDateTime(left.createdAt, right.createdAt) ||
+      left.id.localeCompare(right.id),
+    ),
+  };
+}
+
+function upsertEntryInMap(
+  entries: Map<EntityId, MemoryEntry>,
+  input: UpsertMemoryEntryInput,
+): MemoryEntry {
+  const now = input.createdAt.trim();
+  const id = (input.id ?? createMemoryId()).trim();
+  const previous = entries.get(id);
+  const entry: MemoryEntry = {
+    id,
+    scope: input.scope,
+    title: input.title.trim(),
+    content: input.content.trim(),
+    tags: normalizeTags(input.tags ?? []),
+    sourceThreadId: input.sourceThreadId ?? null,
+    sourceRunId: input.sourceRunId ?? null,
+    createdBy: input.createdBy,
+    createdAt: previous?.createdAt ?? now,
+    updatedAt: now,
+  };
+
+  entries.set(id, entry);
+  return entry;
+}
+
+function createAuditRecord(input: MemoryAuditInput): MemoryAuditRecord {
+  return {
+    id: createMemoryAuditId(),
+    memoryId: input.memoryId,
+    action: input.action,
+    actor: input.actor,
+    reason: input.reason.trim(),
+    summary: input.summary.trim(),
+    scope: input.scope,
+    title: input.title.trim(),
+    sourceThreadId: input.sourceThreadId,
+    sourceRunId: input.sourceRunId,
+    createdAt: input.createdAt.trim(),
+  };
 }
 
 function normalizeTags(tags: readonly string[]): readonly string[] {
