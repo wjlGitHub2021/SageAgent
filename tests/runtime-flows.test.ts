@@ -1820,3 +1820,87 @@ describe("supervisor MCP tool branch", () => {
     expect(store.getRun(run.id)).toMatchObject({ status: "completed" });
   });
 });
+
+describe("supervisor conversation history", () => {
+  it("replays prior completed turns in the same thread before the current goal", async () => {
+    const store = createMemoryRuntimeStore(createEmptyRuntimeSnapshot());
+    store.upsertThread(thread);
+
+    // 早一轮：已完成且有 supervisor 最终回复。
+    store.upsertRun({
+      ...run,
+      id: "run-prior",
+      goal: "我叫小明",
+      status: "completed",
+      createdAt: "2026-06-24T00:59:00.000Z",
+      updatedAt: "2026-06-24T00:59:00.000Z",
+      completedAt: "2026-06-24T00:59:01.000Z",
+    });
+    store.upsertMessage({
+      id: "msg-prior",
+      threadId: thread.id,
+      runId: "run-prior",
+      role: "agent",
+      agent: "supervisor",
+      content: "你好小明",
+      createdAt: "2026-06-24T00:59:01.000Z",
+    });
+
+    // 当前轮：queued。
+    const currentRun: Run = { ...run, goal: "我叫什么？" };
+    store.appendEvent({
+      id: "event-run-created-for-history",
+      runId: currentRun.id,
+      type: "run.created",
+      sequence: 1,
+      createdAt,
+      payload: { run: { ...currentRun, status: "queued", activeAgent: null } },
+    });
+
+    let captured: { role: string; content: string }[] = [];
+    const provider: SupervisorStreamProvider = async function* (_config, input) {
+      captured = input.messages.map((message) => ({
+        role: message.role,
+        content: message.content,
+      }));
+      yield {
+        ok: true,
+        value: {
+          type: "delta",
+          id: "h1",
+          model: "deepseek-v4-flash",
+          index: 0,
+          role: "assistant",
+          contentDelta: "你叫小明",
+          reasoningDelta: null,
+          finishReason: null,
+        },
+      };
+      yield { ok: true, value: { type: "done" } };
+    };
+
+    const events: RunEvent[] = [];
+    for await (const event of streamSupervisorDeepSeekEvents({
+      store,
+      runId: currentRun.id,
+      config: toolBranchConfig,
+      provider,
+      now: createClock([
+        "2026-06-24T03:00:01.000Z",
+        "2026-06-24T03:00:02.000Z",
+      ]),
+      createId: createIdFactory(),
+    })) {
+      events.push(event);
+    }
+
+    const roles = captured.map((message) => `${message.role}:${message.content}`);
+    // 历史轮被回灌，且在当前问题之前；当前问题是最后一条 user。
+    expect(roles).toContain("user:我叫小明");
+    expect(roles).toContain("assistant:你好小明");
+    expect(captured.at(-1)).toEqual({ role: "user", content: "我叫什么？" });
+    expect(roles.indexOf("user:我叫小明")).toBeLessThan(
+      roles.lastIndexOf("user:我叫什么？"),
+    );
+  });
+});

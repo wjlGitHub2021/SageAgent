@@ -213,6 +213,7 @@ export async function runSupervisorDeepSeekOnce({
       multiAgentPass.supervisorContext,
       memoryContextMessage,
       skillContextMessage,
+      collectThreadHistory(store, run),
     ),
     model: run.settings.model,
     thinkingEnabled: run.settings.thinkingEnabled,
@@ -391,6 +392,7 @@ export async function* streamSupervisorDeepSeekEvents({
     multiAgentPass.supervisorContext,
     memoryContextMessage,
     skillContextMessage,
+    collectThreadHistory(store, run),
   );
 
   // 工具分支：仅当本次对话带 MCP 服务器、且能聚合到工具时走非流式工具循环；
@@ -1245,6 +1247,7 @@ function createSupervisorMessages(
   multiAgentContext: string | null = null,
   memoryContextMessage: string | null = null,
   skillContextMessage: string | null = null,
+  history: readonly SupervisorHistoryTurn[] = [],
 ): DeepSeekChatCompletionInput["messages"] {
   const messages: DeepSeekChatCompletionInput["messages"][number][] = [
     {
@@ -1282,6 +1285,12 @@ function createSupervisorMessages(
     });
   }
 
+  // 本会话历史（早于当前轮、已完成且有最终回复的轮次）插在上下文之后、当前问题之前，
+  // 让模型像主流编码 agent 一样看到完整对话，而不是每条都当新会话。
+  for (const turn of history) {
+    messages.push({ role: turn.role, content: turn.content });
+  }
+
   messages.push(
     {
       role: "user",
@@ -1290,6 +1299,62 @@ function createSupervisorMessages(
   );
 
   return messages;
+}
+
+interface SupervisorHistoryTurn {
+  readonly role: "user" | "assistant";
+  readonly content: string;
+}
+
+/**
+ * 回灌本会话历史：把同一 thread 中早于当前 run、已完成且有最终回复的轮次，按时间序拼成
+ * user(goal)→assistant(最终回复)。失败/无回复的轮次整轮跳过（避免出现孤立或连续同角色）。
+ * 全量回灌；超长会话的上下文压缩留作接近窗口上限时的后续项。
+ */
+function collectThreadHistory(
+  store: RuntimeStore,
+  run: Run,
+): SupervisorHistoryTurn[] {
+  const priorRuns = store
+    .getRunsByThread(run.threadId)
+    .filter(
+      (candidate) =>
+        candidate.id !== run.id &&
+        candidate.status === "completed" &&
+        candidate.createdAt <= run.createdAt,
+    )
+    .sort((a, b) => compareCreatedAt(a.createdAt, b.createdAt));
+
+  const history: SupervisorHistoryTurn[] = [];
+  for (const priorRun of priorRuns) {
+    const goal = priorRun.goal.trim();
+    const answer = readFinalSupervisorAnswer(store, priorRun.id);
+    if (goal.length === 0 || answer === null) continue;
+    history.push({ role: "user", content: goal });
+    history.push({ role: "assistant", content: answer });
+  }
+  return history;
+}
+
+function readFinalSupervisorAnswer(
+  store: RuntimeStore,
+  runId: EntityId,
+): string | null {
+  const answers = store
+    .getMessagesByRun(runId)
+    .filter(
+      (message) =>
+        message.role === "agent" &&
+        message.agent === "supervisor" &&
+        message.content.trim().length > 0,
+    )
+    .sort((a, b) => compareCreatedAt(a.createdAt, b.createdAt));
+  const last = answers.at(-1);
+  return last ? last.content : null;
+}
+
+function compareCreatedAt(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 type MultiAgentEventPass =
