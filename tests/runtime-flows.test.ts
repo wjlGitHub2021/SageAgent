@@ -1605,3 +1605,218 @@ function createIdFactory(): (prefix: string) => string {
     return `${prefix}-test-${index}`;
   };
 }
+
+const toolBranchConfig = {
+  apiKey: "sk-test",
+  baseUrl: "https://api.deepseek.com",
+  defaultModel: "deepseek-v4-flash" as const,
+  defaultReasoningEffort: "high" as const,
+  thinkingEnabled: true,
+};
+
+function seedQueuedRun(eventId: string) {
+  const store = createMemoryRuntimeStore(createEmptyRuntimeSnapshot());
+  store.upsertThread(thread);
+  store.appendEvent({
+    id: eventId,
+    runId: run.id,
+    type: "run.created",
+    sequence: 1,
+    createdAt,
+    payload: { run: { ...run, status: "queued", activeAgent: null } },
+  });
+  return store;
+}
+
+describe("supervisor MCP tool branch", () => {
+  it("runs model→tool→model and emits step + final answer when tools are configured", async () => {
+    const store = seedQueuedRun("event-run-created-for-tool-branch");
+
+    const providerCalls: {
+      readonly messages: readonly {
+        readonly role: string;
+        readonly content: string;
+        readonly toolCallId?: string;
+      }[];
+    }[] = [];
+    const toolLoopProvider: SupervisorProvider = async (_config, input) => {
+      // 快照消息：runMcpToolLoop 复用同一 transcript 引用并逐轮增长，直接存引用会读到最终态。
+      providerCalls.push({
+        messages: input.messages.map((message) => ({ ...message })),
+      });
+      if (providerCalls.length === 1) {
+        return {
+          ok: true,
+          value: {
+            id: "c1",
+            model: "deepseek-v4-flash",
+            choices: [
+              {
+                index: 0,
+                message: {
+                  role: "assistant",
+                  content: "",
+                  reasoningContent: "用 add 工具算一下",
+                  toolCalls: [
+                    {
+                      id: "call_1",
+                      name: "add",
+                      arguments: '{"a":17,"b":25}',
+                    },
+                  ],
+                },
+                finishReason: "tool_calls",
+              },
+            ],
+          },
+        };
+      }
+      return {
+        ok: true,
+        value: {
+          id: "c2",
+          model: "deepseek-v4-flash",
+          choices: [
+            {
+              index: 0,
+              message: {
+                role: "assistant",
+                content: "结果是 42。",
+                reasoningContent: null,
+                toolCalls: [],
+              },
+              finishReason: "stop",
+            },
+          ],
+        },
+      };
+    };
+
+    const mcpCalls: { url: string; name: string; args: unknown }[] = [];
+    const streamProvider: SupervisorStreamProvider = async function* () {
+      throw new Error("stream provider must not run when the tool branch handles the run");
+    };
+
+    const events: RunEvent[] = [];
+    for await (const event of streamSupervisorDeepSeekEvents({
+      store,
+      runId: run.id,
+      config: toolBranchConfig,
+      provider: streamProvider,
+      toolLoopProvider,
+      mcpServers: ["http://mcp.local"],
+      mcpListTools: async () => ({
+        ok: true,
+        serverName: "scratch",
+        tools: [
+          {
+            name: "add",
+            description: "加法",
+            inputSchema: {
+              type: "object",
+              properties: { a: { type: "number" }, b: { type: "number" } },
+              required: ["a", "b"],
+            },
+          },
+        ],
+      }),
+      mcpCall: async (url, name, args) => {
+        mcpCalls.push({ url, name, args });
+        return { ok: true, content: "17 + 25 = 42", isError: false };
+      },
+      now: createClock([
+        "2026-06-24T02:00:01.000Z",
+        "2026-06-24T02:00:02.000Z",
+        "2026-06-24T02:00:03.000Z",
+      ]),
+      createId: createIdFactory(),
+    })) {
+      events.push(event);
+    }
+
+    // 模型被调两次（请求工具 + 最终答复），工具按名路由到正确服务器并解析参数。
+    expect(providerCalls).toHaveLength(2);
+    expect(mcpCalls).toEqual([
+      { url: "http://mcp.local", name: "add", args: { a: 17, b: 25 } },
+    ]);
+    // 第二轮请求把 tool 结果回灌给模型。
+    const secondTurn = providerCalls[1]?.messages ?? [];
+    expect(secondTurn[secondTurn.length - 1]).toMatchObject({
+      role: "tool",
+      toolCallId: "call_1",
+      content: "17 + 25 = 42",
+    });
+
+    // 工具调用作为 step 事件可视化。
+    const toolStep = events.find(
+      (event): event is Extract<RunEvent, { type: "step.completed" }> =>
+        event.type === "step.completed" &&
+        event.payload.step.title === "调用工具 add",
+    );
+    expect(toolStep).toBeDefined();
+
+    // 最终答复非流式，一次性出 + run 完成。
+    const finalMessage = findSupervisorCompletedMessage(events);
+    expect(finalMessage?.payload.message.content).toBe("结果是 42。");
+    expect(events.some((event) => event.type === "run.completed")).toBe(true);
+    expect(store.getRun(run.id)).toMatchObject({ status: "completed" });
+  });
+
+  it("falls back to the streaming path when no tools are available", async () => {
+    const store = seedQueuedRun("event-run-created-for-tool-fallback");
+
+    let toolLoopProviderCalled = false;
+    let mcpCalled = false;
+    const streamProvider: SupervisorStreamProvider = async function* () {
+      yield {
+        ok: true,
+        value: {
+          type: "delta",
+          id: "s1",
+          model: "deepseek-v4-flash",
+          index: 0,
+          role: "assistant",
+          contentDelta: "流式答复",
+          reasoningDelta: null,
+          finishReason: null,
+        },
+      };
+      yield { ok: true, value: { type: "done" } };
+    };
+
+    const events: RunEvent[] = [];
+    for await (const event of streamSupervisorDeepSeekEvents({
+      store,
+      runId: run.id,
+      config: toolBranchConfig,
+      provider: streamProvider,
+      toolLoopProvider: async () => {
+        toolLoopProviderCalled = true;
+        return {
+          ok: false,
+          issue: { code: "invalid_response", message: "unused" },
+        };
+      },
+      mcpServers: ["http://mcp.local"],
+      // 列举失败：聚合不到工具 → 回退流式，不阻断对话。
+      mcpListTools: async () => ({ ok: false, error: "boom" }),
+      mcpCall: async () => {
+        mcpCalled = true;
+        return { ok: true, content: "x", isError: false };
+      },
+      now: createClock([
+        "2026-06-24T02:01:01.000Z",
+        "2026-06-24T02:01:02.000Z",
+      ]),
+      createId: createIdFactory(),
+    })) {
+      events.push(event);
+    }
+
+    expect(toolLoopProviderCalled).toBe(false);
+    expect(mcpCalled).toBe(false);
+    const finalMessage = findSupervisorCompletedMessage(events);
+    expect(finalMessage?.payload.message.content).toBe("流式答复");
+    expect(store.getRun(run.id)).toMatchObject({ status: "completed" });
+  });
+});

@@ -4871,6 +4871,32 @@ function normalizeOptionalMemoryId(value: string): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+// 读取设置里已配置的 MCP 服务器 URL 列表（localStorage，与 McpSettings 同键），
+// 在发起 supervisor run 时透传给服务端；解析失败/无配置返回空数组（走纯流式对话）。
+function readConfiguredMcpServerUrls(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem("sage.mcpServers");
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    if (!Array.isArray(parsed)) return [];
+    return Array.from(
+      new Set(
+        parsed
+          .filter(
+            (item): item is { url: string } =>
+              typeof item === "object" &&
+              item !== null &&
+              typeof (item as { url?: unknown }).url === "string",
+          )
+          .map((item) => item.url.trim())
+          .filter((url) => url.length > 0),
+      ),
+    );
+  } catch {
+    return [];
+  }
+}
+
 async function streamApiSupervisorRun(
   runId: string,
   signal: AbortSignal,
@@ -4881,7 +4907,7 @@ async function streamApiSupervisorRun(
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ mcpServers: readConfiguredMcpServerUrls() }),
     signal,
   });
 

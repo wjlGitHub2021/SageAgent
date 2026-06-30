@@ -13,7 +13,7 @@ import type {
   DeepSeekToolCall,
 } from "@sage/deepseek";
 
-import type { McpCallResult } from "./mcp-client.js";
+import type { McpCallResult, McpTool } from "./mcp-client.js";
 
 // 默认最多 8 轮 model↔tool 往返，避免模型反复请求工具导致死循环。
 export const DEFAULT_MAX_TOOL_ITERATIONS = 8;
@@ -30,12 +30,42 @@ export type ToolLoopCaller = (
   args: unknown,
 ) => Promise<McpCallResult>;
 
+// 单次工具调用的观测事件，供上层（如 supervisor）实时把工具调用呈现给 UI。
+export interface ToolLoopToolEvent {
+  readonly name: string;
+  // 模型给出的原始参数 JSON 字符串。
+  readonly arguments: string;
+  // 工具是否成功执行（参数解析失败 / 调用失败 / 工具自报错误均为 false）。
+  readonly ok: boolean;
+  // 回传给模型的结果文本（失败时为错误说明）。
+  readonly content: string;
+}
+
 export interface ToolLoopInput {
   readonly messages: readonly DeepSeekChatMessage[];
   readonly tools: readonly DeepSeekTool[];
   readonly provider: ToolLoopProvider;
   readonly mcpCaller: ToolLoopCaller;
   readonly maxIterations?: number;
+  // 每次工具调用执行后回调（同步）；用于观测/呈现，不影响循环控制流。
+  readonly onToolCall?: (event: ToolLoopToolEvent) => void;
+}
+
+// MCP inputSchema → OpenAI 兼容 function parameters。缺失/非对象时退回空对象 schema，
+// 让模型仍可无参调用，而不是把整次调用判错。供 /api/mcp/run 与 supervisor 工具分支复用。
+export function mcpToolToDeepSeekTool(tool: McpTool): DeepSeekTool {
+  const parameters =
+    typeof tool.inputSchema === "object" && tool.inputSchema !== null
+      ? (tool.inputSchema as Record<string, unknown>)
+      : { type: "object", properties: {} };
+  return {
+    type: "function",
+    function: {
+      name: tool.name,
+      ...(tool.description ? { description: tool.description } : {}),
+      parameters,
+    },
+  };
 }
 
 export type ToolLoopResult =
@@ -104,11 +134,17 @@ export async function runMcpToolLoop(
 
     for (const call of toolCalls) {
       toolCallCount += 1;
-      const toolContent = await executeToolCall(input.mcpCaller, call);
+      const outcome = await executeToolCall(input.mcpCaller, call);
+      input.onToolCall?.({
+        name: call.name,
+        arguments: call.arguments,
+        ok: outcome.ok,
+        content: outcome.content,
+      });
       transcript.push({
         role: "tool",
         toolCallId: call.id,
-        content: toolContent,
+        content: outcome.content,
       });
     }
   }
@@ -121,21 +157,24 @@ export async function runMcpToolLoop(
 }
 
 // 执行单个工具调用，并把结果（含失败/错误）归一化为可回传给模型的文本。
-// 失败不抛出，而是把错误文本作为 tool 结果回传，让模型据此恢复或说明。
+// 失败不抛出，而是把错误文本作为 tool 结果回传，让模型据此恢复或说明；
+// ok 标识本次是否真正成功（供 onToolCall 观测）。
 async function executeToolCall(
   mcpCaller: ToolLoopCaller,
   call: DeepSeekToolCall,
-): Promise<string> {
+): Promise<{ ok: boolean; content: string }> {
   const parsed = parseToolArguments(call.arguments);
   if (!parsed.ok) {
-    return `工具参数不是合法 JSON：${parsed.error}`;
+    return { ok: false, content: `工具参数不是合法 JSON：${parsed.error}` };
   }
 
   const result = await mcpCaller(call.name, parsed.value);
   if (!result.ok) {
-    return `工具执行失败：${result.error}`;
+    return { ok: false, content: `工具执行失败：${result.error}` };
   }
-  return result.isError ? `工具返回错误：${result.content}` : result.content;
+  return result.isError
+    ? { ok: false, content: `工具返回错误：${result.content}` }
+    : { ok: true, content: result.content };
 }
 
 function parseToolArguments(

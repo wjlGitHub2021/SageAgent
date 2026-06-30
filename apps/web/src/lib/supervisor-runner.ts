@@ -35,6 +35,14 @@ import type {
   ResearcherBrief,
   ReviewerReport,
 } from "@sage/agents";
+import { callMcpTool, listMcpTools, type McpTool } from "./mcp-client.js";
+import {
+  mcpToolToDeepSeekTool,
+  runMcpToolLoop,
+  type ToolLoopCaller,
+  type ToolLoopProvider,
+  type ToolLoopToolEvent,
+} from "./mcp-tool-loop.js";
 
 const SUPERVISOR_SYSTEM_PROMPT = [
   "You are Sage Agent Supervisor.",
@@ -129,6 +137,17 @@ export interface StreamSupervisorDeepSeekInput {
   readonly emitRunStartedEvent?: boolean;
   /** 客户端断开时由路由 abort，用于中止上游 DeepSeek 流并释放连接。 */
   readonly signal?: AbortSignal;
+  /**
+   * 本次对话启用的 MCP 服务器 URL 列表（来自前端 localStorage，经路由透传）。
+   * 非空且能聚合到工具时，走非流式工具循环分支；否则回退现有流式路径，零影响。
+   */
+  readonly mcpServers?: readonly string[];
+  /** 可注入：列出 MCP 工具（默认 listMcpTools），便于单测不触网。 */
+  readonly mcpListTools?: typeof listMcpTools;
+  /** 可注入：调用 MCP 工具（默认 callMcpTool）。 */
+  readonly mcpCall?: typeof callMcpTool;
+  /** 可注入：工具循环用的非流式 DeepSeek provider（默认 createDeepSeekChatCompletion）。 */
+  readonly toolLoopProvider?: SupervisorProvider;
 }
 
 export async function runSupervisorDeepSeekOnce({
@@ -315,6 +334,10 @@ export async function* streamSupervisorDeepSeekEvents({
   createId = defaultCreateId,
   emitRunStartedEvent = true,
   signal,
+  mcpServers = [],
+  mcpListTools = listMcpTools,
+  mcpCall = callMcpTool,
+  toolLoopProvider = createDeepSeekChatCompletion,
 }: StreamSupervisorDeepSeekInput): AsyncGenerator<RunEvent, SupervisorRunResult> {
   const run = store.getRun(runId);
   if (!run) {
@@ -357,19 +380,45 @@ export async function* streamSupervisorDeepSeekEvents({
   }
   for (const event of multiAgentPass.events) yield event;
 
+  const baseMessages = createSupervisorMessages(
+    run.goal,
+    fileContextPass.contexts,
+    multiAgentPass.supervisorContext,
+    memoryContextMessage,
+    skillContextMessage,
+  );
+
+  // 工具分支：仅当本次对话带 MCP 服务器、且能聚合到工具时走非流式工具循环；
+  // 否则（无配置 / 全部不可用 / 无工具）返回 null，回退到下方现有流式路径，零影响。
+  if (mcpServers.length > 0) {
+    const branchResult = yield* runSupervisorMcpToolBranch({
+      store,
+      run,
+      config,
+      baseMessages,
+      mcpServers,
+      mcpListTools,
+      mcpCall,
+      toolLoopProvider,
+      now,
+      createId,
+      signal,
+      priorEvents: [
+        ...(startEvent ? [startEvent] : []),
+        ...fileContextPass.events,
+        ...multiAgentPass.events,
+      ],
+    });
+    if (branchResult) return branchResult;
+  }
+
   const messageId = createId("message");
   const chunks: string[] = [];
   const reasoningChunks: string[] = [];
   let capturedUsage: RunUsage | null = null;
 
   for await (const result of provider(config, {
-    messages: createSupervisorMessages(
-      run.goal,
-      fileContextPass.contexts,
-      multiAgentPass.supervisorContext,
-      memoryContextMessage,
-      skillContextMessage,
-    ),
+    messages: baseMessages,
     model: run.settings.model,
     thinkingEnabled: run.settings.thinkingEnabled,
     reasoningEffort: run.settings.reasoningEffort,
@@ -511,6 +560,229 @@ export async function* streamSupervisorDeepSeekEvents({
     message,
     events: store.getEventsByRun(run.id),
   };
+}
+
+interface SupervisorMcpToolBranchInput {
+  readonly store: RuntimeStore;
+  readonly run: Run;
+  readonly config: DeepSeekProviderConfig;
+  readonly baseMessages: DeepSeekChatCompletionInput["messages"];
+  readonly mcpServers: readonly string[];
+  readonly mcpListTools: typeof listMcpTools;
+  readonly mcpCall: typeof callMcpTool;
+  readonly toolLoopProvider: SupervisorProvider;
+  readonly now: Clock;
+  readonly createId: IdFactory;
+  readonly signal?: AbortSignal;
+  readonly priorEvents: readonly RunEvent[];
+}
+
+/**
+ * 工具分支：聚合所有启用服务器的工具 → 非流式工具循环（model→tool→model）→ 把每次工具
+ * 调用作为 step 事件、最终答复作为 message/run.completed 落库并下发。
+ * 返回 null 表示"未处理"（无可用工具），调用方据此回退到流式路径，不阻断对话。
+ */
+async function* runSupervisorMcpToolBranch({
+  store,
+  run,
+  config,
+  baseMessages,
+  mcpServers,
+  mcpListTools,
+  mcpCall,
+  toolLoopProvider,
+  now,
+  createId,
+  signal,
+  priorEvents,
+}: SupervisorMcpToolBranchInput): AsyncGenerator<RunEvent, SupervisorRunResult | null> {
+  // 1. 聚合工具：按名去重，记录 toolName→serverUrl（同名后者覆盖）。某服务器列举失败时跳过。
+  const toolByName = new Map<string, McpTool>();
+  const serverByTool = new Map<string, string>();
+  for (const url of mcpServers) {
+    const listed = await mcpListTools(url, { signal });
+    if (!listed.ok) continue;
+    for (const tool of listed.tools) {
+      toolByName.set(tool.name, tool);
+      serverByTool.set(tool.name, url);
+    }
+  }
+  // 无可用工具：回退流式路径。
+  if (toolByName.size === 0) return null;
+
+  const tools = Array.from(toolByName.values()).map(mcpToolToDeepSeekTool);
+
+  // 2. 适配 provider（非流式 completion，带 run 设置与 tools）与 caller（按工具名路由到服务器）。
+  const provider: ToolLoopProvider = (messages, loopTools) =>
+    toolLoopProvider(config, {
+      messages,
+      model: run.settings.model,
+      thinkingEnabled: run.settings.thinkingEnabled,
+      reasoningEffort: run.settings.reasoningEffort,
+      tools: loopTools,
+    });
+
+  const mcpCaller: ToolLoopCaller = (toolName, args) => {
+    const url = serverByTool.get(toolName);
+    if (!url) {
+      return Promise.resolve({
+        ok: false,
+        error: `unknown_tool: ${toolName}`,
+      });
+    }
+    return mcpCall(url, toolName, args, { signal });
+  };
+
+  const toolEvents: ToolLoopToolEvent[] = [];
+  const loop = await runMcpToolLoop({
+    messages: baseMessages,
+    tools,
+    provider,
+    mcpCaller,
+    onToolCall: (event) => toolEvents.push(event),
+  });
+
+  // 3. 工具调用可视化：每次调用作为一个 step 事件（非流式：循环结束后统一下发）。
+  for (const event of toolEvents) {
+    const stepAt = now();
+    const step = createStep({
+      id: createId("step"),
+      runId: run.id,
+      agent: "supervisor",
+      title: `调用工具 ${event.name}`,
+      status: event.ok ? "completed" : "failed",
+      startedAt: stepAt,
+      completedAt: stepAt,
+      input: { arguments: event.arguments },
+      output: { ok: event.ok, result: truncateForToolResult(event.content) },
+    });
+    const stepEvent = createStepEvent(
+      event.ok ? "step.completed" : "step.failed",
+      step,
+      createId,
+      nextRunSequence(store, run.id),
+    );
+    store.appendEvent(stepEvent);
+    yield stepEvent;
+  }
+
+  // 4. 循环失败 / 空答复：按 provider 失败处理。
+  if (!loop.ok) {
+    return yield* emitToolBranchFailure({
+      store,
+      run,
+      safeMessage: sanitizeSafeMessage(`tool_loop_error: ${loop.error}`),
+      now,
+      createId,
+      priorEvents,
+    });
+  }
+  if (loop.content.trim().length === 0) {
+    return yield* emitToolBranchFailure({
+      store,
+      run,
+      safeMessage: formatSafeProviderIssue({
+        code: "invalid_response",
+        message: "DeepSeek tool loop did not include assistant content.",
+      }),
+      now,
+      createId,
+      priorEvents,
+    });
+  }
+
+  // 5. 最终答复：非流式，一次性 message.delta + message.completed + run.completed。
+  const content = loop.content;
+  const completedAt = now();
+  const messageId = createId("message");
+  const message: Message = {
+    id: messageId,
+    threadId: run.threadId,
+    runId: run.id,
+    role: "agent",
+    agent: "supervisor",
+    content,
+    createdAt: completedAt,
+  };
+  const completedRun: Run = {
+    ...run,
+    status: "completed",
+    activeAgent: null,
+    updatedAt: completedAt,
+    completedAt,
+  };
+  const firstSequence = nextRunSequence(store, run.id);
+  const finalEvents: RunEvent[] = [
+    {
+      id: createId("event"),
+      runId: run.id,
+      type: "message.delta",
+      sequence: firstSequence,
+      createdAt: completedAt,
+      payload: {
+        messageId,
+        role: "agent",
+        agent: "supervisor",
+        delta: content,
+      },
+    },
+    {
+      id: createId("event"),
+      runId: run.id,
+      type: "message.completed",
+      sequence: firstSequence + 1,
+      createdAt: completedAt,
+      payload: { message },
+    },
+    {
+      id: createId("event"),
+      runId: run.id,
+      type: "run.completed",
+      sequence: firstSequence + 2,
+      createdAt: completedAt,
+      payload: { run: completedRun },
+    },
+  ];
+  for (const event of finalEvents) {
+    store.appendEvent(event);
+    yield event;
+  }
+
+  return {
+    ok: true,
+    run: completedRun,
+    message,
+    events: store.getEventsByRun(run.id),
+  };
+}
+
+// 工具分支内的失败收尾：落库 run.failed 并下发，返回 SupervisorRunResult。
+async function* emitToolBranchFailure({
+  store,
+  run,
+  safeMessage,
+  now,
+  createId,
+  priorEvents,
+}: {
+  readonly store: RuntimeStore;
+  readonly run: Run;
+  readonly safeMessage: string;
+  readonly now: Clock;
+  readonly createId: IdFactory;
+  readonly priorEvents: readonly RunEvent[];
+}): AsyncGenerator<RunEvent, SupervisorRunResult> {
+  const failure = appendSupervisorFailure({
+    store,
+    runId: run.id,
+    safeMessage,
+    now,
+    createId,
+    alreadyAppendedEvents: [...priorEvents],
+  });
+  const failedEvent = failure.events.at(-1);
+  if (failedEvent) yield failedEvent;
+  return { ...failure, events: store.getEventsByRun(run.id) };
 }
 
 export function appendSupervisorFailureEvent({

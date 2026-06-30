@@ -22,8 +22,9 @@ type RouteContext = {
   }>;
 };
 
-export async function POST(_request: Request, context: RouteContext) {
+export async function POST(request: Request, context: RouteContext) {
   const { runId } = await context.params;
+  const mcpServers = await readMcpServersFromRequest(request);
   const store = getRuntimeStore();
   const telemetry = getTelemetryLogger();
   const run = store.getRun(runId);
@@ -184,6 +185,7 @@ export async function POST(_request: Request, context: RouteContext) {
           skillContextMessage,
           emitRunStartedEvent: false,
           signal: abortController.signal,
+          mcpServers,
         });
         for await (const event of stream) {
           eventCount += 1;
@@ -261,6 +263,26 @@ export async function POST(_request: Request, context: RouteContext) {
     status: 201,
     headers: runEventStreamHeaders(),
   });
+}
+
+// 从请求体读取本次对话启用的 MCP 服务器 URL 列表（前端透传）。容错：解析失败/缺失即视为无。
+async function readMcpServersFromRequest(request: Request): Promise<string[]> {
+  try {
+    const body: unknown = await request.json();
+    if (typeof body !== "object" || body === null) return [];
+    const raw = (body as { mcpServers?: unknown }).mcpServers;
+    if (!Array.isArray(raw)) return [];
+    return Array.from(
+      new Set(
+        raw
+          .filter((url): url is string => typeof url === "string")
+          .map((url) => url.trim())
+          .filter((url) => url.length > 0),
+      ),
+    );
+  } catch {
+    return [];
+  }
 }
 
 function jsonError(code: string, message: string, status: number) {

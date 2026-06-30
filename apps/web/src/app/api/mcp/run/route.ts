@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import {
   createDeepSeekChatCompletion,
   loadDeepSeekProviderConfig,
-  type DeepSeekTool,
 } from "@sage/deepseek";
-import { callMcpTool, listMcpTools, type McpTool } from "@/lib/mcp-client";
+import { callMcpTool, listMcpTools } from "@/lib/mcp-client";
 import {
+  mcpToolToDeepSeekTool,
   runMcpToolLoop,
   type ToolLoopCaller,
   type ToolLoopProvider,
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "no_tools" });
   }
 
-  const tools = toolsResult.tools.map(toDeepSeekTool);
+  const tools = toolsResult.tools.map(mcpToolToDeepSeekTool);
 
   const provider: ToolLoopProvider = (messages, providerTools) =>
     createDeepSeekChatCompletion(configResult.config, {
@@ -92,23 +92,6 @@ export async function POST(request: Request) {
     toolCalls: result.toolCalls,
     toolNames: toolsResult.tools.map((tool) => tool.name),
   });
-}
-
-// MCP inputSchema → OpenAI 兼容 function parameters。缺失/非对象时退回空对象 schema，
-// 让模型仍可无参调用，而不是把整次试运行判错。
-function toDeepSeekTool(tool: McpTool): DeepSeekTool {
-  const parameters =
-    typeof tool.inputSchema === "object" && tool.inputSchema !== null
-      ? (tool.inputSchema as Record<string, unknown>)
-      : { type: "object", properties: {} };
-  return {
-    type: "function",
-    function: {
-      name: tool.name,
-      ...(tool.description ? { description: tool.description } : {}),
-      parameters,
-    },
-  };
 }
 
 function readField(body: unknown, key: string): string | null {
