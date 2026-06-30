@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { listMcpTools } from "../apps/web/src/lib/mcp-client";
+import { callMcpTool, listMcpTools } from "../apps/web/src/lib/mcp-client";
 
 type FakeResponseInit = {
   status?: number;
@@ -127,6 +127,77 @@ describe("MCP client", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error).toContain("http_error: 500");
+  });
+
+  it("calls a tool and returns its text content", async () => {
+    let calledParams: unknown = null;
+    const fetchImpl = async (_url: string, requestInit?: RequestInit) => {
+      const message = JSON.parse(String(requestInit?.body));
+      if (message.method === "initialize") {
+        return fakeResponse({
+          sessionId: "s",
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, result: {} }),
+        });
+      }
+      if (message.method === "notifications/initialized") {
+        return fakeResponse({ status: 202, body: "" });
+      }
+      calledParams = message.params;
+      return fakeResponse({
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          result: {
+            content: [{ type: "text", text: "Sunny, 22°C" }],
+            isError: false,
+          },
+        }),
+      });
+    };
+
+    const result = await callMcpTool(
+      "https://mcp.example.com/mcp",
+      "get_weather",
+      { city: "SF" },
+      { fetchImpl },
+    );
+
+    expect(calledParams).toEqual({
+      name: "get_weather",
+      arguments: { city: "SF" },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.content).toBe("Sunny, 22°C");
+    expect(result.isError).toBe(false);
+  });
+
+  it("surfaces tool call errors", async () => {
+    const fetchImpl = async (_url: string, requestInit?: RequestInit) => {
+      const message = JSON.parse(String(requestInit?.body));
+      if (message.method === "initialize") {
+        return fakeResponse({
+          sessionId: "s",
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, result: {} }),
+        });
+      }
+      if (message.method === "notifications/initialized") {
+        return fakeResponse({ status: 202, body: "" });
+      }
+      return fakeResponse({
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          error: { code: -32602, message: "Unknown tool" },
+        }),
+      });
+    };
+    const result = await callMcpTool("https://mcp.example.com/mcp", "nope", {}, {
+      fetchImpl,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain("Unknown tool");
   });
 
   it("surfaces JSON-RPC errors from tools/list", async () => {

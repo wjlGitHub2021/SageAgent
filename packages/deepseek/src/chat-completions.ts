@@ -18,11 +18,29 @@ export interface DeepSeekChatMessage {
   readonly content: string;
 }
 
+// OpenAI 兼容的工具/函数定义（function calling）。
+export interface DeepSeekTool {
+  readonly type: "function";
+  readonly function: {
+    readonly name: string;
+    readonly description?: string;
+    readonly parameters: Record<string, unknown>;
+  };
+}
+
+// 模型请求调用某工具时回传的结构；arguments 为模型给出的原始 JSON 字符串。
+export interface DeepSeekToolCall {
+  readonly id: string;
+  readonly name: string;
+  readonly arguments: string;
+}
+
 export interface DeepSeekChatCompletionInput {
   readonly messages: readonly DeepSeekChatMessage[];
   readonly model?: DeepSeekModel;
   readonly thinkingEnabled?: boolean;
   readonly reasoningEffort?: ReasoningEffort;
+  readonly tools?: readonly DeepSeekTool[];
 }
 
 export interface DeepSeekChatCompletionRequestBody {
@@ -34,6 +52,7 @@ export interface DeepSeekChatCompletionRequestBody {
     readonly type: "enabled" | "disabled";
   };
   readonly reasoning_effort: ReasoningEffort;
+  readonly tools?: readonly DeepSeekTool[];
 }
 
 export interface DeepSeekPreparedChatCompletionRequest {
@@ -55,6 +74,7 @@ export interface DeepSeekChatCompletionChoice {
     readonly role: "assistant";
     readonly content: string;
     readonly reasoningContent: string | null;
+    readonly toolCalls: readonly DeepSeekToolCall[];
   };
   readonly finishReason: string | null;
 }
@@ -172,6 +192,7 @@ function prepareDeepSeekChatCompletionRequest(
         : "disabled",
     },
     reasoning_effort: input.reasoningEffort ?? config.defaultReasoningEffort,
+    ...(input.tools && input.tools.length > 0 ? { tools: input.tools } : {}),
   };
 
   return {
@@ -335,6 +356,7 @@ export function parseDeepSeekChatCompletionResponse(
         role: "assistant",
         content,
         reasoningContent: readOptionalString(message.reasoning_content),
+        toolCalls: readToolCalls(message.tool_calls),
       },
       finishReason: readOptionalString(rawChoice.finish_reason),
     });
@@ -676,6 +698,28 @@ function readOptionalString(value: unknown): string | null {
 
 function readNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readToolCalls(raw: unknown): DeepSeekToolCall[] {
+  if (!Array.isArray(raw)) return [];
+  const calls: DeepSeekToolCall[] = [];
+  for (const item of raw) {
+    if (!isRecord(item)) continue;
+    const fn = item.function;
+    const id = readOptionalString(item.id);
+    if (!id || !isRecord(fn)) continue;
+    const name = readOptionalString(fn.name);
+    if (!name) continue;
+    calls.push({
+      id,
+      name,
+      arguments:
+        typeof fn.arguments === "string"
+          ? fn.arguments
+          : JSON.stringify(fn.arguments ?? {}),
+    });
+  }
+  return calls;
 }
 
 function isDeepSeekChatRole(value: string | null): value is DeepSeekChatRole {

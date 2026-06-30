@@ -82,6 +82,85 @@ export async function listMcpTools(
   }
 }
 
+export type McpCallResult =
+  | { readonly ok: true; readonly content: string; readonly isError: boolean }
+  | { readonly ok: false; readonly error: string };
+
+// 调用单个 MCP 工具：initialize → notifications/initialized → tools/call。
+export async function callMcpTool(
+  rawUrl: string,
+  toolName: string,
+  args: unknown,
+  options: { fetchImpl?: FetchLike; signal?: AbortSignal } = {},
+): Promise<McpCallResult> {
+  const fetchImpl = options.fetchImpl ?? (fetch as FetchLike);
+  const url = normalizeMcpUrl(rawUrl);
+  if (!url) {
+    return { ok: false, error: "invalid_url: 仅支持 http(s) 的 MCP 端点。" };
+  }
+  try {
+    const init = await mcpRpc(
+      fetchImpl,
+      url,
+      null,
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: MCP_PROTOCOL_VERSION,
+          capabilities: {},
+          clientInfo: { name: "sage-agent", version: "0.1.0" },
+        },
+      },
+      options.signal,
+    );
+    if (!init.ok) return init;
+
+    await mcpNotify(
+      fetchImpl,
+      url,
+      init.sessionId,
+      { jsonrpc: "2.0", method: "notifications/initialized" },
+      options.signal,
+    );
+
+    const call = await mcpRpc(
+      fetchImpl,
+      url,
+      init.sessionId,
+      {
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: toolName, arguments: args ?? {} },
+      },
+      options.signal,
+    );
+    if (!call.ok) return call;
+
+    return {
+      ok: true,
+      content: readToolCallContent(call.result),
+      isError: isPlainRecord(call.result) && call.result.isError === true,
+    };
+  } catch (error) {
+    return { ok: false, error: `request_failed: ${errorMessage(error)}` };
+  }
+}
+
+function readToolCallContent(result: unknown): string {
+  if (isPlainRecord(result) && Array.isArray(result.content)) {
+    const parts = result.content.map((part) =>
+      isPlainRecord(part) && part.type === "text" && typeof part.text === "string"
+        ? part.text
+        : JSON.stringify(part),
+    );
+    return parts.join("\n");
+  }
+  return result === null || result === undefined ? "" : JSON.stringify(result);
+}
+
 async function mcpRpc(
   fetchImpl: FetchLike,
   url: string,

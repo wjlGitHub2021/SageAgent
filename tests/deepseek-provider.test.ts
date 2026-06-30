@@ -118,6 +118,77 @@ describe("DeepSeek provider", () => {
     });
   });
 
+  it("sends tools and parses tool_calls from the response", async () => {
+    const tools = [
+      {
+        type: "function" as const,
+        function: {
+          name: "get_weather",
+          description: "Get weather for a city",
+          parameters: {
+            type: "object",
+            properties: { city: { type: "string" } },
+            required: ["city"],
+          },
+        },
+      },
+    ];
+
+    const result = await createDeepSeekChatCompletion(
+      {
+        apiKey: "sk-test",
+        baseUrl: "https://api.deepseek.com",
+        defaultModel: "deepseek-v4-flash",
+        defaultReasoningEffort: "high",
+        thinkingEnabled: true,
+      },
+      {
+        messages: [{ role: "user", content: "weather in SF?" }],
+        model: "deepseek-v4-flash",
+        tools,
+      },
+      async (_url, init) => {
+        expect(JSON.parse(init.body).tools).toEqual(tools);
+        return {
+          ok: true,
+          status: 200,
+          async json() {
+            return {
+              id: "x",
+              model: "deepseek-v4-flash",
+              choices: [
+                {
+                  index: 0,
+                  message: {
+                    content: "",
+                    tool_calls: [
+                      {
+                        id: "call_1",
+                        type: "function",
+                        function: {
+                          name: "get_weather",
+                          arguments: '{"city":"SF"}',
+                        },
+                      },
+                    ],
+                  },
+                  finish_reason: "tool_calls",
+                },
+              ],
+            };
+          },
+        };
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.choices[0]?.message.toolCalls).toEqual([
+      { id: "call_1", name: "get_weather", arguments: '{"city":"SF"}' },
+    ]);
+    expect(result.value.choices[0]?.finishReason).toBe("tool_calls");
+  });
+
   it("parses responses and streaming data defensively", () => {
     expect(parseDeepSeekChatCompletionResponse({ choices: [] })).toEqual({
       ok: true,
