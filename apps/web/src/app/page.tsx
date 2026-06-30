@@ -171,6 +171,7 @@ const copy = {
     pinned: "已置顶",
     pinHint: "Shift+单击对话以置顶",
     unpin: "取消置顶（Shift+单击）",
+    approvalInThread: "请在会话中批准或拒绝",
     settings: "设置",
     openSettings: "打开设置",
     closeSettings: "关闭设置",
@@ -494,6 +495,7 @@ const copy = {
     pinned: "Pinned",
     pinHint: "Shift+click a conversation to pin",
     unpin: "Unpin (Shift+click)",
+    approvalInThread: "Approve or reject in the conversation",
     settings: "Settings",
     openSettings: "Open settings",
     closeSettings: "Close settings",
@@ -1478,9 +1480,12 @@ function getBlockedPathPolicyDetail(t: (typeof copy)[Locale]): string {
   return `${t.blockedPathPolicyDetail} ${READ_PROJECT_FILE_BLOCKED_PATHS.join(", ")}`;
 }
 
-// 各模型的上下文窗口（token）。deepseek-v4-flash 为演示模型，按配置值给定，可调整。
+const PINNED_RUNS_STORAGE_KEY = "sage.pinnedRuns";
+
+// 各模型的上下文窗口（token）。deepseek-v4 系列为演示模型，按配置值给定，可调整。
 const MODEL_CONTEXT_WINDOW: Record<string, number> = {
   "deepseek-v4-flash": 128000,
+  "deepseek-v4-pro": 256000,
 };
 const DEFAULT_CONTEXT_WINDOW = 128000;
 
@@ -1523,6 +1528,7 @@ export default function Home() {
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [conversationQuery, setConversationQuery] = useState("");
   const [pinnedRunIds, setPinnedRunIds] = useState<string[]>([]);
+  const [hasLoadedPinnedRuns, setHasLoadedPinnedRuns] = useState(false);
 
   function toggleRunPin(runId: string) {
     setPinnedRunIds((ids) =>
@@ -1596,6 +1602,32 @@ export default function Home() {
       writeStoredPreferences(window.localStorage, preferences);
     }
   }, [hasLoadedStoredPreferences, preferences]);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      try {
+        const raw = window.localStorage.getItem(PINNED_RUNS_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : null;
+        if (Array.isArray(parsed)) {
+          setPinnedRunIds(
+            parsed.filter((id): id is string => typeof id === "string"),
+          );
+        }
+      } catch {
+        // 忽略损坏的本地存储，按未置顶处理。
+      }
+      setHasLoadedPinnedRuns(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (hasLoadedPinnedRuns) {
+      window.localStorage.setItem(
+        PINNED_RUNS_STORAGE_KEY,
+        JSON.stringify(pinnedRunIds),
+      );
+    }
+  }, [hasLoadedPinnedRuns, pinnedRunIds]);
 
   useDialogFocusTrap(isSettingsOpen, settingsDialogRef, closeSettings);
   useDialogFocusTrap(isMemoryEditorOpen, memoryDialogRef, closeMemoryEditor);
@@ -3017,20 +3049,11 @@ export default function Home() {
                   {t.status}: {activeApproval.approval.status}
                 </small>
                 <small>{activeApproval.approval.payloadSummary}</small>
-                <div className="approval-actions">
-                  <button
-                    disabled={activeApproval.approval.status !== "pending"}
-                    onClick={() => handleApprovalResolution("approved")}
-                  >
-                    {t.approve}
-                  </button>
-                  <button
-                    disabled={activeApproval.approval.status !== "pending"}
-                    onClick={() => handleApprovalResolution("rejected")}
-                  >
-                    {t.reject}
-                  </button>
-                </div>
+                {activeApproval.approval.status === "pending" ? (
+                  <small className="approval-inline-note">
+                    {t.approvalInThread}
+                  </small>
+                ) : null}
               </div>
             ) : (
               <div className="stack">

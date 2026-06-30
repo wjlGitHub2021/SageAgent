@@ -409,6 +409,11 @@ code {
   align-self: stretch;
 }
 
+.approval-inline-note {
+  color: var(--accent-deep);
+  font-weight: 600;
+}
+
 .composer-input {
   min-height: 84px;
   width: 100%;
