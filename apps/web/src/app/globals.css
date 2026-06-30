@@ -1303,6 +1303,51 @@ code {
   overflow-y: auto;
 }
 
+.archived-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.archived-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel-muted);
+}
+
+.archived-row-body {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 9px;
+}
+
+.archived-row-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.archived-row-title {
+  color: var(--text-main);
+  font-size: 13.5px;
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.archived-row-meta {
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
 .settings-dialog-header {
   display: flex;
   min-width: 0;
@@ -2489,7 +2534,7 @@ code {
   opacity: 1;
 }
 
-.side-run-wrap.pinned .side-run-pin,
+.side-run-wrap.pinned .side-run-pin:not(.side-run-archive),
 .side-run-pin:hover {
   color: var(--accent-deep);
 }

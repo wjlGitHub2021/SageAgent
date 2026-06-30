@@ -206,7 +206,14 @@ const copy = {
     navMemory: "记忆与上下文",
     navProviders: "提供方",
     navTools: "工具与密钥",
+    navArchived: "已归档对话",
     navAbout: "关于",
+    archiveAction: "归档",
+    unarchiveAction: "恢复",
+    archivedTitle: "已归档对话",
+    archivedDetail: "归档的对话会从左侧列表移除，可在此恢复。",
+    archivedEmpty: "暂无归档对话",
+    archivedEmptyDetail: "在左侧对话行悬停，点归档图标即可归档。",
     toolsKeysTitle: "工具与密钥",
     toolsKeysWebDetail:
       "Web 端的 API key 由后端 .env 管理（DEEPSEEK_API_KEY），不在界面填写；桌面端可用系统钥匙串存取。",
@@ -570,7 +577,16 @@ const copy = {
     navMemory: "Memory & Context",
     navProviders: "Providers",
     navTools: "Tools & Keys",
+    navArchived: "Archived",
     navAbout: "About",
+    archiveAction: "Archive",
+    unarchiveAction: "Restore",
+    archivedTitle: "Archived conversations",
+    archivedDetail:
+      "Archived conversations are removed from the left list and can be restored here.",
+    archivedEmpty: "No archived conversations",
+    archivedEmptyDetail:
+      "Hover a conversation row on the left and click the archive icon.",
     toolsKeysTitle: "Tools & Keys",
     toolsKeysWebDetail:
       "On web the API key is managed by the backend .env (DEEPSEEK_API_KEY), not entered in the UI. The desktop app can store it in the OS keychain.",
@@ -1569,6 +1585,7 @@ function getBlockedPathPolicyDetail(t: (typeof copy)[Locale]): string {
 }
 
 const PINNED_RUNS_STORAGE_KEY = "sage.pinnedRuns";
+const ARCHIVED_RUNS_STORAGE_KEY = "sage.archivedRuns";
 
 // Electron 预加载注入的安全桥（仅桌面端存在）。Web 端为 null。
 type DesktopBridge = {
@@ -1640,11 +1657,21 @@ export default function Home() {
   const [conversationQuery, setConversationQuery] = useState("");
   const [pinnedRunIds, setPinnedRunIds] = useState<string[]>([]);
   const [hasLoadedPinnedRuns, setHasLoadedPinnedRuns] = useState(false);
+  const [archivedRunIds, setArchivedRunIds] = useState<string[]>([]);
+  const [hasLoadedArchivedRuns, setHasLoadedArchivedRuns] = useState(false);
 
   function toggleRunPin(runId: string) {
     setPinnedRunIds((ids) =>
       ids.includes(runId) ? ids.filter((id) => id !== runId) : [...ids, runId],
     );
+  }
+
+  function toggleRunArchive(runId: string) {
+    setArchivedRunIds((ids) =>
+      ids.includes(runId) ? ids.filter((id) => id !== runId) : [...ids, runId],
+    );
+    // 归档时一并取消置顶，避免归档项还占着已置顶区。
+    setPinnedRunIds((ids) => ids.filter((id) => id !== runId));
   }
 
   const [desktopBridge, setDesktopBridge] = useState<DesktopBridge | null>(null);
@@ -1788,6 +1815,32 @@ export default function Home() {
       );
     }
   }, [hasLoadedPinnedRuns, pinnedRunIds]);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      try {
+        const raw = window.localStorage.getItem(ARCHIVED_RUNS_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : null;
+        if (Array.isArray(parsed)) {
+          setArchivedRunIds(
+            parsed.filter((id): id is string => typeof id === "string"),
+          );
+        }
+      } catch {
+        // 忽略损坏的本地存储，按未归档处理。
+      }
+      setHasLoadedArchivedRuns(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (hasLoadedArchivedRuns) {
+      window.localStorage.setItem(
+        ARCHIVED_RUNS_STORAGE_KEY,
+        JSON.stringify(archivedRunIds),
+      );
+    }
+  }, [hasLoadedArchivedRuns, archivedRunIds]);
 
   useDialogFocusTrap(isSettingsOpen, settingsDialogRef, closeSettings);
   useDialogFocusTrap(isMemoryEditorOpen, memoryDialogRef, closeMemoryEditor);
@@ -2162,9 +2215,17 @@ export default function Home() {
     { key: "memory", label: t.tabMemory },
     { key: "skills", label: t.tabSkills },
   ];
-  const pinnedRuns = filteredRuns.filter((run) => pinnedRunIds.includes(run.id));
+  const pinnedRuns = filteredRuns.filter(
+    (run) =>
+      pinnedRunIds.includes(run.id) && !archivedRunIds.includes(run.id),
+  );
   const unpinnedRuns = filteredRuns.filter(
-    (run) => !pinnedRunIds.includes(run.id),
+    (run) =>
+      !pinnedRunIds.includes(run.id) && !archivedRunIds.includes(run.id),
+  );
+  // 已归档列表用于设置里的「已归档对话」分类（不受会话搜索影响）。
+  const archivedRuns = runItems.filter((run) =>
+    archivedRunIds.includes(run.id),
   );
 
   const renderRunRow = (run: RunItem) => {
@@ -2223,6 +2284,32 @@ export default function Home() {
           >
             <path d="M12 17v5" />
             <path d="M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.8a2 2 0 0 0-1.1-1.8l-1.8-.9A2 2 0 0 1 15 10.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+          </svg>
+        </button>
+        <button
+          aria-label={t.archiveAction}
+          className="side-run-pin side-run-archive"
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleRunArchive(run.id);
+          }}
+          title={t.archiveAction}
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            fill="none"
+            height="13"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.6"
+            viewBox="0 0 24 24"
+            width="13"
+          >
+            <rect x="3" y="4" width="18" height="4" rx="1" />
+            <path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" />
+            <path d="M10 12h4" />
           </svg>
         </button>
       </div>
@@ -4151,6 +4238,45 @@ export default function Home() {
                     </small>
                   </article>
                 </>
+              ) : null}
+              {settingsTab === "archived" ? (
+                <article className="settings-card">
+                  <div>
+                    <p>{t.archivedTitle}</p>
+                    <small>{t.archivedDetail}</small>
+                  </div>
+                  {archivedRuns.length === 0 ? (
+                    <StateBlock
+                      title={t.archivedEmpty}
+                      detail={t.archivedEmptyDetail}
+                    />
+                  ) : (
+                    <div className="archived-list">
+                      {archivedRuns.map((run) => (
+                        <div className="archived-row" key={run.id}>
+                          <div className="archived-row-body">
+                            <StatusDot status={run.status} />
+                            <div className="archived-row-text">
+                              <span className="archived-row-title">
+                                {run.title[locale]}
+                              </span>
+                              <span className="archived-row-meta">
+                                {formatRunStatusLabel(run.status, t)} · {run.time}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            className="ghost-button"
+                            onClick={() => toggleRunArchive(run.id)}
+                            type="button"
+                          >
+                            {t.unarchiveAction}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </article>
               ) : null}
               {settingsTab === "about" ? (
                 <article className="settings-card">

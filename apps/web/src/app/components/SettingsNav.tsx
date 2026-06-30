@@ -22,6 +22,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       { key: "providers", labelKey: "navProviders" },
       { key: "tools", labelKey: "navTools" },
+      { key: "archived", labelKey: "navArchived" },
     ],
   },
   {
@@ -78,6 +79,13 @@ function Icon({ name }: { name: string }) {
     providers: <path d="M13 2 4 14h7l-1 8 9-12h-7z" />,
     tools: (
       <path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L4 17v3h3l5.3-5.3a4 4 0 0 0 5.4-5.4l-2.7 2.7-2-2z" />
+    ),
+    archived: (
+      <>
+        <rect x="3" y="4" width="18" height="4" rx="1" />
+        <path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" />
+        <path d="M10 12h4" />
+      </>
     ),
     about: (
       <>
