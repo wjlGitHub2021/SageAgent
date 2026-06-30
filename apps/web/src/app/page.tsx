@@ -25,7 +25,6 @@ import type {
 import { MEMORY_SCOPES, SKILL_SOURCES } from "@sage/shared";
 import {
   ALLOWED_MODELS,
-  ALLOWED_REASONING_EFFORTS,
   DEFAULT_PREFERENCES,
   type Locale,
   type Preferences,
@@ -205,10 +204,10 @@ const copy = {
     currentConfiguration: "当前配置",
     displayLanguage: "显示语言",
     defaultModel: "默认模型",
-    thinkingEnabledSetting: "Thinking 开关",
+    modelReasoningHint: "选择 deepseek-reasoner 时，回答上方会展示模型的思考过程。",
     generalSettingsDetail: "界面语言会作为非敏感偏好保存在本地浏览器。",
     providerSettingsDetail:
-      "当前默认 Provider 是 DeepSeek；模型、thinking 和推理强度作为非敏感偏好持久化，API key 只从后端安全状态读取。",
+      "当前默认 Provider 是 DeepSeek；模型作为非敏感偏好持久化，API key 只从后端安全状态读取。",
     providerRegistry: "Provider registry",
     providerRegistryDetail:
       "V2.4 先把 provider、状态和 fallback 统一成共享对象；自动 fallback 需要第二个已审批 provider 后再开启。",
@@ -259,8 +258,6 @@ const copy = {
     apiKeyMissing: "未配置",
     baseUrl: "Base URL",
     providerDefaultModel: "Provider 默认模型",
-    providerThinking: "Provider Thinking",
-    providerReasoningEffort: "Provider 推理强度",
     providerConfigValid: "有效",
     providerConfigInvalid: "无效",
     providerIssues: "配置问题",
@@ -314,10 +311,8 @@ const copy = {
     currentRun: "当前任务",
     modelSettings: "模型设置",
     model: "模型",
-    thinking: "推理",
     enabled: "开启",
     disabled: "关闭",
-    reasoningEffort: "推理强度",
     agentTimeline: "Agent 时间线",
     toolCalls: "工具调用",
     approval: "审批",
@@ -551,11 +546,12 @@ const copy = {
     currentConfiguration: "Current configuration",
     displayLanguage: "Display language",
     defaultModel: "Default model",
-    thinkingEnabledSetting: "Thinking enabled",
+    modelReasoningHint:
+      "Pick deepseek-reasoner to see the model's thinking above each answer.",
     generalSettingsDetail:
       "Interface language is stored locally as a non-sensitive preference.",
     providerSettingsDetail:
-      "DeepSeek is the current default provider. Model, thinking, and reasoning effort are persisted as non-sensitive preferences. API key status is read from the backend only.",
+      "DeepSeek is the current default provider. The model is persisted as a non-sensitive preference. API key status is read from the backend only.",
     providerRegistry: "Provider registry",
     providerRegistryDetail:
       "V2.4 normalizes providers, status, and fallback into shared objects. Automatic fallback waits for a second approved provider.",
@@ -606,8 +602,6 @@ const copy = {
     apiKeyMissing: "Not configured",
     baseUrl: "Base URL",
     providerDefaultModel: "Provider default model",
-    providerThinking: "Provider Thinking",
-    providerReasoningEffort: "Provider reasoning effort",
     providerConfigValid: "Valid",
     providerConfigInvalid: "Invalid",
     providerIssues: "Config issues",
@@ -661,10 +655,8 @@ const copy = {
     currentRun: "Current Run",
     modelSettings: "Model settings",
     model: "Model",
-    thinking: "Thinking",
     enabled: "Enabled",
     disabled: "Disabled",
-    reasoningEffort: "Reasoning effort",
     agentTimeline: "Agent Timeline",
     toolCalls: "Tool Calls",
     approval: "Approval",
@@ -2692,14 +2684,9 @@ export default function Home() {
             isBusy={isRunBusy}
             canSubmit={trimmedComposerInput.length > 0}
             model={model}
-            reasoningEffort={reasoningEffort}
             models={ALLOWED_MODELS}
-            reasoningEfforts={ALLOWED_REASONING_EFFORTS}
             onSelectModel={(value) =>
               updatePreferences({ model: value as Preferences["model"] })
-            }
-            onSelectEffort={(value) =>
-              updatePreferences({ reasoningEffort: value as ReasoningEffort })
             }
             statusText={composerStatusText}
           />
@@ -3789,45 +3776,7 @@ export default function Home() {
                         ))}
                       </div>
                     </div>
-                    <div className="settings-card-control">
-                      <span>{t.thinkingEnabledSetting}</span>
-                      <div className="segmented thinking-toggle" aria-label={t.thinking}>
-                        <button
-                          aria-pressed={thinkingEnabled}
-                          className={thinkingEnabled ? "selected" : ""}
-                          onClick={() => updatePreferences({ thinkingEnabled: true })}
-                        >
-                          {t.enabled}
-                        </button>
-                        <button
-                          aria-pressed={!thinkingEnabled}
-                          className={thinkingEnabled ? "" : "selected"}
-                          onClick={() => updatePreferences({ thinkingEnabled: false })}
-                        >
-                          {t.disabled}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="settings-card-control">
-                      <span>{t.reasoningEffort}</span>
-                      <div
-                        className="segmented reasoning-selector"
-                        aria-label={t.reasoningEffort}
-                      >
-                        {ALLOWED_REASONING_EFFORTS.map((effortOption) => (
-                          <button
-                            aria-pressed={reasoningEffort === effortOption}
-                            className={reasoningEffort === effortOption ? "selected" : ""}
-                            key={effortOption}
-                            onClick={() =>
-                              updatePreferences({ reasoningEffort: effortOption })
-                            }
-                          >
-                            {effortOption}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    <small className="settings-card-hint">{t.modelReasoningHint}</small>
                     <div className="provider-status-panel" aria-live="polite">
                       <div className="provider-status-header">
                         <div>
@@ -3889,22 +3838,6 @@ export default function Home() {
                           <div>
                             <dt>{t.providerDefaultModel}</dt>
                             <dd>{providerStatus.defaultModel ?? t.notConfigured}</dd>
-                          </div>
-                          <div>
-                            <dt>{t.providerThinking}</dt>
-                            <dd>
-                              {providerStatus.thinkingEnabled === null
-                                ? t.notConfigured
-                                : providerStatus.thinkingEnabled
-                                  ? t.enabled
-                                  : t.disabled}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt>{t.providerReasoningEffort}</dt>
-                            <dd>
-                              {providerStatus.reasoningEffort ?? t.notConfigured}
-                            </dd>
                           </div>
                           <div>
                             <dt>{t.providerIssues}</dt>

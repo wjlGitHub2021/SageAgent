@@ -292,16 +292,6 @@ code {
   white-space: nowrap;
 }
 
-.thinking-toggle button {
-  min-width: 74px;
-  white-space: nowrap;
-}
-
-.reasoning-selector button {
-  min-width: 48px;
-  white-space: nowrap;
-}
-
 .run-row,
 .timeline-row,
 .tool-row,
@@ -1155,6 +1145,14 @@ code {
   overflow-wrap: anywhere;
 }
 
+.settings-card-hint {
+  display: block;
+  margin: -2px 0 2px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .settings-card-control {
   display: flex;
   min-width: 0;
@@ -1508,15 +1506,6 @@ code {
     max-width: none;
   }
 
-  .thinking-toggle {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, auto));
-  }
-
-  .thinking-toggle button {
-    min-width: 62px;
-  }
-
   .inspector {
     display: flex;
   }
@@ -1575,13 +1564,6 @@ code {
 
   .settings-card-control .model-selector button {
     max-width: none;
-  }
-
-  .settings-card-control .thinking-toggle,
-  .settings-card-control .reasoning-selector {
-    display: grid;
-    width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .settings-summary div {
@@ -1950,10 +1932,6 @@ code {
 .composer-model:hover {
   color: var(--text-main);
   border-color: var(--border-strong);
-}
-
-.composer-model-sep {
-  opacity: 0.5;
 }
 
 .composer-model-caret {

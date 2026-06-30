@@ -11,11 +11,8 @@ export function Composer({
   isBusy,
   canSubmit,
   model,
-  reasoningEffort,
   models,
-  reasoningEfforts,
   onSelectModel,
-  onSelectEffort,
   statusText,
 }: {
   t: Dict;
@@ -26,11 +23,8 @@ export function Composer({
   isBusy: boolean;
   canSubmit: boolean;
   model: string;
-  reasoningEffort: string;
   models: readonly string[];
-  reasoningEfforts: readonly string[];
   onSelectModel: (model: string) => void;
-  onSelectEffort: (effort: string) => void;
   statusText: string;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -84,8 +78,6 @@ export function Composer({
               type="button"
             >
               <span>{model}</span>
-              <span className="composer-model-sep">·</span>
-              <span>{reasoningEffort}</span>
               <span aria-hidden="true" className="composer-model-caret">
                 ⌄
               </span>
@@ -112,26 +104,6 @@ export function Composer({
                       key={option}
                       onClick={() => {
                         onSelectModel(option);
-                        setMenuOpen(false);
-                      }}
-                      role="menuitemradio"
-                      type="button"
-                    >
-                      {option}
-                    </button>
-                  ))}
-                  <p className="composer-menu-label">{t.reasoningEffort}</p>
-                  {reasoningEfforts.map((option) => (
-                    <button
-                      aria-checked={option === reasoningEffort}
-                      className={
-                        option === reasoningEffort
-                          ? "composer-menu-item active"
-                          : "composer-menu-item"
-                      }
-                      key={option}
-                      onClick={() => {
-                        onSelectEffort(option);
                         setMenuOpen(false);
                       }}
                       role="menuitemradio"
