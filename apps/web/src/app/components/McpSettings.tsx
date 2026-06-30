@@ -14,6 +14,13 @@ type ProbeState = {
   serverName?: string | null;
   error?: string;
 };
+type RunState = {
+  status: "idle" | "loading" | "ok" | "error";
+  content?: string;
+  iterations?: number;
+  toolCalls?: number;
+  error?: string;
+};
 
 function makeId(seed: string): string {
   const cryptoRef = globalThis.crypto;
@@ -29,6 +36,8 @@ export function McpSettings({ t }: { t: Dict }) {
   const [labelDraft, setLabelDraft] = useState("");
   const [urlDraft, setUrlDraft] = useState("");
   const [probes, setProbes] = useState<Record<string, ProbeState>>({});
+  const [runDrafts, setRunDrafts] = useState<Record<string, string>>({});
+  const [runs, setRuns] = useState<Record<string, RunState>>({});
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -79,6 +88,54 @@ export function McpSettings({ t }: { t: Dict }) {
       delete next[id];
       return next;
     });
+    setRuns((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+    setRunDrafts((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+  }
+
+  // 试运行：把工具下发给 DeepSeek，模型请求工具时由服务端回 MCP 执行，跑通整条工具链。
+  async function runServer(server: McpServer) {
+    const prompt = (runDrafts[server.id] ?? "").trim();
+    if (prompt.length === 0) return;
+    setRuns((current) => ({ ...current, [server.id]: { status: "loading" } }));
+    try {
+      const response = await fetch("/api/mcp/run", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url: server.url, prompt }),
+      });
+      const data = await response.json();
+      if (data?.ok) {
+        setRuns((current) => ({
+          ...current,
+          [server.id]: {
+            status: "ok",
+            content: typeof data.content === "string" ? data.content : "",
+            iterations:
+              typeof data.iterations === "number" ? data.iterations : undefined,
+            toolCalls:
+              typeof data.toolCalls === "number" ? data.toolCalls : undefined,
+          },
+        }));
+      } else {
+        setRuns((current) => ({
+          ...current,
+          [server.id]: { status: "error", error: data?.error ?? "unknown" },
+        }));
+      }
+    } catch (error) {
+      setRuns((current) => ({
+        ...current,
+        [server.id]: { status: "error", error: String(error) },
+      }));
+    }
   }
 
   async function probeServer(server: McpServer) {
@@ -155,6 +212,7 @@ export function McpSettings({ t }: { t: Dict }) {
         <div className="mcp-list">
           {servers.map((server) => {
             const probe = probes[server.id] ?? { status: "idle" };
+            const run = runs[server.id] ?? { status: "idle" };
             return (
               <div className="mcp-server" key={server.id}>
                 <div className="mcp-server-head">
@@ -208,6 +266,52 @@ export function McpSettings({ t }: { t: Dict }) {
                   ) : (
                     <p className="mcp-server-error">{t.mcpEmptyTools}</p>
                   )
+                ) : null}
+
+                <div className="mcp-run">
+                  <input
+                    aria-label={t.mcpRunPlaceholder}
+                    className="desktop-key-input"
+                    onChange={(event) =>
+                      setRunDrafts((current) => ({
+                        ...current,
+                        [server.id]: event.target.value,
+                      }))
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") runServer(server);
+                    }}
+                    placeholder={t.mcpRunPlaceholder}
+                    type="text"
+                    value={runDrafts[server.id] ?? ""}
+                  />
+                  <button
+                    className="ghost-button"
+                    disabled={
+                      run.status === "loading" ||
+                      (runDrafts[server.id] ?? "").trim().length === 0
+                    }
+                    onClick={() => runServer(server)}
+                    type="button"
+                  >
+                    {run.status === "loading" ? t.mcpRunning : t.mcpRun}
+                  </button>
+                </div>
+
+                {run.status === "error" ? (
+                  <p className="mcp-server-error">
+                    {t.mcpRunFailed}: {run.error}
+                  </p>
+                ) : null}
+
+                {run.status === "ok" ? (
+                  <div className="mcp-run-result">
+                    <small className="settings-card-hint">
+                      {run.iterations ?? 0} {t.mcpRunRounds} ·{" "}
+                      {run.toolCalls ?? 0} {t.mcpRunToolCalls}
+                    </small>
+                    <p className="mcp-run-answer">{run.content}</p>
+                  </div>
                 ) : null}
               </div>
             );

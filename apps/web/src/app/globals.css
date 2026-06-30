@@ -1371,6 +1371,32 @@ code {
   margin-top: 9px;
 }
 
+.mcp-run {
+  display: flex;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.mcp-run input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mcp-run-result {
+  margin-top: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mcp-run-answer {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-main);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .archived-list {
   display: flex;
   flex-direction: column;
