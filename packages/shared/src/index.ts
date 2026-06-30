@@ -279,6 +279,8 @@ export type MessageDeltaEvent = RunEventBase<
     readonly role: MessageRole;
     readonly agent: AgentRole | null;
     readonly delta: string;
+    // 推理过程增量（DeepSeek reasoning_content）；与正文增量同帧或单独成帧到达。
+    readonly reasoningDelta?: string;
   }
 >;
 

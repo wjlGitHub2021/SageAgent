@@ -406,15 +406,14 @@ export async function* streamSupervisorDeepSeekEvents({
       continue;
     }
 
-    // 推理过程往往与空 content 同帧到达，需在丢弃空 delta 之前先收集。
-    if (result.value.reasoningDelta) {
-      reasoningChunks.push(result.value.reasoningDelta);
-    }
-
+    // 推理增量与正文增量都实时下发：思考过程像正文一样逐字出现。
+    const reasoningDelta = result.value.reasoningDelta ?? "";
     const delta = result.value.contentDelta;
-    if (delta.length === 0) continue;
+    if (delta.length === 0 && reasoningDelta.length === 0) continue;
 
-    chunks.push(delta);
+    if (delta.length > 0) chunks.push(delta);
+    if (reasoningDelta.length > 0) reasoningChunks.push(reasoningDelta);
+
     const event: RunEvent = {
       id: createId("event"),
       runId: run.id,
@@ -426,6 +425,7 @@ export async function* streamSupervisorDeepSeekEvents({
         role: "agent",
         agent: "supervisor",
         delta,
+        ...(reasoningDelta.length > 0 ? { reasoningDelta } : {}),
       },
     };
     store.appendEvent(event);

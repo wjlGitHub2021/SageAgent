@@ -455,6 +455,7 @@ const copy = {
     toolStatusRunning: "运行中",
     toolStatusFailed: "失败",
     thinkingLabel: "思考过程",
+    thinkingInProgress: "思考中…",
     approvalRequested: "请求审批",
     approvalResolved: "审批已处理",
     artifactCreated: "生成产物",
@@ -800,6 +801,7 @@ const copy = {
     toolStatusRunning: "Running",
     toolStatusFailed: "Failed",
     thinkingLabel: "Thinking",
+    thinkingInProgress: "Thinking…",
     approvalRequested: "Requested approval",
     approvalResolved: "Approval resolved",
     artifactCreated: "Created artifact",
@@ -2185,6 +2187,12 @@ export default function Home() {
   const firstAssistantIndex = activeMessages.findIndex(
     (message) => message.role.toLowerCase() !== "user",
   );
+  // 正在生成的助手消息 = run 进行中时的最后一条非用户消息；思考块据此实时展开。
+  const lastAssistantIndex = activeMessages.reduce(
+    (last, message, index) =>
+      message.role.toLowerCase() === "user" ? last : index,
+    -1,
+  );
   const trimmedComposerInput = composerInput.trim();
   const composerStatusText = getComposerStatusText({
     t,
@@ -2617,6 +2625,9 @@ export default function Home() {
                           {message.reasoning ? (
                             <ThinkingBlock
                               reasoning={message.reasoning}
+                              streaming={
+                                isRunBusy && index === lastAssistantIndex
+                              }
                               t={t}
                             />
                           ) : null}
@@ -4623,6 +4634,7 @@ function applyMessageDelta(
   const role = event.payload.agent
     ? agentLabels[event.payload.agent]
     : "System";
+  const reasoningDelta = event.payload.reasoningDelta ?? "";
   const existingIndex = current.findIndex(
     (message) =>
       message.runId === runId && message.messageId === event.payload.messageId,
@@ -4640,6 +4652,7 @@ function applyMessageDelta(
           zh: event.payload.delta,
           en: event.payload.delta,
         },
+        ...(reasoningDelta ? { reasoning: reasoningDelta } : {}),
       },
     ];
   }
@@ -4655,6 +4668,9 @@ function applyMessageDelta(
               zh: `${message.body.zh}${event.payload.delta}`,
               en: `${message.body.en}${event.payload.delta}`,
             },
+            ...(reasoningDelta
+              ? { reasoning: `${message.reasoning ?? ""}${reasoningDelta}` }
+              : {}),
           }
       : message,
   );

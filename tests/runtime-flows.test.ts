@@ -1148,6 +1148,8 @@ describe("runtime flows", () => {
 
     expect(events.map((event) => event.type)).toEqual([
       ...withMultiAgentEvents(
+        // 含正文的两帧 + 仅推理的空正文帧（实时下发推理增量）。
+        "message.delta",
         "message.delta",
         "message.delta",
         "message.completed",
@@ -1158,11 +1160,17 @@ describe("runtime flows", () => {
       (event): event is Extract<RunEvent, { type: "message.delta" }> =>
         event.type === "message.delta",
     );
-    expect(deltas.map((event) => event.payload.delta)).toEqual(["你", "好"]);
+    expect(deltas.map((event) => event.payload.delta)).toEqual(["你", "", "好"]);
+    // 推理增量随帧实时下发，正文仍正确拼接。
+    expect(deltas.map((event) => event.payload.reasoningDelta)).toEqual([
+      "先思考",
+      "再补充",
+      undefined,
+    ]);
     expect(new Set(deltas.map((event) => event.payload.messageId)).size).toBe(1);
     const completed = findSupervisorCompletedMessage(events);
     expect(completed?.payload.message.content).toBe("你好");
-    // 推理过程被捕获并拼接——第二帧 content 为空但 reasoning 不能丢。
+    // 完成消息仍带完整拼接后的 reasoning（用于持久化/历史回看）。
     expect(completed?.payload.message.reasoning).toBe("先思考再补充");
     expect(store.getRun(run.id)).toMatchObject({
       status: "completed",
@@ -1275,9 +1283,15 @@ describe("runtime flows", () => {
       events.push(event);
     }
 
+    // 仅有推理、无正文：推理增量仍实时下发一帧，随后因无正文判失败。
     expect(events.map((event) => event.type)).toEqual([
-      ...withMultiAgentEvents("run.failed"),
+      ...withMultiAgentEvents("message.delta", "run.failed"),
     ]);
+    const reasoningDelta = events.find(
+      (event): event is Extract<RunEvent, { type: "message.delta" }> =>
+        event.type === "message.delta",
+    );
+    expect(reasoningDelta?.payload.reasoningDelta).toBe("reasoning only");
     const failed = events.find(
       (event): event is Extract<RunEvent, { type: "run.failed" }> =>
         event.type === "run.failed",
