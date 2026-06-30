@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type {
   AgentRole,
   Approval,
@@ -37,6 +37,7 @@ import { getPhase4RunSummary } from "@/lib/phase4-summary";
 import { Composer } from "./components/Composer";
 import { EmptyHome } from "./components/EmptyHome";
 import { StatusBar } from "./components/StatusBar";
+import { ConversationToolCalls } from "./components/ToolCallCard";
 import type {
   DeepSeekConnectionTestCode,
   DeepSeekConnectionTestResult,
@@ -453,6 +454,9 @@ const copy = {
     toolFailed: "工具调用失败",
     toolPath: "路径",
     toolError: "错误",
+    toolStatusCompleted: "已完成",
+    toolStatusRunning: "运行中",
+    toolStatusFailed: "失败",
     approvalRequested: "请求审批",
     approvalResolved: "审批已处理",
     artifactCreated: "生成产物",
@@ -797,6 +801,9 @@ const copy = {
     toolFailed: "Tool call failed",
     toolPath: "Path",
     toolError: "Error",
+    toolStatusCompleted: "Completed",
+    toolStatusRunning: "Running",
+    toolStatusFailed: "Failed",
     approvalRequested: "Requested approval",
     approvalResolved: "Approval resolved",
     artifactCreated: "Created artifact",
@@ -1225,6 +1232,8 @@ type ToolCallRow = {
   status: string;
   path: string | null;
   error: string | null;
+  durationMs: number | null;
+  resultPreview: string | null;
 };
 
 type ApprovalPanelState = {
@@ -2174,6 +2183,10 @@ export default function Home() {
   const activeMessages = selectedRunId
     ? messages.filter((message) => message.runId === selectedRunId)
     : [];
+  // 工具卡片内联在「最后一条用户消息」与助手回答之间——契合 user → 工具 → 回答 的真实时序。
+  const firstAssistantIndex = activeMessages.findIndex(
+    (message) => message.role.toLowerCase() !== "user",
+  );
   const trimmedComposerInput = composerInput.trim();
   const composerStatusText = getComposerStatusText({
     t,
@@ -2589,20 +2602,36 @@ export default function Home() {
 
               <div className="conversation">
                 <div className="thread-column">
-                  {activeMessages.map((message, index) =>
-                    message.role.toLowerCase() === "user" ? (
-                      <div className="msg-user" key={`${message.role}-${index}`}>
-                        {message.body[locale]}
-                      </div>
-                    ) : (
-                      <div
-                        className="msg-assistant"
-                        key={`${message.role}-${index}`}
-                      >
-                        {message.body[locale]}
-                      </div>
-                    )
-                  )}
+                  {activeMessages.map((message, index) => {
+                    const bubble =
+                      message.role.toLowerCase() === "user" ? (
+                        <div
+                          className="msg-user"
+                          key={`${message.role}-${index}`}
+                        >
+                          {message.body[locale]}
+                        </div>
+                      ) : (
+                        <div
+                          className="msg-assistant"
+                          key={`${message.role}-${index}`}
+                        >
+                          {message.body[locale]}
+                        </div>
+                      );
+                    if (index === firstAssistantIndex) {
+                      return (
+                        <Fragment key={`group-${index}`}>
+                          <ConversationToolCalls calls={activeToolCalls} t={t} />
+                          {bubble}
+                        </Fragment>
+                      );
+                    }
+                    return bubble;
+                  })}
+                  {firstAssistantIndex === -1 ? (
+                    <ConversationToolCalls calls={activeToolCalls} t={t} />
+                  ) : null}
                   {activeApproval &&
                   activeApproval.approval.status === "pending" ? (
                     <div
@@ -4860,6 +4889,8 @@ function getToolCallRows(
       status: call.status,
       path: readToolPath(call),
       error: call.error,
+      durationMs: readToolDuration(call),
+      resultPreview: readToolResultPreview(call),
     }));
 }
 
@@ -4873,6 +4904,34 @@ function readToolPath(call: ToolCall): string | null {
   }
 
   return null;
+}
+
+function readToolDuration(call: ToolCall): number | null {
+  if (!call.completedAt) return null;
+  const elapsed =
+    new Date(call.completedAt).getTime() - new Date(call.startedAt).getTime();
+  return Number.isFinite(elapsed) && elapsed >= 0 ? elapsed : null;
+}
+
+function readToolResultPreview(call: ToolCall): string | null {
+  const result = call.result;
+  if (result === null || result === undefined) return null;
+  if (typeof result === "string") return truncateToolPreview(result);
+  if (isPlainRecord(result)) {
+    const text = result.contentPreview ?? result.content;
+    if (typeof text === "string") {
+      const head =
+        typeof result.bytes === "number" ? `${result.bytes} bytes\n\n` : "";
+      return truncateToolPreview(`${head}${text}`);
+    }
+    return truncateToolPreview(JSON.stringify(result, null, 2));
+  }
+  return truncateToolPreview(JSON.stringify(result));
+}
+
+function truncateToolPreview(text: string): string {
+  const limit = 800;
+  return text.length <= limit ? text : `${text.slice(0, limit)}\n…`;
 }
 
 function getActiveApproval(
