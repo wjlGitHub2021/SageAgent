@@ -168,6 +168,9 @@ const copy = {
     searchConversations: "搜索会话...",
     noMatches: "没有匹配项",
     contextUsage: "上下文用量",
+    pinned: "已置顶",
+    pinHint: "Shift+单击对话以置顶",
+    unpin: "取消置顶（Shift+单击）",
     settings: "设置",
     openSettings: "打开设置",
     closeSettings: "关闭设置",
@@ -488,6 +491,9 @@ const copy = {
     searchConversations: "Search conversations...",
     noMatches: "No matches",
     contextUsage: "Context usage",
+    pinned: "Pinned",
+    pinHint: "Shift+click a conversation to pin",
+    unpin: "Unpin (Shift+click)",
     settings: "Settings",
     openSettings: "Open settings",
     closeSettings: "Close settings",
@@ -1516,6 +1522,13 @@ export default function Home() {
   const [hasSelectedRun, setHasSelectedRun] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [conversationQuery, setConversationQuery] = useState("");
+  const [pinnedRunIds, setPinnedRunIds] = useState<string[]>([]);
+
+  function toggleRunPin(runId: string) {
+    setPinnedRunIds((ids) =>
+      ids.includes(runId) ? ids.filter((id) => id !== runId) : [...ids, runId],
+    );
+  }
   const [providerStatus, setProviderStatus] =
     useState<DeepSeekProviderStatusSummary | null>(null);
   const [providerRegistry, setProviderRegistry] =
@@ -1956,6 +1969,44 @@ export default function Home() {
     : runItems;
   const activeUsedTokens = getRunTotalTokens(runEvents, selectedRunId);
   const activeMaxTokens = MODEL_CONTEXT_WINDOW[model] ?? DEFAULT_CONTEXT_WINDOW;
+  const pinnedRuns = filteredRuns.filter((run) => pinnedRunIds.includes(run.id));
+  const unpinnedRuns = filteredRuns.filter(
+    (run) => !pinnedRunIds.includes(run.id),
+  );
+
+  const renderRunRow = (run: RunItem) => {
+    const isPinned = pinnedRunIds.includes(run.id);
+    return (
+      <button
+        className={
+          hasSelectedRun && run.id === activeRunId
+            ? "side-run active"
+            : "side-run"
+        }
+        key={run.id}
+        onClick={(event) => {
+          if (event.shiftKey) {
+            toggleRunPin(run.id);
+            return;
+          }
+          setActiveRunId(run.id);
+          setActiveThreadId(run.threadId);
+          setHasSelectedRun(true);
+        }}
+        title={isPinned ? t.unpin : t.pinHint}
+        type="button"
+      >
+        <StatusDot status={run.status} />
+        <span className="side-run-body">
+          <span className="side-run-title">{run.title[locale]}</span>
+          <span className="side-run-meta">
+            <span>{formatRunStatusLabel(run.status, t)}</span>
+            <span>{run.time}</span>
+          </span>
+        </span>
+      </button>
+    );
+  };
   const timelineRows = selectedRunId ? getTimelineRows(runEvents, selectedRunId) : [];
   const activeToolCalls = selectedRunId
     ? getToolCallRows(runEvents, selectedRunId)
@@ -2315,6 +2366,20 @@ export default function Home() {
 
           <div className="side-section">
             <p className="side-section-label">
+              <span>{t.pinned}</span>
+              {pinnedRuns.length > 0 ? (
+                <span className="side-section-count">{pinnedRuns.length}</span>
+              ) : null}
+            </p>
+            {pinnedRuns.length > 0 ? (
+              <div className="side-list">{pinnedRuns.map(renderRunRow)}</div>
+            ) : (
+              <p className="side-empty">{t.pinHint}</p>
+            )}
+          </div>
+
+          <div className="side-section">
+            <p className="side-section-label">
               <span>{t.threads}</span>
               <span className="side-section-count">{filteredThreads.length}</span>
             </p>
@@ -2347,34 +2412,10 @@ export default function Home() {
           <div className="side-section">
             <p className="side-section-label">
               <span>{t.runs}</span>
-              <span className="side-section-count">{filteredRuns.length}</span>
+              <span className="side-section-count">{unpinnedRuns.length}</span>
             </p>
             <div className="side-list">
-              {filteredRuns.map((run) => (
-                <button
-                  className={
-                    hasSelectedRun && run.id === activeRunId
-                      ? "side-run active"
-                      : "side-run"
-                  }
-                  key={run.id}
-                  onClick={() => {
-                    setActiveRunId(run.id);
-                    setActiveThreadId(run.threadId);
-                    setHasSelectedRun(true);
-                  }}
-                  type="button"
-                >
-                  <StatusDot status={run.status} />
-                  <span className="side-run-body">
-                    <span className="side-run-title">{run.title[locale]}</span>
-                    <span className="side-run-meta">
-                      <span>{formatRunStatusLabel(run.status, t)}</span>
-                      <span>{run.time}</span>
-                    </span>
-                  </span>
-                </button>
-              ))}
+              {unpinnedRuns.map(renderRunRow)}
               {filteredRuns.length === 0 ? (
                 <p className="side-empty">{t.noMatches}</p>
               ) : null}
@@ -2421,6 +2462,32 @@ export default function Home() {
                       </div>
                     )
                   )}
+                  {activeApproval &&
+                  activeApproval.approval.status === "pending" ? (
+                    <div
+                      className={`thread-approval approval-box ${activeApproval.approval.status}`}
+                    >
+                      <p>{activeApproval.title[locale]}</p>
+                      <small>
+                        {t.action}:{" "}
+                        <code>{activeApproval.approval.action}</code> · {t.status}
+                        : {activeApproval.approval.status}
+                      </small>
+                      <small>{activeApproval.approval.payloadSummary}</small>
+                      <div className="approval-actions">
+                        <button
+                          onClick={() => handleApprovalResolution("approved")}
+                        >
+                          {t.approve}
+                        </button>
+                        <button
+                          onClick={() => handleApprovalResolution("rejected")}
+                        >
+                          {t.reject}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </>
@@ -2440,11 +2507,18 @@ export default function Home() {
             }}
             onSubmit={handleRunClick}
             onStop={handleCancelRun}
-            onOpenModel={openSettings}
             isBusy={isRunBusy}
             canSubmit={trimmedComposerInput.length > 0}
             model={model}
             reasoningEffort={reasoningEffort}
+            models={ALLOWED_MODELS}
+            reasoningEfforts={ALLOWED_REASONING_EFFORTS}
+            onSelectModel={(value) =>
+              updatePreferences({ model: value as Preferences["model"] })
+            }
+            onSelectEffort={(value) =>
+              updatePreferences({ reasoningEffort: value as ReasoningEffort })
+            }
             statusText={composerStatusText}
           />
         </section>

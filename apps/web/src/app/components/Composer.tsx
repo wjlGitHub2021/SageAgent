@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 type Dict = Record<string, string>;
 
 export function Composer({
@@ -6,11 +8,14 @@ export function Composer({
   onChange,
   onSubmit,
   onStop,
-  onOpenModel,
   isBusy,
   canSubmit,
   model,
   reasoningEffort,
+  models,
+  reasoningEfforts,
+  onSelectModel,
+  onSelectEffort,
   statusText,
 }: {
   t: Dict;
@@ -18,13 +23,18 @@ export function Composer({
   onChange: (value: string) => void;
   onSubmit: () => void;
   onStop: () => void;
-  onOpenModel: () => void;
   isBusy: boolean;
   canSubmit: boolean;
   model: string;
   reasoningEffort: string;
+  models: readonly string[];
+  reasoningEfforts: readonly string[];
+  onSelectModel: (model: string) => void;
+  onSelectEffort: (effort: string) => void;
   statusText: string;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <div className="composer-dock">
       <div className="composer-pill">
@@ -64,19 +74,76 @@ export function Composer({
           />
         </div>
         <div className="composer-pill-foot">
-          <button
-            className="composer-model"
-            onClick={onOpenModel}
-            title={t.modelSettings}
-            type="button"
-          >
-            <span>{model}</span>
-            <span className="composer-model-sep">·</span>
-            <span>{reasoningEffort}</span>
-            <span aria-hidden="true" className="composer-model-caret">
-              ⌄
-            </span>
-          </button>
+          <div className="composer-model-wrap">
+            <button
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+              className="composer-model"
+              onClick={() => setMenuOpen((open) => !open)}
+              title={t.modelSettings}
+              type="button"
+            >
+              <span>{model}</span>
+              <span className="composer-model-sep">·</span>
+              <span>{reasoningEffort}</span>
+              <span aria-hidden="true" className="composer-model-caret">
+                ⌄
+              </span>
+            </button>
+            {menuOpen ? (
+              <>
+                <button
+                  aria-hidden="true"
+                  className="composer-menu-backdrop"
+                  onClick={() => setMenuOpen(false)}
+                  tabIndex={-1}
+                  type="button"
+                />
+                <div className="composer-menu" role="menu">
+                  <p className="composer-menu-label">{t.model}</p>
+                  {models.map((option) => (
+                    <button
+                      aria-checked={option === model}
+                      className={
+                        option === model
+                          ? "composer-menu-item active"
+                          : "composer-menu-item"
+                      }
+                      key={option}
+                      onClick={() => {
+                        onSelectModel(option);
+                        setMenuOpen(false);
+                      }}
+                      role="menuitemradio"
+                      type="button"
+                    >
+                      {option}
+                    </button>
+                  ))}
+                  <p className="composer-menu-label">{t.reasoningEffort}</p>
+                  {reasoningEfforts.map((option) => (
+                    <button
+                      aria-checked={option === reasoningEffort}
+                      className={
+                        option === reasoningEffort
+                          ? "composer-menu-item active"
+                          : "composer-menu-item"
+                      }
+                      key={option}
+                      onClick={() => {
+                        onSelectEffort(option);
+                        setMenuOpen(false);
+                      }}
+                      role="menuitemradio"
+                      type="button"
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </div>
           <div className="composer-pill-actions">
             <button
               aria-label={t.voiceInput}
