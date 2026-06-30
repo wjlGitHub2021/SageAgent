@@ -1926,6 +1926,42 @@ code {
   gap: 6px;
 }
 
+.inspector-tabs {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  flex: 0 0 auto;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: none;
+}
+
+.inspector-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.inspector-tab {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 9px;
+  white-space: nowrap;
+}
+
+.inspector-tab:hover {
+  color: var(--text-main);
+  background: var(--panel-muted);
+}
+
+.inspector-tab.active {
+  color: var(--accent-deep);
+  background: var(--accent-soft);
+}
+
 /* ===== Sidebar Hermes-ification (flat nav + search + flat lists) ===== */
 
 .side-nav {

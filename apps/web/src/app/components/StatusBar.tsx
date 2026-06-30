@@ -31,14 +31,6 @@ export function StatusBar({
           {t.model}: {model}
         </span>
       </div>
-      <div className="status-bar-group">
-        <span className="status-bar-item planned">
-          {t.statusGateway} · {t.statusPlanned}
-        </span>
-        <span className="status-bar-item planned">
-          {t.statusSchedule} · {t.statusPlanned}
-        </span>
-      </div>
       <div className="status-bar-spacer" />
       <span className="status-bar-item status-bar-meter" title={t.contextUsage}>
         <span className="status-bar-meter-text">

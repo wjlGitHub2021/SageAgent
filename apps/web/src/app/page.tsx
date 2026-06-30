@@ -160,6 +160,12 @@ const copy = {
     inspectorPanel: "检查面板",
     openInspector: "打开检查面板",
     closeInspector: "关闭检查面板",
+    tabTimeline: "时间线",
+    tabTools: "工具",
+    tabApprovals: "审批",
+    tabArtifacts: "产物",
+    tabMemory: "记忆",
+    tabSkills: "技能",
     homeSubtitle:
       "用你自己的话描述任务,我会挑选合适的工具、说明计划,并在有风险的步骤前与你确认。",
     composerAdd: "添加附件",
@@ -495,6 +501,12 @@ const copy = {
     inspectorPanel: "Inspector",
     openInspector: "Open inspector",
     closeInspector: "Close inspector",
+    tabTimeline: "Timeline",
+    tabTools: "Tools",
+    tabApprovals: "Approvals",
+    tabArtifacts: "Artifacts",
+    tabMemory: "Memory",
+    tabSkills: "Skills",
     homeSubtitle:
       "Describe the task in your own words. I'll pick the right tools, explain my plan, and check in before risky steps.",
     composerAdd: "Add attachment",
@@ -1569,6 +1581,7 @@ export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [hasSelectedRun, setHasSelectedRun] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [inspectorTab, setInspectorTab] = useState("timeline");
   const [conversationQuery, setConversationQuery] = useState("");
   const [pinnedRunIds, setPinnedRunIds] = useState<string[]>([]);
   const [hasLoadedPinnedRuns, setHasLoadedPinnedRuns] = useState(false);
@@ -2093,6 +2106,14 @@ export default function Home() {
     : runItems;
   const activeUsedTokens = getRunTotalTokens(runEvents, selectedRunId);
   const activeMaxTokens = MODEL_CONTEXT_WINDOW[model] ?? DEFAULT_CONTEXT_WINDOW;
+  const inspectorTabs = [
+    { key: "timeline", label: t.tabTimeline },
+    { key: "tools", label: t.tabTools },
+    { key: "approvals", label: t.tabApprovals },
+    { key: "artifacts", label: t.tabArtifacts },
+    { key: "memory", label: t.tabMemory },
+    { key: "skills", label: t.tabSkills },
+  ];
   const pinnedRuns = filteredRuns.filter((run) => pinnedRunIds.includes(run.id));
   const unpinnedRuns = filteredRuns.filter(
     (run) => !pinnedRunIds.includes(run.id),
@@ -2488,19 +2509,15 @@ export default function Home() {
             />
           </div>
 
-          <div className="side-section">
-            <p className="side-section-label">
-              <span>{t.pinned}</span>
-              {pinnedRuns.length > 0 ? (
+          {pinnedRuns.length > 0 ? (
+            <div className="side-section">
+              <p className="side-section-label">
+                <span>{t.pinned}</span>
                 <span className="side-section-count">{pinnedRuns.length}</span>
-              ) : null}
-            </p>
-            {pinnedRuns.length > 0 ? (
+              </p>
               <div className="side-list">{pinnedRuns.map(renderRunRow)}</div>
-            ) : (
-              <p className="side-empty">{t.pinHint}</p>
-            )}
-          </div>
+            </div>
+          ) : null}
 
           <div className="side-section">
             <p className="side-section-label">
@@ -2680,6 +2697,26 @@ export default function Home() {
               </button>
             </div>
           </div>
+          <div className="inspector-tabs" role="tablist">
+            {inspectorTabs.map((tab) => (
+              <button
+                aria-selected={inspectorTab === tab.key}
+                className={
+                  inspectorTab === tab.key
+                    ? "inspector-tab active"
+                    : "inspector-tab"
+                }
+                key={tab.key}
+                onClick={() => setInspectorTab(tab.key)}
+                role="tab"
+                type="button"
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {inspectorTab === "timeline" ? (
+            <>
           <Panel title={t.auditTrail}>
             <div className="audit-summary">
               <dl className="audit-primary">
@@ -2880,7 +2917,10 @@ export default function Home() {
               />
             )}
           </Panel>
+            </>
+          ) : null}
 
+          {inspectorTab === "memory" ? (
           <Panel
             title={t.memoryVault}
             action={
@@ -2967,7 +3007,9 @@ export default function Home() {
               </div>
             </div>
           </Panel>
+          ) : null}
 
+          {inspectorTab === "skills" ? (
           <Panel
             title={t.skillVault}
             action={
@@ -3066,7 +3108,9 @@ export default function Home() {
               </div>
             </div>
           </Panel>
+          ) : null}
 
+          {inspectorTab === "tools" ? (
           <Panel title={t.toolCalls}>
             <div className="stack">
               {isRunBusy ? (
@@ -3106,7 +3150,9 @@ export default function Home() {
               )}
             </div>
           </Panel>
+          ) : null}
 
+          {inspectorTab === "timeline" ? (
           <Panel title={t.providerError}>
             {activeProviderError ? (
               <div className="provider-error-box">
@@ -3131,7 +3177,9 @@ export default function Home() {
               </div>
             )}
           </Panel>
+          ) : null}
 
+          {inspectorTab === "approvals" ? (
           <Panel title={t.approval}>
             {activeApproval ? (
               <div className={`approval-box ${activeApproval.approval.status}`}>
@@ -3157,7 +3205,9 @@ export default function Home() {
               </div>
             )}
           </Panel>
+          ) : null}
 
+          {inspectorTab === "artifacts" ? (
           <Panel title={t.artifacts}>
             <div className="stack">
               {activeArtifacts.length === 0 ? (
@@ -3176,6 +3226,7 @@ export default function Home() {
               )}
             </div>
           </Panel>
+          ) : null}
         </aside>
       </div>
 
