@@ -13,7 +13,7 @@ import type {
   DeepSeekToolCall,
 } from "@sage/deepseek";
 
-import type { McpCallResult, McpTool } from "./mcp-client.js";
+import type { McpCallResult, McpTool } from "./mcp-client";
 
 // 默认最多 8 轮 model↔tool 往返，避免模型反复请求工具导致死循环。
 export const DEFAULT_MAX_TOOL_ITERATIONS = 8;

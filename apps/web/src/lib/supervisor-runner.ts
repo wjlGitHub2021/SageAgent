@@ -35,14 +35,14 @@ import type {
   ResearcherBrief,
   ReviewerReport,
 } from "@sage/agents";
-import { callMcpTool, listMcpTools, type McpTool } from "./mcp-client.js";
+import { callMcpTool, listMcpTools, type McpTool } from "./mcp-client";
 import {
   mcpToolToDeepSeekTool,
   runMcpToolLoop,
   type ToolLoopCaller,
   type ToolLoopProvider,
   type ToolLoopToolEvent,
-} from "./mcp-tool-loop.js";
+} from "./mcp-tool-loop";
 
 const SUPERVISOR_SYSTEM_PROMPT = [
   "You are Sage Agent Supervisor.",
