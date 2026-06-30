@@ -203,6 +203,7 @@ const copy = {
     navAppearance: "外观",
     navWorkspace: "工作区",
     navSecurity: "安全",
+    navMemory: "记忆与上下文",
     navProviders: "提供方",
     navTools: "工具与密钥",
     navAbout: "关于",
@@ -215,6 +216,11 @@ const copy = {
     aboutProvider: "默认 Provider",
     aboutDescription:
       "Web First、DeepSeek-only；密钥只在后端/系统钥匙串，不入代码与版本库。",
+    settingsMemoryEntries: "记忆条目",
+    settingsMemoryScopes: "作用域",
+    settingsSkillEntries: "技能条目",
+    settingsSkillSources: "来源",
+    settingsManageHint: "在右侧 inspector 的「记忆 / 技能」标签里增删与管理条目。",
     generalSettings: "通用",
     providerSettings: "Providers / 入口",
     workspaceSettings: "工作区",
@@ -561,6 +567,7 @@ const copy = {
     navAppearance: "Appearance",
     navWorkspace: "Workspace",
     navSecurity: "Security",
+    navMemory: "Memory & Context",
     navProviders: "Providers",
     navTools: "Tools & Keys",
     navAbout: "About",
@@ -573,6 +580,12 @@ const copy = {
     aboutProvider: "Default provider",
     aboutDescription:
       "Web First, DeepSeek-only. Keys live only in the backend / OS keychain, never in code or version control.",
+    settingsMemoryEntries: "Memory entries",
+    settingsMemoryScopes: "Scopes",
+    settingsSkillEntries: "Skill entries",
+    settingsSkillSources: "Sources",
+    settingsManageHint:
+      "Add and manage entries in the Memory / Skills tabs of the inspector.",
     generalSettings: "General",
     providerSettings: "Providers / Entries",
     workspaceSettings: "Workspace",
@@ -4073,6 +4086,71 @@ export default function Home() {
                     </div>
                   </dl>
                 </article>
+              ) : null}
+              {settingsTab === "memory" ? (
+                <>
+                  <article className="settings-card">
+                    <div>
+                      <p>{t.memoryVault}</p>
+                      <small>{t.memoryVaultDetail}</small>
+                    </div>
+                    <dl className="settings-summary">
+                      <div>
+                        <dt>{t.settingsMemoryEntries}</dt>
+                        <dd>{memorySnapshot.entries.length}</dd>
+                      </div>
+                      <div>
+                        <dt>{t.auditTrail}</dt>
+                        <dd>{memorySnapshot.auditTrail.length}</dd>
+                      </div>
+                    </dl>
+                    <small className="settings-card-hint">
+                      {t.settingsMemoryScopes}
+                    </small>
+                    <ul
+                      className="policy-chip-list"
+                      aria-label={t.settingsMemoryScopes}
+                    >
+                      {MEMORY_SCOPES.map((scope) => (
+                        <li key={scope}>
+                          <code>{scope}</code>
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
+                  <article className="settings-card">
+                    <div>
+                      <p>{t.skillVault}</p>
+                      <small>{t.skillVaultDetail}</small>
+                    </div>
+                    <dl className="settings-summary">
+                      <div>
+                        <dt>{t.settingsSkillEntries}</dt>
+                        <dd>{skillSnapshot.entries.length}</dd>
+                      </div>
+                      <div>
+                        <dt>{t.auditTrail}</dt>
+                        <dd>{skillSnapshot.auditTrail.length}</dd>
+                      </div>
+                    </dl>
+                    <small className="settings-card-hint">
+                      {t.settingsSkillSources}
+                    </small>
+                    <ul
+                      className="policy-chip-list"
+                      aria-label={t.settingsSkillSources}
+                    >
+                      {SKILL_SOURCES.map((source) => (
+                        <li key={source}>
+                          <code>{source}</code>
+                        </li>
+                      ))}
+                    </ul>
+                    <small className="settings-card-hint">
+                      {t.settingsManageHint}
+                    </small>
+                  </article>
+                </>
               ) : null}
               {settingsTab === "about" ? (
                 <article className="settings-card">

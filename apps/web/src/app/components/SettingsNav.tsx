@@ -15,6 +15,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
       { key: "appearance", labelKey: "navAppearance" },
       { key: "workspace", labelKey: "navWorkspace" },
       { key: "security", labelKey: "navSecurity" },
+      { key: "memory", labelKey: "navMemory" },
     ],
   },
   {
@@ -65,6 +66,13 @@ function Icon({ name }: { name: string }) {
       <>
         <rect x="4.5" y="10.5" width="15" height="10" rx="2" />
         <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" />
+      </>
+    ),
+    memory: (
+      <>
+        <ellipse cx="12" cy="5" rx="8" ry="3" />
+        <path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
+        <path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
       </>
     ),
     providers: <path d="M13 2 4 14h7l-1 8 9-12h-7z" />,
