@@ -35,6 +35,7 @@ import {
 import { getPhase4RunSummary } from "@/lib/phase4-summary";
 import { Composer } from "./components/Composer";
 import { EmptyHome } from "./components/EmptyHome";
+import { Markdown } from "./components/Markdown";
 import { StatusBar } from "./components/StatusBar";
 import { ThinkingBlock } from "./components/ThinkingBlock";
 import { ConversationToolCalls } from "./components/ToolCallCard";
@@ -914,8 +915,8 @@ const baseMessages: Message[] = [
     role: "Builder",
     runId: "run-1842",
     body: {
-      zh: "正在实现三栏布局：左侧 threads/runs，中间 run conversation，右侧 timeline/tool calls/approval/artifacts。",
-      en: "Implementing the three-column layout: threads/runs on the left, run conversation in the center, timeline/tool calls/approval/artifacts on the right.",
+      zh: "## 三栏布局实现\n\n已按 **Codex 风格** 拆成三栏：\n\n1. **左侧**：`threads` / `runs` 列表\n2. **中间**：run conversation（含思考与工具调用）\n3. **右侧**：`timeline` / `tool calls` / `approval` / `artifacts`\n\n核心容器用 CSS Grid：\n\n```css\n.app-shell {\n  display: grid;\n  grid-template-columns: 280px 1fr 360px;\n}\n```\n\n> 移动端会折叠右栏，inspector 改为浮层。",
+      en: "## Three-column layout\n\nSplit into three columns, **Codex-style**:\n\n1. **Left**: `threads` / `runs` list\n2. **Center**: run conversation (with thinking and tool calls)\n3. **Right**: `timeline` / `tool calls` / `approval` / `artifacts`\n\nThe shell uses CSS Grid:\n\n```css\n.app-shell {\n  display: grid;\n  grid-template-columns: 280px 1fr 360px;\n}\n```\n\n> On mobile the right column collapses and the inspector becomes an overlay.",
     },
   },
   {
@@ -2631,7 +2632,7 @@ export default function Home() {
                               t={t}
                             />
                           ) : null}
-                          {message.body[locale]}
+                          <Markdown>{message.body[locale]}</Markdown>
                         </div>
                       );
                     if (index === firstAssistantIndex) {
