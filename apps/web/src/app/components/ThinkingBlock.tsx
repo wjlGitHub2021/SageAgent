@@ -7,17 +7,19 @@ type Dict = Record<string, string>;
 export function ThinkingBlock({
   reasoning,
   streaming = false,
+  defaultExpanded = false,
   t,
 }: {
   reasoning: string;
   streaming?: boolean;
+  defaultExpanded?: boolean;
   t: Dict;
 }) {
-  // null = 未手动干预，跟随 streaming：流式时自动展开，完成后自动收起。
+  // null = 未手动干预：流式时自动展开；非流式时按「思考默认」偏好展开/折叠。
   const [manualOpen, setManualOpen] = useState<boolean | null>(null);
   const text = reasoning.trim();
   if (text.length === 0) return null;
-  const open = manualOpen ?? streaming;
+  const open = manualOpen ?? (streaming || defaultExpanded);
 
   return (
     <div

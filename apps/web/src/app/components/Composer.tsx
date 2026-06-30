@@ -13,6 +13,7 @@ export function Composer({
   model,
   models,
   onSelectModel,
+  sendKey,
   statusText,
 }: {
   t: Dict;
@@ -25,6 +26,7 @@ export function Composer({
   model: string;
   models: readonly string[];
   onSelectModel: (model: string) => void;
+  sendKey: "enter" | "modEnter";
   statusText: string;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -52,12 +54,13 @@ export function Composer({
             id="sage-composer-input"
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={(event) => {
-              if (
-                event.key === "Enter" &&
-                !event.shiftKey &&
-                !isBusy &&
-                canSubmit
-              ) {
+              if (event.key !== "Enter" || isBusy || !canSubmit) return;
+              // enter：Enter 发送、Shift+Enter 换行；modEnter：Cmd/Ctrl+Enter 发送、Enter 换行。
+              const shouldSend =
+                sendKey === "modEnter"
+                  ? event.metaKey || event.ctrlKey
+                  : !event.shiftKey;
+              if (shouldSend) {
                 event.preventDefault();
                 onSubmit();
               }

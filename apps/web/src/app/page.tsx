@@ -200,7 +200,16 @@ const copy = {
     settingsSubtitle: "管理本地工作台的显示、Provider、工作区和安全边界。",
     settingsEntryDetail: "语言、模型与推理偏好",
     navModel: "模型",
+    navConversation: "对话",
     navAppearance: "外观",
+    conversationSettings: "对话",
+    conversationSettingsDetail: "发送方式与思考过程的默认展开。",
+    sendKeyLabel: "发送键",
+    sendKeyEnter: "Enter 发送",
+    sendKeyModEnter: "⌘/Ctrl+Enter 发送",
+    thinkingDefaultLabel: "思考默认",
+    thinkingDefaultExpand: "展开",
+    thinkingDefaultCollapse: "折叠",
     navWorkspace: "工作区",
     navSecurity: "安全",
     navMemory: "记忆与上下文",
@@ -571,7 +580,17 @@ const copy = {
       "Manage local workbench display, provider, workspace, and safety boundaries.",
     settingsEntryDetail: "Language, model, and reasoning preferences",
     navModel: "Model",
+    navConversation: "Conversation",
     navAppearance: "Appearance",
+    conversationSettings: "Conversation",
+    conversationSettingsDetail:
+      "Send behavior and the default expand state of thinking.",
+    sendKeyLabel: "Send key",
+    sendKeyEnter: "Enter to send",
+    sendKeyModEnter: "⌘/Ctrl+Enter to send",
+    thinkingDefaultLabel: "Thinking default",
+    thinkingDefaultExpand: "Expanded",
+    thinkingDefaultCollapse: "Collapsed",
     navWorkspace: "Workspace",
     navSecurity: "Security",
     navMemory: "Memory & Context",
@@ -1586,6 +1605,17 @@ function getBlockedPathPolicyDetail(t: (typeof copy)[Locale]): string {
 
 const PINNED_RUNS_STORAGE_KEY = "sage.pinnedRuns";
 const ARCHIVED_RUNS_STORAGE_KEY = "sage.archivedRuns";
+const CONVERSATION_PREFS_STORAGE_KEY = "sage.conversationPrefs";
+
+type SendKey = "enter" | "modEnter";
+type ConversationPrefs = {
+  sendKey: SendKey;
+  thinkingDefaultExpanded: boolean;
+};
+const DEFAULT_CONVERSATION_PREFS: ConversationPrefs = {
+  sendKey: "enter",
+  thinkingDefaultExpanded: false,
+};
 
 // Electron 预加载注入的安全桥（仅桌面端存在）。Web 端为 null。
 type DesktopBridge = {
@@ -1659,6 +1689,15 @@ export default function Home() {
   const [hasLoadedPinnedRuns, setHasLoadedPinnedRuns] = useState(false);
   const [archivedRunIds, setArchivedRunIds] = useState<string[]>([]);
   const [hasLoadedArchivedRuns, setHasLoadedArchivedRuns] = useState(false);
+  const [conversationPrefs, setConversationPrefs] = useState<ConversationPrefs>(
+    DEFAULT_CONVERSATION_PREFS,
+  );
+  const [hasLoadedConversationPrefs, setHasLoadedConversationPrefs] =
+    useState(false);
+
+  function updateConversationPrefs(patch: Partial<ConversationPrefs>) {
+    setConversationPrefs((current) => ({ ...current, ...patch }));
+  }
 
   function toggleRunPin(runId: string) {
     setPinnedRunIds((ids) =>
@@ -1841,6 +1880,34 @@ export default function Home() {
       );
     }
   }, [hasLoadedArchivedRuns, archivedRunIds]);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      try {
+        const raw = window.localStorage.getItem(CONVERSATION_PREFS_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : null;
+        if (parsed && typeof parsed === "object") {
+          setConversationPrefs({
+            sendKey:
+              parsed.sendKey === "modEnter" ? "modEnter" : "enter",
+            thinkingDefaultExpanded: parsed.thinkingDefaultExpanded === true,
+          });
+        }
+      } catch {
+        // 忽略损坏的本地存储，用默认对话偏好。
+      }
+      setHasLoadedConversationPrefs(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (hasLoadedConversationPrefs) {
+      window.localStorage.setItem(
+        CONVERSATION_PREFS_STORAGE_KEY,
+        JSON.stringify(conversationPrefs),
+      );
+    }
+  }, [hasLoadedConversationPrefs, conversationPrefs]);
 
   useDialogFocusTrap(isSettingsOpen, settingsDialogRef, closeSettings);
   useDialogFocusTrap(isMemoryEditorOpen, memoryDialogRef, closeMemoryEditor);
@@ -2738,6 +2805,9 @@ export default function Home() {
                               streaming={
                                 isRunBusy && index === lastAssistantIndex
                               }
+                              defaultExpanded={
+                                conversationPrefs.thinkingDefaultExpanded
+                              }
                               t={t}
                             />
                           ) : null}
@@ -2809,6 +2879,7 @@ export default function Home() {
             onSelectModel={(value) =>
               updatePreferences({ model: value as Preferences["model"] })
             }
+            sendKey={conversationPrefs.sendKey}
             statusText={composerStatusText}
           />
         </section>
@@ -3778,6 +3849,85 @@ export default function Home() {
                           {modelOption}
                         </button>
                       ))}
+                    </div>
+                  </div>
+                </article>
+              ) : null}
+              {settingsTab === "conversation" ? (
+                <article className="settings-card">
+                  <div>
+                    <p>{t.conversationSettings}</p>
+                    <small>{t.conversationSettingsDetail}</small>
+                  </div>
+                  <div className="settings-card-control">
+                    <span>{t.sendKeyLabel}</span>
+                    <div className="segmented" aria-label={t.sendKeyLabel}>
+                      <button
+                        aria-pressed={conversationPrefs.sendKey === "enter"}
+                        className={
+                          conversationPrefs.sendKey === "enter" ? "selected" : ""
+                        }
+                        onClick={() =>
+                          updateConversationPrefs({ sendKey: "enter" })
+                        }
+                        type="button"
+                      >
+                        {t.sendKeyEnter}
+                      </button>
+                      <button
+                        aria-pressed={conversationPrefs.sendKey === "modEnter"}
+                        className={
+                          conversationPrefs.sendKey === "modEnter"
+                            ? "selected"
+                            : ""
+                        }
+                        onClick={() =>
+                          updateConversationPrefs({ sendKey: "modEnter" })
+                        }
+                        type="button"
+                      >
+                        {t.sendKeyModEnter}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="settings-card-control">
+                    <span>{t.thinkingDefaultLabel}</span>
+                    <div
+                      className="segmented"
+                      aria-label={t.thinkingDefaultLabel}
+                    >
+                      <button
+                        aria-pressed={conversationPrefs.thinkingDefaultExpanded}
+                        className={
+                          conversationPrefs.thinkingDefaultExpanded
+                            ? "selected"
+                            : ""
+                        }
+                        onClick={() =>
+                          updateConversationPrefs({
+                            thinkingDefaultExpanded: true,
+                          })
+                        }
+                        type="button"
+                      >
+                        {t.thinkingDefaultExpand}
+                      </button>
+                      <button
+                        aria-pressed={!conversationPrefs.thinkingDefaultExpanded}
+                        className={
+                          !conversationPrefs.thinkingDefaultExpanded
+                            ? "selected"
+                            : ""
+                        }
+                        onClick={() =>
+                          updateConversationPrefs({
+                            thinkingDefaultExpanded: false,
+                          })
+                        }
+                        type="button"
+                      >
+                        {t.thinkingDefaultCollapse}
+                      </button>
                     </div>
                   </div>
                 </article>

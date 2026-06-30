@@ -12,6 +12,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
   {
     items: [
       { key: "model", labelKey: "navModel" },
+      { key: "conversation", labelKey: "navConversation" },
       { key: "appearance", labelKey: "navAppearance" },
       { key: "workspace", labelKey: "navWorkspace" },
       { key: "security", labelKey: "navSecurity" },
@@ -48,6 +49,9 @@ function Icon({ name }: { name: string }) {
         <rect x="6" y="6" width="12" height="12" rx="2" />
         <path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3" />
       </>
+    ),
+    conversation: (
+      <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-3.5-.7L3 21l1.9-5a8.4 8.4 0 0 1-.9-3.5 8.4 8.4 0 0 1 8.5-8.5 8.4 8.4 0 0 1 8.5 7.5z" />
     ),
     appearance: (
       <>
