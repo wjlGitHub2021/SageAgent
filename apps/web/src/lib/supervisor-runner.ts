@@ -22,7 +22,6 @@ import type {
   JsonObject,
   Artifact,
   Message,
-  MessageRole,
   Step,
   Run,
   RunEvent,
@@ -1410,6 +1409,9 @@ async function runMultiAgentEventPass({
 
   const steps = delegationFlow.flow.supervisorPlan;
 
+  // 多 agent 各阶段（Plan/Researcher/Builder/Reviewer）只产出 step 与 artifact 事件，
+  // 供右侧 inspector 观测；不再把阶段旁白作为对话消息下发——对话区只显示用户消息、
+  // 工具调用与最终 supervisor 答复，避免每轮刷屏固定话术。
   const supervisorPlanStep = createStep({
     id: createId("step"),
     runId: run.id,
@@ -1429,23 +1431,6 @@ async function runMultiAgentEventPass({
   );
   store.appendEvent(supervisorPlanStartEvent);
   events.push(supervisorPlanStartEvent);
-
-  const supervisorPlanMessage = createMessage({
-    id: createId("message"),
-    runId: run.id,
-    threadId: run.threadId,
-    role: "agent",
-    agent: "supervisor",
-    content: steps.summary,
-    createdAt: now(),
-  });
-  const supervisorPlanMessageEvent = createMessageCompletedEvent(
-    supervisorPlanMessage,
-    createId,
-    nextRunSequence(store, run.id),
-  );
-  store.appendEvent(supervisorPlanMessageEvent);
-  events.push(supervisorPlanMessageEvent);
 
   const supervisorPlanArtifact = createArtifact({
     id: createId("artifact"),
@@ -1505,23 +1490,6 @@ async function runMultiAgentEventPass({
 
   const researcherBrief = delegationFlow.flow.researcherBrief;
 
-  const researcherMessage = createMessage({
-    id: createId("message"),
-    runId: run.id,
-    threadId: run.threadId,
-    role: "agent",
-    agent: "researcher",
-    content: researcherBrief.summary,
-    createdAt: now(),
-  });
-  const researcherMessageEvent = createMessageCompletedEvent(
-    researcherMessage,
-    createId,
-    nextRunSequence(store, run.id),
-  );
-  store.appendEvent(researcherMessageEvent);
-  events.push(researcherMessageEvent);
-
   const researcherArtifact = createArtifact({
     id: createId("artifact"),
     runId: run.id,
@@ -1575,23 +1543,6 @@ async function runMultiAgentEventPass({
   events.push(builderStartEvent);
 
   const builderDraft = delegationFlow.flow.builderDraft;
-
-  const builderMessage = createMessage({
-    id: createId("message"),
-    runId: run.id,
-    threadId: run.threadId,
-    role: "agent",
-    agent: "builder",
-    content: builderDraft.summary,
-    createdAt: now(),
-  });
-  const builderMessageEvent = createMessageCompletedEvent(
-    builderMessage,
-    createId,
-    nextRunSequence(store, run.id),
-  );
-  store.appendEvent(builderMessageEvent);
-  events.push(builderMessageEvent);
 
   const builderArtifact = createArtifact({
     id: createId("artifact"),
@@ -1650,23 +1601,6 @@ async function runMultiAgentEventPass({
 
   const reviewerReport = delegationFlow.flow.reviewerReport;
   const finalSummaryGate = delegationFlow.flow.finalSummaryGate;
-
-  const reviewerMessage = createMessage({
-    id: createId("message"),
-    runId: run.id,
-    threadId: run.threadId,
-    role: "agent",
-    agent: "reviewer",
-    content: reviewerReport.summary,
-    createdAt: now(),
-  });
-  const reviewerMessageEvent = createMessageCompletedEvent(
-    reviewerMessage,
-    createId,
-    nextRunSequence(store, run.id),
-  );
-  store.appendEvent(reviewerMessageEvent);
-  events.push(reviewerMessageEvent);
 
   const reviewerArtifact = createArtifact({
     id: createId("artifact"),
@@ -1774,34 +1708,6 @@ function createStep({
     output,
     startedAt,
     completedAt,
-  };
-}
-
-function createMessage({
-  id,
-  runId,
-  threadId,
-  role,
-  agent,
-  content,
-  createdAt,
-}: {
-  readonly id: string;
-  readonly runId: EntityId;
-  readonly threadId: EntityId;
-  readonly role: MessageRole;
-  readonly agent: Step["agent"] | null;
-  readonly content: string;
-  readonly createdAt: string;
-}): Message {
-  return {
-    id,
-    runId,
-    threadId,
-    role,
-    agent,
-    content,
-    createdAt,
   };
 }
 
@@ -1920,23 +1826,6 @@ function createStepEvent(
       step,
     },
   } as Extract<RunEvent, { readonly type: typeof type }>;
-}
-
-function createMessageCompletedEvent(
-  message: Message,
-  createId: IdFactory,
-  sequence: number,
-): Extract<RunEvent, { readonly type: "message.completed" }> {
-  return {
-    id: createId("event"),
-    runId: message.runId,
-    type: "message.completed",
-    sequence,
-    createdAt: message.createdAt,
-    payload: {
-      message,
-    },
-  };
 }
 
 function createArtifactEvent(

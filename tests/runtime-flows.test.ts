@@ -57,21 +57,19 @@ const run: Run = {
   completedAt: null,
 };
 
+// 多 agent 编排的 Plan/Researcher/Builder/Reviewer 四阶段仅产出 step 与 artifact 事件；
+// 中间旁白不再作为对话消息下发（真正的回答由后续 supervisor 答复给出）。
 const multiAgentEventTypes = [
   "step.started",
-  "message.completed",
   "artifact.created",
   "step.completed",
   "step.started",
-  "message.completed",
   "artifact.created",
   "step.completed",
   "step.started",
-  "message.completed",
   "artifact.created",
   "step.completed",
   "step.started",
-  "message.completed",
   "artifact.created",
   "step.completed",
 ] as const;

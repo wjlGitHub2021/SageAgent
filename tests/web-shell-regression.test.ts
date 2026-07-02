@@ -15,7 +15,9 @@ describe("web shell regression guards", () => {
     expect(pageSource).toContain("const selectedRun = hasSelectedRun ? activeRun : null");
     expect(pageSource).toContain("setHasSelectedRun(true)");
     expect(pageSource).toContain("setHasSelectedRun(false)");
-    expect(pageSource).toContain("hasSelectedRun && run.id === activeRunId");
+    expect(pageSource).toContain(
+      "hasSelectedRun && run.threadId === activeThreadId",
+    );
   });
 
   it("routes all dialog close controls through the focus-restoring helpers", async () => {
