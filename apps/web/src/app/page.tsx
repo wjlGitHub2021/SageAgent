@@ -2317,13 +2317,21 @@ export default function Home() {
   const selectedRun = hasSelectedRun ? activeRun : null;
   const selectedRunId = hasSelectedRun ? activeRunId : null;
   const normalizedConversationQuery = conversationQuery.trim().toLowerCase();
+  // 左侧列表按会话(thread)折叠：一个 thread 一行，代表行取该会话最新的 run（含状态/时间）。
+  const threadRows = collapseToNewestPerThread(runItems);
+  const originIdByThread = buildOriginRunIdByThread(runItems);
+  const originOf = (run: RunItem): string =>
+    originIdByThread.get(run.threadId) ?? run.id;
+  const threadTitleOf = (run: RunItem): Record<Locale, string> =>
+    threadItems.find((thread) => thread.id === run.threadId)?.title ??
+    run.title;
   const filteredRuns = normalizedConversationQuery
-    ? runItems.filter((run) =>
-        `${run.title[locale]} ${run.goal ?? ""}`
+    ? threadRows.filter((run) =>
+        `${threadTitleOf(run)[locale]} ${run.goal ?? ""}`
           .toLowerCase()
           .includes(normalizedConversationQuery)
       )
-    : runItems;
+    : threadRows;
   const activeUsedTokens = getRunTotalTokens(runEvents, selectedRunId);
   const activeMaxTokens = MODEL_CONTEXT_WINDOW[model] ?? DEFAULT_CONTEXT_WINDOW;
   const inspectorTabs = [
@@ -2336,32 +2344,36 @@ export default function Home() {
   ];
   const pinnedRuns = filteredRuns.filter(
     (run) =>
-      pinnedRunIds.includes(run.id) && !archivedRunIds.includes(run.id),
+      pinnedRunIds.includes(originOf(run)) &&
+      !archivedRunIds.includes(originOf(run)),
   );
   const unpinnedRuns = filteredRuns.filter(
     (run) =>
-      !pinnedRunIds.includes(run.id) && !archivedRunIds.includes(run.id),
+      !pinnedRunIds.includes(originOf(run)) &&
+      !archivedRunIds.includes(originOf(run)),
   );
   // 已归档列表用于设置里的「已归档对话」分类（不受会话搜索影响）。
-  const archivedRuns = runItems.filter((run) =>
-    archivedRunIds.includes(run.id),
+  const archivedRuns = threadRows.filter((run) =>
+    archivedRunIds.includes(originOf(run)),
   );
 
   const renderRunRow = (run: RunItem) => {
-    const isPinned = pinnedRunIds.includes(run.id);
-    const isActive = hasSelectedRun && run.id === activeRunId;
+    // run = 该会话最新 run（状态/时间/点击后的活动 run）；originId = 发起 run（置顶/归档稳定键）。
+    const originId = originOf(run);
+    const isPinned = pinnedRunIds.includes(originId);
+    const isActive = hasSelectedRun && run.threadId === activeThreadId;
     return (
       <div
         className={`side-run-wrap${isActive ? " active" : ""}${
           isPinned ? " pinned" : ""
         }`}
-        key={run.id}
+        key={run.threadId}
       >
         <button
           className="side-run"
           onClick={(event) => {
             if (event.shiftKey) {
-              toggleRunPin(run.id);
+              toggleRunPin(originId);
               return;
             }
             setActiveRunId(run.id);
@@ -2372,7 +2384,7 @@ export default function Home() {
         >
           <StatusDot status={run.status} />
           <span className="side-run-body">
-            <span className="side-run-title">{run.title[locale]}</span>
+            <span className="side-run-title">{threadTitleOf(run)[locale]}</span>
             <span className="side-run-meta">
               <span>{formatRunStatusLabel(run.status, t)}</span>
               <span>{run.time}</span>
@@ -2385,7 +2397,7 @@ export default function Home() {
           className="side-run-pin"
           onClick={(event) => {
             event.stopPropagation();
-            toggleRunPin(run.id);
+            toggleRunPin(originId);
           }}
           title={isPinned ? t.unpin : t.pinHint}
           type="button"
@@ -2410,7 +2422,7 @@ export default function Home() {
           className="side-run-pin side-run-archive"
           onClick={(event) => {
             event.stopPropagation();
-            toggleRunArchive(run.id);
+            toggleRunArchive(originId);
           }}
           title={t.archiveAction}
           type="button"
@@ -4518,12 +4530,12 @@ export default function Home() {
                   ) : (
                     <div className="archived-list">
                       {archivedRuns.map((run) => (
-                        <div className="archived-row" key={run.id}>
+                        <div className="archived-row" key={run.threadId}>
                           <div className="archived-row-body">
                             <StatusDot status={run.status} />
                             <div className="archived-row-text">
                               <span className="archived-row-title">
-                                {run.title[locale]}
+                                {threadTitleOf(run)[locale]}
                               </span>
                               <span className="archived-row-meta">
                                 {formatRunStatusLabel(run.status, t)} · {run.time}
@@ -4532,7 +4544,7 @@ export default function Home() {
                           </div>
                           <button
                             className="ghost-button"
-                            onClick={() => toggleRunArchive(run.id)}
+                            onClick={() => toggleRunArchive(originOf(run))}
                             type="button"
                           >
                             {t.unarchiveAction}
@@ -5049,6 +5061,29 @@ function parseRunEventSseBlock(block: string): RunEvent | null {
     // Ignore malformed SSE blocks; the API contract is validated server-side.
     return null;
   }
+}
+
+// 左侧列表按会话(thread)折叠：runItems 为「最新在前」（appendRunItem 前插）。
+// 每个 thread 取「最新的 run」作代表行，保留最近活动在前的顺序。
+function collapseToNewestPerThread(runs: readonly RunItem[]): RunItem[] {
+  const seen = new Set<string>();
+  const rows: RunItem[] = [];
+  for (const run of runs) {
+    if (seen.has(run.threadId)) continue;
+    seen.add(run.threadId);
+    rows.push(run);
+  }
+  return rows;
+}
+
+// 每个 thread 的「发起（最早）run id」，作为置顶/归档的稳定键——新增消息不会改变它，
+// 置顶/归档不会因会话新增一轮而丢失。最新在前，故最后写入的即最早 run。
+function buildOriginRunIdByThread(
+  runs: readonly RunItem[],
+): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const run of runs) map.set(run.threadId, run.id);
+  return map;
 }
 
 function appendThreadItem(
