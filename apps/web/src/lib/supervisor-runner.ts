@@ -714,6 +714,7 @@ async function* runSupervisorMcpToolBranch({
     role: "agent",
     agent: "supervisor",
     content,
+    ...(loop.reasoning ? { reasoning: loop.reasoning } : {}),
     createdAt: completedAt,
   };
   const completedRun: Run = {

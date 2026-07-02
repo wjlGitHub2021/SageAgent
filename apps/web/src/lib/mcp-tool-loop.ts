@@ -76,6 +76,8 @@ export type ToolLoopResult =
   | {
       readonly ok: true;
       readonly content: string;
+      // 最终答复轮的思考过程（reasoning_content）；供上层挂到 message.reasoning 展示。
+      readonly reasoning?: string;
       // 完整对话轨迹（含 assistant 工具轮与 tool 结果轮），便于上层展示/续接。
       readonly messages: readonly DeepSeekChatMessage[];
       readonly iterations: number;
@@ -132,6 +134,7 @@ export async function runMcpToolLoop(
       return {
         ok: true,
         content,
+        ...(reasoningContent ? { reasoning: reasoningContent } : {}),
         messages: transcript,
         iterations: iteration,
         toolCalls: toolCallCount,
